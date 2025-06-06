@@ -1,0 +1,216 @@
+---
+title: "List Email Addresses"
+api: "GET https://api.inbound.new/v1/domains/{domain}/emails"
+description: "Retrieve all email addresses configured for a domain"
+---
+
+## Path Parameters
+
+<ParamField path="domain" type="string" required>
+  The domain to list email addresses for
+</ParamField>
+
+## Query Parameters
+
+<ParamField query="limit" type="number" default="50">
+  Maximum number of email addresses to return (1-100)
+</ParamField>
+
+<ParamField query="offset" type="number" default="0">
+  Number of email addresses to skip for pagination
+</ParamField>
+
+<ParamField query="status" type="string">
+  Filter by email status: `active`, `inactive`, `pending`
+</ParamField>
+
+## Response
+
+<ResponseField name="emails" type="array">
+  Array of email address objects
+  
+  <ResponseField name="id" type="string">
+    Unique identifier for the email address
+  </ResponseField>
+  
+  <ResponseField name="email" type="string">
+    The full email address
+  </ResponseField>
+  
+  <ResponseField name="local_part" type="string">
+    The part before @ symbol
+  </ResponseField>
+  
+  <ResponseField name="domain" type="string">
+    The domain part of the email
+  </ResponseField>
+  
+  <ResponseField name="status" type="string">
+    Email status: `active`, `inactive`, `pending`
+  </ResponseField>
+  
+  <ResponseField name="destination" type="object">
+    Where emails are routed
+    
+    <ResponseField name="type" type="string">
+      Destination type: `webhook`, `forward`, `action`
+    </ResponseField>
+    
+    <ResponseField name="config" type="object">
+      Destination-specific configuration
+    </ResponseField>
+  </ResponseField>
+  
+  <ResponseField name="created_at" type="string">
+    ISO 8601 timestamp when email was created
+  </ResponseField>
+  
+  <ResponseField name="updated_at" type="string">
+    ISO 8601 timestamp when email was last updated
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="pagination" type="object">
+  Pagination information
+  
+  <ResponseField name="total" type="number">
+    Total number of email addresses
+  </ResponseField>
+  
+  <ResponseField name="limit" type="number">
+    Current page limit
+  </ResponseField>
+  
+  <ResponseField name="offset" type="number">
+    Current page offset
+  </ResponseField>
+  
+  <ResponseField name="has_more" type="boolean">
+    Whether there are more results available
+  </ResponseField>
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X GET "https://api.inbound.new/v1/domains/example.com/emails" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```bash With Filters
+curl -X GET "https://api.inbound.new/v1/domains/example.com/emails?status=active&limit=25" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```typescript TypeScript
+const emails = await inbound.emails.list('example.com');
+console.log(emails);
+
+// With filters
+const activeEmails = await inbound.emails.list('example.com', {
+  status: 'active',
+  limit: 25
+});
+```
+
+```python Python
+emails = inbound.emails.list('example.com')
+print(emails)
+
+# With filters
+active_emails = inbound.emails.list('example.com', status='active', limit=25)
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json Success Response
+{
+  "emails": [
+    {
+      "id": "email_abc123",
+      "email": "support@example.com",
+      "local_part": "support",
+      "domain": "example.com",
+      "status": "active",
+      "destination": {
+        "type": "webhook",
+        "config": {
+          "url": "https://api.yourapp.com/webhooks/inbound",
+          "secret": "whsec_abc123"
+        }
+      },
+      "created_at": "2024-01-15T10:00:00Z",
+      "updated_at": "2024-01-15T10:00:00Z"
+    },
+    {
+      "id": "email_def456",
+      "email": "sales@example.com",
+      "local_part": "sales",
+      "domain": "example.com",
+      "status": "active",
+      "destination": {
+        "type": "forward",
+        "config": {
+          "to": "team@yourcompany.com"
+        }
+      },
+      "created_at": "2024-01-14T15:30:00Z",
+      "updated_at": "2024-01-14T15:30:00Z"
+    }
+  ],
+  "pagination": {
+    "total": 2,
+    "limit": 50,
+    "offset": 0,
+    "has_more": false
+  }
+}
+```
+
+```json Empty Response
+{
+  "emails": [],
+  "pagination": {
+    "total": 0,
+    "limit": 50,
+    "offset": 0,
+    "has_more": false
+  }
+}
+```
+
+</ResponseExample>
+
+## Filtering and Pagination
+
+Use query parameters to filter and paginate results:
+
+- **status**: Filter by email status (`active`, `inactive`, `pending`)
+- **limit**: Control page size (1-100, default 50)
+- **offset**: Skip results for pagination
+
+## Error Responses
+
+<ResponseField name="error" type="string">
+  Error message describing what went wrong
+</ResponseField>
+
+<ResponseExample>
+
+```json Domain Not Found
+{
+  "error": "Domain not found",
+  "code": "DOMAIN_NOT_FOUND"
+}
+```
+
+```json Invalid Parameters
+{
+  "error": "Invalid limit parameter. Must be between 1 and 100",
+  "code": "INVALID_PARAMETER"
+}
+```
+
+</ResponseExample> 

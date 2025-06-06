@@ -1,0 +1,170 @@
+---
+title: "Delete Webhook"
+api: "DELETE https://api.inbound.new/v1/webhooks/{webhookId}"
+description: "Delete a webhook and stop receiving events"
+---
+
+## Path Parameters
+
+<ParamField path="webhookId" type="string" required>
+  The unique identifier of the webhook to delete
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  Whether the deletion was successful
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Confirmation message
+</ResponseField>
+
+<ResponseField name="deleted_webhook" type="object">
+  Details of the deleted webhook
+  
+  <ResponseField name="id" type="string">
+    The deleted webhook's ID
+  </ResponseField>
+  
+  <ResponseField name="url" type="string">
+    The deleted webhook's URL
+  </ResponseField>
+  
+  <ResponseField name="events" type="array">
+    The events the webhook was subscribed to
+  </ResponseField>
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X DELETE "https://api.inbound.new/v1/webhooks/webhook_abc123" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```typescript TypeScript
+const result = await inbound.webhooks.delete('webhook_abc123');
+console.log(result);
+```
+
+```python Python
+result = inbound.webhooks.delete('webhook_abc123')
+print(result)
+```
+
+```javascript JavaScript
+const result = await inbound.webhooks.delete('webhook_abc123');
+console.log(result);
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json Success Response
+{
+  "success": true,
+  "message": "Webhook deleted successfully",
+  "deleted_webhook": {
+    "id": "webhook_abc123",
+    "url": "https://api.yourapp.com/webhooks/inbound",
+    "events": ["email.received", "email.bounced"]
+  }
+}
+```
+
+</ResponseExample>
+
+## Important Notes
+
+<Warning>
+**Permanent Action**: Deleting a webhook is permanent and cannot be undone. You will stop receiving all events that were configured for this webhook.
+</Warning>
+
+<Info>
+**Immediate Effect**: The deletion takes effect immediately. No new events will be sent to the webhook URL after deletion.
+</Info>
+
+## What Happens When You Delete
+
+1. **Event Delivery Stops**: The webhook will immediately stop receiving events
+2. **Pending Deliveries**: Any pending retry attempts will be cancelled
+3. **Statistics Preserved**: Historical delivery statistics are retained for analytics
+4. **URL Released**: The webhook URL is no longer associated with your account
+
+## Before Deleting
+
+Consider these alternatives before permanently deleting a webhook:
+
+### Disable Instead of Delete
+
+If you want to temporarily stop receiving events, consider disabling the webhook instead:
+
+```typescript
+// Disable webhook instead of deleting
+await inbound.webhooks.update('webhook_abc123', {
+  active: false
+});
+```
+
+### Update Event Subscriptions
+
+If you only want to stop certain events, update the webhook's event subscriptions:
+
+```typescript
+// Remove specific events instead of deleting
+await inbound.webhooks.update('webhook_abc123', {
+  events: ['email.received'] // Remove 'email.bounced'
+});
+```
+
+## Error Responses
+
+<ResponseField name="error" type="string">
+  Error message describing what went wrong
+</ResponseField>
+
+<ResponseField name="code" type="string">
+  Error code for programmatic handling
+</ResponseField>
+
+<ResponseExample>
+
+```json Webhook Not Found
+{
+  "error": "Webhook not found",
+  "code": "WEBHOOK_NOT_FOUND"
+}
+```
+
+```json Unauthorized
+{
+  "error": "You don't have permission to delete this webhook",
+  "code": "UNAUTHORIZED"
+}
+```
+
+```json Already Deleted
+{
+  "error": "Webhook has already been deleted",
+  "code": "WEBHOOK_ALREADY_DELETED"
+}
+```
+
+</ResponseExample>
+
+## Best Practices
+
+1. **Backup Configuration**: Save webhook configuration before deletion if you might need to recreate it
+2. **Graceful Shutdown**: Ensure your webhook endpoint can handle the sudden stop of events
+3. **Monitor Dependencies**: Check if other systems depend on this webhook before deletion
+4. **Use Disable First**: Consider disabling the webhook temporarily before permanent deletion
+
+## Recovery
+
+If you accidentally delete a webhook, you'll need to recreate it using the [Create Webhook endpoint](/api-reference/webhooks/create-webhook). Make sure to:
+
+- Use the same URL and event subscriptions
+- Update any systems that reference the old webhook ID
+- Reconfigure any retry settings or descriptions 

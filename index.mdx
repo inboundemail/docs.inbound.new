@@ -1,71 +1,168 @@
 ---
-title: Introduction
-description: "Welcome to the home of your new documentation"
+title: "Inbound Email API + SDK Documentation"
+description: "Complete guide to integrating inbound email processing into your applications"
 ---
 
 <img
   className="block dark:hidden"
-  src="/images/hero-light.png"
-  alt="Hero Light"
+  src="/logo/light.svg"
+  alt="Inbound Logo"
+  width="200"
 />
 <img
   className="hidden dark:block"
-  src="/images/hero-dark.png"
-  alt="Hero Dark"
+  src="/logo/dark.svg"
+  alt="Inbound Logo"
+  width="200"
 />
 
-## Setting up
+# Welcome to Inbound
 
-The first step to world-class documentation is setting up your editing environments.
+Inbound is a powerful email processing API that allows you to receive, process, and route emails programmatically. Transform any email address into a webhook endpoint and build sophisticated email-driven workflows.
+
+## What is Inbound?
+
+Inbound provides a simple yet powerful way to:
+
+- **Receive emails** at custom email addresses on your verified domains
+- **Process emails** through webhooks with full email content and metadata
+- **Route emails** based on custom rules and logic
+- **Scale email processing** with reliable delivery and retry mechanisms
 
 <CardGroup cols={2}>
   <Card
-    title="Edit Your Docs"
-    icon="pen-to-square"
-    href="https://mintlify.com/docs/quickstart"
+    title="Quick Start"
+    icon="rocket"
+    href="/quickstart"
   >
-    Get your docs set up locally for easy development
+    Get up and running with your first email endpoint in under 5 minutes
   </Card>
   <Card
-    title="Preview Changes"
-    icon="image"
-    href="https://mintlify.com/docs/development"
+    title="SDK Installation"
+    icon="code"
+    href="/sdk/installation"
   >
-    Preview your changes before you push to make sure they're perfect
+    Install the TypeScript SDK and start building with type safety
+  </Card>
+  <Card
+    title="API Reference"
+    icon="book"
+    href="/api-reference/introduction"
+  >
+    Complete API documentation with examples and response schemas
+  </Card>
+  <Card
+    title="Complete Example"
+    icon="terminal"
+    href="/examples/complete-setup"
+  >
+    Full walkthrough of setting up email infrastructure from scratch
   </Card>
 </CardGroup>
 
-## Make it yours
+## Key Features
 
-Update your docs to your brand and add valuable content for the best user conversion.
+<AccordionGroup>
+  <Accordion title="Domain Management">
+    Verify and manage your email domains with automatic DNS configuration and status monitoring.
+  </Accordion>
+  
+  <Accordion title="Email Address Creation">
+    Create unlimited email addresses on your verified domains and route them to webhooks or other destinations.
+  </Accordion>
+  
+  <Accordion title="Webhook Processing">
+    Receive real-time notifications when emails arrive, with full email content, attachments, and metadata.
+  </Accordion>
+  
+  <Accordion title="Reliable Delivery">
+    Built-in retry mechanisms and delivery tracking ensure your webhooks receive every email.
+  </Accordion>
+</AccordionGroup>
 
-<CardGroup cols={2}>
+## Getting Started
+
+<Steps>
+  <Step title="Create an Account">
+    Sign up for an Inbound account and verify your email address.
+  </Step>
+  
+  <Step title="Verify a Domain">
+    Add and verify a domain you own to start receiving emails.
+  </Step>
+  
+  <Step title="Get Your API Key">
+    Generate an API key from your dashboard settings.
+  </Step>
+  
+  <Step title="Install the SDK">
+    Install the TypeScript SDK or use the REST API directly.
+    
+    ```bash
+    npm install exon-inbound
+    ```
+  </Step>
+  
+  <Step title="Create Your First Email">
+    Set up an email address and webhook to start processing emails.
+    
+    ```typescript
+    import { createInboundClient } from 'exon-inbound'
+    
+    const inbound = createInboundClient({
+      apiKey: 'your_api_key_here'
+    })
+    
+    // Create a webhook
+    const webhook = await inbound.createWebhook({
+      name: 'Email Processor',
+      endpoint: 'https://api.example.com/webhook'
+    })
+    
+    // Create an email address
+    const email = await inbound.createEmail({
+      domain: 'example.com',
+      email: 'hello@example.com',
+      webhookId: webhook.id
+    })
+    ```
+  </Step>
+</Steps>
+
+## Use Cases
+
+<Tip>
+Inbound is perfect for building email-driven applications and automating email workflows.
+</Tip>
+
+- **Customer Support**: Route support emails to your ticketing system
+- **Lead Generation**: Process contact form submissions via email
+- **Email Automation**: Trigger workflows based on incoming emails
+- **Content Processing**: Extract and process email attachments
+- **Notification Systems**: Convert emails into app notifications
+
+## Need Help?
+
+<CardGroup cols={3}>
   <Card
-    title="Customize Style"
-    icon="palette"
-    href="https://mintlify.com/docs/settings/global"
+    title="Dashboard"
+    icon="chart-line"
+    href="https://inbound.run/dashboard"
   >
-    Customize your docs to your company's colors and brands
+    Manage your domains, emails, and webhooks
   </Card>
   <Card
-    title="Reference APIs"
-    icon="code"
-    href="https://mintlify.com/docs/api-playground/openapi"
+    title="Support"
+    icon="envelope"
+    href="mailto:support@inbound.run"
   >
-    Automatically generate endpoints from an OpenAPI spec
+    Get help from our support team
   </Card>
   <Card
-    title="Add Components"
-    icon="screwdriver-wrench"
-    href="https://mintlify.com/docs/content/components/accordions"
+    title="GitHub"
+    icon="github"
+    href="https://github.com/exonlabs/inbound"
   >
-    Build interactive features and designs to guide your users
-  </Card>
-  <Card
-    title="Get Inspiration"
-    icon="stars"
-    href="https://mintlify.com/customers"
-  >
-    Check out our showcase of our favorite documentation
+    View source code and contribute
   </Card>
 </CardGroup>

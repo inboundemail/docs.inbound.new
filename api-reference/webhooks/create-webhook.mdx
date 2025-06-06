@@ -1,0 +1,250 @@
+---
+title: "Create Webhook"
+api: "POST https://api.inbound.new/v1/webhooks"
+description: "Create a new webhook to receive email events"
+---
+
+## Request Body
+
+<ParamField body="url" type="string" required>
+  The URL where webhook events will be sent. Must be HTTPS.
+</ParamField>
+
+<ParamField body="events" type="array" required>
+  Array of event types to subscribe to. Available events: `email.received`, `email.bounced`, `email.delivered`, `email.failed`
+</ParamField>
+
+<ParamField body="description" type="string">
+  Optional description for the webhook
+</ParamField>
+
+<ParamField body="secret" type="string">
+  Optional webhook secret for signature verification. If not provided, one will be generated.
+</ParamField>
+
+<ParamField body="active" type="boolean" default="true">
+  Whether the webhook should be active immediately
+</ParamField>
+
+<ParamField body="retry_config" type="object">
+  Retry configuration for failed webhook deliveries
+  
+  <ParamField body="max_retries" type="number" default="3">
+    Maximum number of retry attempts (0-10)
+  </ParamField>
+  
+  <ParamField body="retry_delay" type="number" default="60">
+    Initial delay between retries in seconds
+  </ParamField>
+  
+  <ParamField body="backoff_multiplier" type="number" default="2">
+    Multiplier for exponential backoff
+  </ParamField>
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  Unique identifier for the webhook
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  The webhook URL
+</ResponseField>
+
+<ResponseField name="events" type="array">
+  Subscribed event types
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Webhook description
+</ResponseField>
+
+<ResponseField name="secret" type="string">
+  Webhook secret for signature verification
+</ResponseField>
+
+<ResponseField name="active" type="boolean">
+  Whether the webhook is active
+</ResponseField>
+
+<ResponseField name="retry_config" type="object">
+  Retry configuration
+  
+  <ResponseField name="max_retries" type="number">
+    Maximum retry attempts
+  </ResponseField>
+  
+  <ResponseField name="retry_delay" type="number">
+    Initial retry delay in seconds
+  </ResponseField>
+  
+  <ResponseField name="backoff_multiplier" type="number">
+    Backoff multiplier
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  ISO 8601 timestamp when webhook was created
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  ISO 8601 timestamp when webhook was last updated
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X POST "https://api.inbound.new/v1/webhooks" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://api.yourapp.com/webhooks/inbound",
+    "events": ["email.received", "email.bounced"],
+    "description": "Main webhook for email events",
+    "active": true
+  }'
+```
+
+```typescript TypeScript
+const webhook = await inbound.webhooks.create({
+  url: 'https://api.yourapp.com/webhooks/inbound',
+  events: ['email.received', 'email.bounced'],
+  description: 'Main webhook for email events',
+  active: true
+});
+
+console.log(webhook);
+```
+
+```python Python
+webhook = inbound.webhooks.create({
+  'url': 'https://api.yourapp.com/webhooks/inbound',
+  'events': ['email.received', 'email.bounced'],
+  'description': 'Main webhook for email events',
+  'active': True
+})
+
+print(webhook)
+```
+
+```javascript JavaScript
+const webhook = await inbound.webhooks.create({
+  url: 'https://api.yourapp.com/webhooks/inbound',
+  events: ['email.received', 'email.bounced'],
+  description: 'Main webhook for email events',
+  active: true
+});
+
+console.log(webhook);
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json Success Response
+{
+  "id": "webhook_abc123",
+  "url": "https://api.yourapp.com/webhooks/inbound",
+  "events": ["email.received", "email.bounced"],
+  "description": "Main webhook for email events",
+  "secret": "whsec_1234567890abcdef",
+  "active": true,
+  "retry_config": {
+    "max_retries": 3,
+    "retry_delay": 60,
+    "backoff_multiplier": 2
+  },
+  "created_at": "2024-01-15T10:00:00Z",
+  "updated_at": "2024-01-15T10:00:00Z"
+}
+```
+
+</ResponseExample>
+
+## Available Events
+
+<AccordionGroup>
+  <Accordion title="email.received">
+    Triggered when an email is successfully received and processed
+  </Accordion>
+  
+  <Accordion title="email.bounced">
+    Triggered when an email bounces (invalid recipient, full mailbox, etc.)
+  </Accordion>
+  
+  <Accordion title="email.delivered">
+    Triggered when an email is successfully delivered to its destination
+  </Accordion>
+  
+  <Accordion title="email.failed">
+    Triggered when email processing fails due to system errors
+  </Accordion>
+</AccordionGroup>
+
+## Webhook Security
+
+<Info>
+**Signature Verification**: Always verify webhook signatures using the provided secret to ensure requests are from Inbound.
+</Info>
+
+```typescript
+import crypto from 'crypto';
+
+function verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+  
+  return crypto.timingSafeEqual(
+    Buffer.from(signature, 'hex'),
+    Buffer.from(expectedSignature, 'hex')
+  );
+}
+```
+
+## Error Responses
+
+<ResponseField name="error" type="string">
+  Error message describing what went wrong
+</ResponseField>
+
+<ResponseField name="code" type="string">
+  Error code for programmatic handling
+</ResponseField>
+
+<ResponseExample>
+
+```json Invalid URL
+{
+  "error": "Webhook URL must be HTTPS",
+  "code": "INVALID_URL"
+}
+```
+
+```json Invalid Events
+{
+  "error": "Invalid event type: email.invalid",
+  "code": "INVALID_EVENT_TYPE"
+}
+```
+
+```json URL Not Reachable
+{
+  "error": "Webhook URL is not reachable",
+  "code": "URL_NOT_REACHABLE"
+}
+```
+
+</ResponseExample>
+
+## Best Practices
+
+1. **Use HTTPS**: Webhook URLs must use HTTPS for security
+2. **Verify Signatures**: Always verify webhook signatures to prevent spoofing
+3. **Handle Retries**: Implement idempotency to handle duplicate deliveries
+4. **Respond Quickly**: Return 2xx status codes within 30 seconds
+5. **Log Events**: Keep logs of webhook deliveries for debugging
+``` 

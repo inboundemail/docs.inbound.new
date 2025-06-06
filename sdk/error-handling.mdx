@@ -1,0 +1,490 @@
+---
+title: "Error Handling"
+description: "Learn how to handle errors and exceptions when using the Inbound SDK"
+---
+
+# Error Handling
+
+Proper error handling is crucial for building robust applications with the Inbound SDK. This guide covers error types, handling patterns, and best practices.
+
+## Error Types
+
+The Inbound SDK provides structured error handling with the `InboundError` class:
+
+```typescript
+import { InboundError } from 'exon-inbound'
+
+try {
+  const email = await inbound.createEmail({
+    domain: 'nonexistent.com',
+    email: 'test@nonexistent.com'
+  })
+} catch (error) {
+  if (error instanceof InboundError) {
+    console.error('API Error:', error.message)
+    console.error('Status Code:', error.status)
+    console.error('Error Code:', error.code)
+  } else {
+    console.error('Unexpected error:', error)
+  }
+}
+```
+
+## HTTP Status Codes
+
+The SDK maps HTTP status codes to specific error scenarios:
+
+<AccordionGroup>
+  <Accordion title="200 - Success">
+    Request completed successfully.
+  </Accordion>
+  
+  <Accordion title="201 - Created">
+    Resource created successfully.
+  </Accordion>
+  
+  <Accordion title="400 - Bad Request">
+    Invalid request parameters or malformed data.
+  </Accordion>
+  
+  <Accordion title="401 - Unauthorized">
+    Invalid or missing API key.
+  </Accordion>
+  
+  <Accordion title="403 - Forbidden">
+    Valid API key but insufficient permissions.
+  </Accordion>
+  
+  <Accordion title="404 - Not Found">
+    Requested resource doesn't exist.
+  </Accordion>
+  
+  <Accordion title="409 - Conflict">
+    Resource already exists or conflicts with existing data.
+  </Accordion>
+  
+  <Accordion title="429 - Rate Limited">
+    Too many requests, rate limit exceeded.
+  </Accordion>
+  
+  <Accordion title="500 - Internal Server Error">
+    Server-side error, usually temporary.
+  </Accordion>
+</AccordionGroup>
+
+## Common Error Scenarios
+
+### Authentication Errors
+
+```typescript
+import { InboundError } from 'exon-inbound'
+
+async function handleAuthErrors() {
+  try {
+    const domains = await inbound.getDomains()
+    return domains
+  } catch (error) {
+    if (error instanceof InboundError) {
+      switch (error.status) {
+        case 401:
+          console.error('Invalid API key. Please check your credentials.')
+          // Redirect to login or show API key setup
+          break
+        case 403:
+          console.error('Access denied. Check your account permissions.')
+          break
+        default:
+          console.error('Authentication error:', error.message)
+      }
+    }
+    throw error
+  }
+}
+```
+
+### Domain Errors
+
+```typescript
+async function handleDomainErrors() {
+  try {
+    const email = await inbound.createEmail({
+      domain: 'example.com',
+      email: 'test@example.com'
+    })
+    return email
+  } catch (error) {
+    if (error instanceof InboundError) {
+      switch (error.status) {
+        case 400:
+          console.error('Invalid domain or email format')
+          break
+        case 404:
+          console.error('Domain not found or not verified')
+          break
+        case 409:
+          console.error('Email address already exists')
+          break
+        default:
+          console.error('Domain error:', error.message)
+      }
+    }
+    throw error
+  }
+}
+```
+
+### Webhook Errors
+
+```typescript
+async function handleWebhookErrors() {
+  try {
+    const webhook = await inbound.createWebhook({
+      name: 'Test Webhook',
+      endpoint: 'https://api.example.com/webhook'
+    })
+    return webhook
+  } catch (error) {
+    if (error instanceof InboundError) {
+      switch (error.status) {
+        case 400:
+          console.error('Invalid webhook URL or configuration')
+          break
+        case 409:
+          console.error('Webhook with this name already exists')
+          break
+        default:
+          console.error('Webhook error:', error.message)
+      }
+    }
+    throw error
+  }
+}
+```
+
+## Error Response Format
+
+API errors follow a consistent format:
+
+```json
+{
+  "error": "Descriptive error message explaining what went wrong"
+}
+```
+
+For validation errors, you might receive additional details:
+
+```json
+{
+  "error": "Validation failed",
+  "details": {
+    "email": "Invalid email format",
+    "domain": "Domain not verified"
+  }
+}
+```
+
+## Retry Logic
+
+Implement retry logic for transient errors:
+
+```typescript
+async function withRetry<T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  delay: number = 1000
+): Promise<T> {
+  let lastError: Error
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation()
+    } catch (error) {
+      lastError = error as Error
+      
+      // Don't retry on client errors (4xx)
+      if (error instanceof InboundError && error.status < 500) {
+        throw error
+      }
+      
+      if (attempt === maxRetries) {
+        break
+      }
+      
+      // Exponential backoff
+      const waitTime = delay * Math.pow(2, attempt - 1)
+      await new Promise(resolve => setTimeout(resolve, waitTime))
+    }
+  }
+  
+  throw lastError!
+}
+
+// Usage
+const domains = await withRetry(() => inbound.getDomains())
+```
+
+## Rate Limiting
+
+Handle rate limiting gracefully:
+
+```typescript
+async function handleRateLimit<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation()
+  } catch (error) {
+    if (error instanceof InboundError && error.status === 429) {
+      // Extract retry-after header if available
+      const retryAfter = error.headers?.['retry-after']
+      const delay = retryAfter ? parseInt(retryAfter) * 1000 : 60000 // Default 1 minute
+      
+      console.log(`Rate limited. Retrying after ${delay}ms`)
+      await new Promise(resolve => setTimeout(resolve, delay))
+      
+      return await operation()
+    }
+    throw error
+  }
+}
+```
+
+## Validation Helpers
+
+Create validation helpers to prevent errors:
+
+```typescript
+function validateEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return emailRegex.test(email)
+}
+
+function validateDomain(domain: string): boolean {
+  const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](?:\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])*$/
+  return domainRegex.test(domain)
+}
+
+function validateWebhookUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+// Use before API calls
+async function createEmailSafely(domain: string, email: string) {
+  if (!validateDomain(domain)) {
+    throw new Error('Invalid domain format')
+  }
+  
+  if (!validateEmail(email)) {
+    throw new Error('Invalid email format')
+  }
+  
+  return await inbound.createEmail({ domain, email })
+}
+```
+
+## Error Logging
+
+Implement comprehensive error logging:
+
+```typescript
+interface ErrorLog {
+  timestamp: string
+  operation: string
+  error: string
+  statusCode?: number
+  requestId?: string
+  userId?: string
+}
+
+class ErrorLogger {
+  private logs: ErrorLog[] = []
+  
+  log(operation: string, error: Error, context?: any) {
+    const errorLog: ErrorLog = {
+      timestamp: new Date().toISOString(),
+      operation,
+      error: error.message,
+      ...context
+    }
+    
+    if (error instanceof InboundError) {
+      errorLog.statusCode = error.status
+    }
+    
+    this.logs.push(errorLog)
+    console.error('Operation failed:', errorLog)
+  }
+  
+  getLogs(): ErrorLog[] {
+    return this.logs
+  }
+}
+
+const errorLogger = new ErrorLogger()
+
+// Usage
+try {
+  await inbound.createEmail({ domain: 'example.com', email: 'test@example.com' })
+} catch (error) {
+  errorLogger.log('createEmail', error as Error, { domain: 'example.com' })
+  throw error
+}
+```
+
+## Circuit Breaker Pattern
+
+Implement circuit breaker for failing services:
+
+```typescript
+class CircuitBreaker {
+  private failures = 0
+  private lastFailureTime = 0
+  private state: 'closed' | 'open' | 'half-open' = 'closed'
+  
+  constructor(
+    private threshold: number = 5,
+    private timeout: number = 60000
+  ) {}
+  
+  async execute<T>(operation: () => Promise<T>): Promise<T> {
+    if (this.state === 'open') {
+      if (Date.now() - this.lastFailureTime > this.timeout) {
+        this.state = 'half-open'
+      } else {
+        throw new Error('Circuit breaker is open')
+      }
+    }
+    
+    try {
+      const result = await operation()
+      this.onSuccess()
+      return result
+    } catch (error) {
+      this.onFailure()
+      throw error
+    }
+  }
+  
+  private onSuccess() {
+    this.failures = 0
+    this.state = 'closed'
+  }
+  
+  private onFailure() {
+    this.failures++
+    this.lastFailureTime = Date.now()
+    
+    if (this.failures >= this.threshold) {
+      this.state = 'open'
+    }
+  }
+}
+
+const circuitBreaker = new CircuitBreaker()
+
+// Usage
+const domains = await circuitBreaker.execute(() => inbound.getDomains())
+```
+
+## Best Practices
+
+<Tip>
+Always handle errors gracefully and provide meaningful feedback to users.
+</Tip>
+
+### 1. Use Specific Error Handling
+
+```typescript
+async function handleSpecificErrors() {
+  try {
+    const email = await inbound.createEmail({
+      domain: 'example.com',
+      email: 'test@example.com'
+    })
+    return email
+  } catch (error) {
+    if (error instanceof InboundError) {
+      // Handle API errors specifically
+      switch (error.status) {
+        case 400:
+          throw new Error('Please check your email format and domain verification')
+        case 404:
+          throw new Error('Domain not found. Please verify your domain first')
+        case 409:
+          throw new Error('This email address already exists')
+        default:
+          throw new Error(`API error: ${error.message}`)
+      }
+    } else {
+      // Handle unexpected errors
+      throw new Error('An unexpected error occurred. Please try again.')
+    }
+  }
+}
+```
+
+### 2. Implement Graceful Degradation
+
+```typescript
+async function getDomainsWithFallback() {
+  try {
+    return await inbound.getDomains()
+  } catch (error) {
+    console.error('Failed to fetch domains:', error)
+    
+    // Return cached data or empty array as fallback
+    return getCachedDomains() || []
+  }
+}
+```
+
+### 3. User-Friendly Error Messages
+
+```typescript
+function getErrorMessage(error: Error): string {
+  if (error instanceof InboundError) {
+    switch (error.status) {
+      case 401:
+        return 'Please check your API key configuration'
+      case 403:
+        return 'You don\'t have permission to perform this action'
+      case 404:
+        return 'The requested resource was not found'
+      case 409:
+        return 'This resource already exists'
+      case 429:
+        return 'Too many requests. Please try again later'
+      case 500:
+        return 'Server error. Please try again in a few moments'
+      default:
+        return 'An error occurred. Please try again'
+    }
+  }
+  
+  return 'An unexpected error occurred'
+}
+```
+
+## Next Steps
+
+Now that you understand error handling, you're ready to build robust applications:
+
+<CardGroup cols={2}>
+  <Card
+    title="Complete Setup Example"
+    icon="terminal"
+    href="/examples/complete-setup"
+  >
+    See error handling in a complete setup
+  </Card>
+  <Card
+    title="Webhook Handling"
+    icon="webhook"
+    href="/examples/webhook-handling"
+  >
+    Learn about webhook error handling
+  </Card>
+</CardGroup> 

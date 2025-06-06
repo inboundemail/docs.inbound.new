@@ -1,0 +1,335 @@
+---
+title: "Managing Email Addresses"
+description: "Learn how to create, list, and manage email addresses using the Inbound SDK"
+---
+
+# Managing Email Addresses
+
+Email addresses are the endpoints that receive emails on your verified domains. This guide shows you how to create, list, and manage email addresses using the SDK.
+
+## Creating Email Addresses
+
+Create an email address on a verified domain:
+
+```typescript
+const email = await inbound.createEmail({
+  domain: 'example.com',
+  email: 'hello@example.com',
+  webhookId: 'webhook_123' // Optional: assign a webhook
+})
+
+console.log('Created email:', email.address)
+```
+
+### Alternative Method
+
+You can also use the convenience method:
+
+```typescript
+const email = await inbound.addEmail(
+  'example.com',           // Domain name
+  'hello@example.com',     // Full email address
+  'webhook_123'            // Webhook ID (optional)
+)
+```
+
+## Email Address Response
+
+The response includes detailed information about the email address:
+
+```typescript
+interface EmailAddress {
+  id: string
+  address: string
+  webhookId?: string
+  isActive: boolean
+  isReceiptRuleConfigured: boolean
+  createdAt: string
+  updatedAt: string
+}
+```
+
+<AccordionGroup>
+  <Accordion title="id">
+    Unique identifier for the email address.
+  </Accordion>
+  
+  <Accordion title="address">
+    The full email address (e.g., hello@example.com).
+  </Accordion>
+  
+  <Accordion title="webhookId">
+    ID of the webhook that will receive emails sent to this address.
+  </Accordion>
+  
+  <Accordion title="isActive">
+    Whether the email address is active and can receive emails.
+  </Accordion>
+  
+  <Accordion title="isReceiptRuleConfigured">
+    Whether the AWS SES receipt rule is properly configured.
+  </Accordion>
+</AccordionGroup>
+
+## Listing Email Addresses
+
+Get all email addresses for a specific domain:
+
+```typescript
+const emails = await inbound.getEmails('example.com')
+
+console.log('Email addresses:', emails.map(e => e.address))
+```
+
+### Alternative Method
+
+```typescript
+const emails = await inbound.listEmails('example.com')
+```
+
+## Complete Email Setup Workflow
+
+Here's a complete example of setting up email addresses:
+
+```typescript
+async function setupEmailAddresses() {
+  // 1. Get verified domains
+  const domains = await inbound.getDomains()
+  const verifiedDomain = domains.find(d => 
+    d.status === 'verified' && d.canReceiveEmails
+  )
+  
+  if (!verifiedDomain) {
+    throw new Error('No verified domain available')
+  }
+  
+  console.log(`Using domain: ${verifiedDomain.domain}`)
+  
+  // 2. Create a webhook (optional)
+  const webhook = await inbound.createWebhook({
+    name: 'Email Processor',
+    endpoint: 'https://api.example.com/webhook'
+  })
+  
+  // 3. Create multiple email addresses
+  const emailPrefixes = ['hello', 'support', 'contact']
+  const createdEmails = []
+  
+  for (const prefix of emailPrefixes) {
+    const emailAddress = `${prefix}@${verifiedDomain.domain}`
+    
+    const email = await inbound.createEmail({
+      domain: verifiedDomain.domain,
+      email: emailAddress,
+      webhookId: webhook.id
+    })
+    
+    createdEmails.push(email)
+    console.log(`Created: ${email.address}`)
+  }
+  
+  return {
+    domain: verifiedDomain,
+    webhook,
+    emails: createdEmails
+  }
+}
+```
+
+## Deleting Email Addresses
+
+Remove an email address from a domain:
+
+```typescript
+const result = await inbound.deleteEmail('example.com', 'hello@example.com')
+console.log(result.message)
+```
+
+### Alternative Method
+
+```typescript
+const result = await inbound.removeEmail('example.com', 'hello@example.com')
+```
+
+## Error Handling
+
+Handle common email address errors:
+
+```typescript
+import { InboundError } from 'exon-inbound'
+
+async function createEmailSafely() {
+  try {
+    const email = await inbound.createEmail({
+      domain: 'example.com',
+      email: 'test@example.com',
+      webhookId: 'webhook_123'
+    })
+    
+    return email
+    
+  } catch (error) {
+    if (error instanceof InboundError) {
+      switch (error.status) {
+        case 400:
+          console.error('Invalid email format or domain not verified')
+          break
+        case 404:
+          console.error('Domain or webhook not found')
+          break
+        case 409:
+          console.error('Email address already exists')
+          break
+        default:
+          console.error('API error:', error.message)
+      }
+    } else {
+      console.error('Unexpected error:', error)
+    }
+    throw error
+  }
+}
+```
+
+## Best Practices
+
+### Validate Domain Before Creating Emails
+
+```typescript
+async function validateDomainForEmail(domainName: string) {
+  const domains = await inbound.getDomains()
+  const domain = domains.find(d => d.domain === domainName)
+  
+  if (!domain) {
+    throw new Error(`Domain ${domainName} not found`)
+  }
+  
+  if (domain.status !== 'verified') {
+    throw new Error(`Domain ${domainName} is not verified (status: ${domain.status})`)
+  }
+  
+  if (!domain.canReceiveEmails) {
+    throw new Error(`Domain ${domainName} cannot receive emails`)
+  }
+  
+  return domain
+}
+
+async function createEmailWithValidation() {
+  const domainName = 'example.com'
+  
+  // Validate domain first
+  await validateDomainForEmail(domainName)
+  
+  // Create email address
+  const email = await inbound.createEmail({
+    domain: domainName,
+    email: `hello@${domainName}`,
+    webhookId: 'webhook_123'
+  })
+  
+  return email
+}
+```
+
+### Batch Email Creation
+
+For creating multiple email addresses efficiently:
+
+```typescript
+async function createEmailsBatch(
+  domain: string, 
+  prefixes: string[], 
+  webhookId?: string
+) {
+  const results = []
+  const errors = []
+  
+  for (const prefix of prefixes) {
+    try {
+      const email = await inbound.createEmail({
+        domain,
+        email: `${prefix}@${domain}`,
+        webhookId
+      })
+      results.push(email)
+    } catch (error) {
+      errors.push({ prefix, error })
+    }
+  }
+  
+  return { results, errors }
+}
+
+// Usage
+const { results, errors } = await createEmailsBatch(
+  'example.com',
+  ['hello', 'support', 'contact'],
+  'webhook_123'
+)
+
+console.log(`Created ${results.length} emails`)
+if (errors.length > 0) {
+  console.log(`Failed to create ${errors.length} emails:`, errors)
+}
+```
+
+### Check Email Status
+
+```typescript
+function isEmailReady(email: EmailAddress): boolean {
+  return email.isActive && email.isReceiptRuleConfigured
+}
+
+async function getReadyEmails(domain: string) {
+  const emails = await inbound.getEmails(domain)
+  return emails.filter(isEmailReady)
+}
+```
+
+## Working with Webhooks
+
+Email addresses can be associated with webhooks to process incoming emails:
+
+```typescript
+async function setupEmailWithWebhook() {
+  // Create webhook first
+  const webhook = await inbound.createWebhook({
+    name: 'Support Email Processor',
+    endpoint: 'https://api.example.com/support-webhook',
+    description: 'Processes support emails'
+  })
+  
+  // Create email with webhook
+  const email = await inbound.createEmail({
+    domain: 'example.com',
+    email: 'support@example.com',
+    webhookId: webhook.id
+  })
+  
+  console.log(`Email ${email.address} will send notifications to ${webhook.url}`)
+  
+  return { email, webhook }
+}
+```
+
+## Next Steps
+
+Now that you can manage email addresses, learn about:
+
+<CardGroup cols={2}>
+  <Card
+    title="Configure Webhooks"
+    icon="webhook"
+    href="/sdk/webhooks"
+  >
+    Set up webhooks to process incoming emails
+  </Card>
+  <Card
+    title="Handle Webhook Events"
+    icon="code"
+    href="/examples/webhook-handling"
+  >
+    Learn how to process webhook notifications
+  </Card>
+</CardGroup> 

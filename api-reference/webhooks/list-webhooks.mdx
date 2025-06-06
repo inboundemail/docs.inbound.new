@@ -1,0 +1,286 @@
+---
+title: "List Webhooks"
+api: "GET https://api.inbound.new/v1/webhooks"
+description: "Retrieve all webhooks configured for your account"
+---
+
+## Query Parameters
+
+<ParamField query="limit" type="number" default="50">
+  Maximum number of webhooks to return (1-100)
+</ParamField>
+
+<ParamField query="offset" type="number" default="0">
+  Number of webhooks to skip for pagination
+</ParamField>
+
+<ParamField query="active" type="boolean">
+  Filter by webhook status: `true` for active, `false` for inactive
+</ParamField>
+
+<ParamField query="event" type="string">
+  Filter by event type: `email.received`, `email.bounced`, `email.delivered`, `email.failed`
+</ParamField>
+
+## Response
+
+<ResponseField name="webhooks" type="array">
+  Array of webhook objects
+  
+  <ResponseField name="id" type="string">
+    Unique identifier for the webhook
+  </ResponseField>
+  
+  <ResponseField name="url" type="string">
+    The webhook URL
+  </ResponseField>
+  
+  <ResponseField name="events" type="array">
+    Array of subscribed event types
+  </ResponseField>
+  
+  <ResponseField name="description" type="string">
+    Webhook description
+  </ResponseField>
+  
+  <ResponseField name="active" type="boolean">
+    Whether the webhook is active
+  </ResponseField>
+  
+  <ResponseField name="retry_config" type="object">
+    Retry configuration
+    
+    <ResponseField name="max_retries" type="number">
+      Maximum retry attempts
+    </ResponseField>
+    
+    <ResponseField name="retry_delay" type="number">
+      Initial retry delay in seconds
+    </ResponseField>
+    
+    <ResponseField name="backoff_multiplier" type="number">
+      Backoff multiplier
+    </ResponseField>
+  </ResponseField>
+  
+  <ResponseField name="stats" type="object">
+    Webhook delivery statistics
+    
+    <ResponseField name="total_deliveries" type="number">
+      Total number of delivery attempts
+    </ResponseField>
+    
+    <ResponseField name="successful_deliveries" type="number">
+      Number of successful deliveries
+    </ResponseField>
+    
+    <ResponseField name="failed_deliveries" type="number">
+      Number of failed deliveries
+    </ResponseField>
+    
+    <ResponseField name="last_delivery_at" type="string">
+      ISO 8601 timestamp of last delivery attempt
+    </ResponseField>
+  </ResponseField>
+  
+  <ResponseField name="created_at" type="string">
+    ISO 8601 timestamp when webhook was created
+  </ResponseField>
+  
+  <ResponseField name="updated_at" type="string">
+    ISO 8601 timestamp when webhook was last updated
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="pagination" type="object">
+  Pagination information
+  
+  <ResponseField name="total" type="number">
+    Total number of webhooks
+  </ResponseField>
+  
+  <ResponseField name="limit" type="number">
+    Current page limit
+  </ResponseField>
+  
+  <ResponseField name="offset" type="number">
+    Current page offset
+  </ResponseField>
+  
+  <ResponseField name="has_more" type="boolean">
+    Whether there are more results available
+  </ResponseField>
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X GET "https://api.inbound.new/v1/webhooks" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```bash With Filters
+curl -X GET "https://api.inbound.new/v1/webhooks?active=true&event=email.received&limit=25" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```typescript TypeScript
+const webhooks = await inbound.webhooks.list();
+console.log(webhooks);
+
+// With filters
+const activeWebhooks = await inbound.webhooks.list({
+  active: true,
+  event: 'email.received',
+  limit: 25
+});
+```
+
+```python Python
+webhooks = inbound.webhooks.list()
+print(webhooks)
+
+# With filters
+active_webhooks = inbound.webhooks.list(
+  active=True,
+  event='email.received',
+  limit=25
+)
+```
+
+```javascript JavaScript
+const webhooks = await inbound.webhooks.list();
+console.log(webhooks);
+
+// With filters
+const activeWebhooks = await inbound.webhooks.list({
+  active: true,
+  event: 'email.received',
+  limit: 25
+});
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json Success Response
+{
+  "webhooks": [
+    {
+      "id": "webhook_abc123",
+      "url": "https://api.yourapp.com/webhooks/inbound",
+      "events": ["email.received", "email.bounced"],
+      "description": "Main webhook for email events",
+      "active": true,
+      "retry_config": {
+        "max_retries": 3,
+        "retry_delay": 60,
+        "backoff_multiplier": 2
+      },
+      "stats": {
+        "total_deliveries": 1250,
+        "successful_deliveries": 1200,
+        "failed_deliveries": 50,
+        "last_delivery_at": "2024-01-15T14:30:00Z"
+      },
+      "created_at": "2024-01-10T10:00:00Z",
+      "updated_at": "2024-01-15T10:00:00Z"
+    },
+    {
+      "id": "webhook_def456",
+      "url": "https://backup.yourapp.com/webhooks/inbound",
+      "events": ["email.failed"],
+      "description": "Backup webhook for failed emails",
+      "active": false,
+      "retry_config": {
+        "max_retries": 5,
+        "retry_delay": 120,
+        "backoff_multiplier": 1.5
+      },
+      "stats": {
+        "total_deliveries": 25,
+        "successful_deliveries": 20,
+        "failed_deliveries": 5,
+        "last_delivery_at": "2024-01-14T09:15:00Z"
+      },
+      "created_at": "2024-01-12T15:30:00Z",
+      "updated_at": "2024-01-14T09:15:00Z"
+    }
+  ],
+  "pagination": {
+    "total": 2,
+    "limit": 50,
+    "offset": 0,
+    "has_more": false
+  }
+}
+```
+
+```json Empty Response
+{
+  "webhooks": [],
+  "pagination": {
+    "total": 0,
+    "limit": 50,
+    "offset": 0,
+    "has_more": false
+  }
+}
+```
+
+</ResponseExample>
+
+## Filtering and Pagination
+
+Use query parameters to filter and paginate results:
+
+- **active**: Filter by webhook status (`true` for active, `false` for inactive)
+- **event**: Filter by specific event type
+- **limit**: Control page size (1-100, default 50)
+- **offset**: Skip results for pagination
+
+## Webhook Statistics
+
+Each webhook includes delivery statistics to help you monitor performance:
+
+- **total_deliveries**: Total number of delivery attempts
+- **successful_deliveries**: Deliveries that returned 2xx status codes
+- **failed_deliveries**: Deliveries that failed or returned non-2xx status codes
+- **last_delivery_at**: Timestamp of the most recent delivery attempt
+
+## Error Responses
+
+<ResponseField name="error" type="string">
+  Error message describing what went wrong
+</ResponseField>
+
+<ResponseExample>
+
+```json Invalid Parameters
+{
+  "error": "Invalid limit parameter. Must be between 1 and 100",
+  "code": "INVALID_PARAMETER"
+}
+```
+
+```json Invalid Event Type
+{
+  "error": "Invalid event type: email.invalid",
+  "code": "INVALID_EVENT_TYPE"
+}
+```
+
+</ResponseExample>
+
+## Monitoring Webhook Health
+
+Use the statistics in the response to monitor webhook health:
+
+1. **Success Rate**: Calculate `successful_deliveries / total_deliveries`
+2. **Recent Activity**: Check `last_delivery_at` to ensure webhooks are receiving events
+3. **Failure Patterns**: Monitor `failed_deliveries` for issues
+
+<Tip>
+Consider setting up alerts when webhook success rates drop below acceptable thresholds or when `last_delivery_at` is too old.
+</Tip> 

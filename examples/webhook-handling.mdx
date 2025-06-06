@@ -1,0 +1,704 @@
+---
+title: "Webhook Handling Example"
+description: "Learn how to build robust webhook endpoints to process incoming emails"
+---
+
+# Webhook Handling Example
+
+This guide shows you how to build a production-ready webhook endpoint to handle incoming email notifications from Inbound.
+
+## Overview
+
+We'll build a webhook handler that:
+
+1. Verifies webhook signatures for security
+2. Handles different types of email content
+3. Processes attachments
+4. Implements proper error handling and logging
+5. Ensures idempotency to handle duplicate deliveries
+6. Provides monitoring and health checks
+
+## Complete Webhook Implementation
+
+### Express.js Webhook Handler
+
+```typescript
+import express from 'express'
+import crypto from 'crypto'
+import { promises as fs } from 'fs'
+import path from 'path'
+
+const app = express()
+
+// Middleware to capture raw body for signature verification
+app.use('/webhook', express.raw({ type: 'application/json' }))
+app.use(express.json())
+
+interface InboundEmailPayload {
+  id: string
+  emailAddress: string
+  from: string
+  to: string[]
+  subject: string
+  body: {
+    text?: string
+    html?: string
+  }
+  attachments?: Array<{
+    filename: string
+    contentType: string
+    size: number
+    url: string
+  }>
+  headers: Record<string, string>
+  timestamp: string
+}
+
+// Store processed email IDs to prevent duplicate processing
+const processedEmails = new Set<string>()
+
+// Webhook secret from environment
+const WEBHOOK_SECRET = process.env.INBOUND_WEBHOOK_SECRET!
+
+// Verify webhook signature
+function verifyWebhookSignature(
+  payload: string,
+  signature: string,
+  secret: string
+): boolean {
+  try {
+    const expectedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(payload)
+      .digest('hex')
+    
+    return crypto.timingSafeEqual(
+      Buffer.from(signature, 'hex'),
+      Buffer.from(expectedSignature, 'hex')
+    )
+  } catch (error) {
+    console.error('Signature verification error:', error)
+    return false
+  }
+}
+
+// Main webhook handler
+app.post('/webhook', async (req, res) => {
+  const startTime = Date.now()
+  
+  try {
+    // 1. Verify signature
+    const signature = req.headers['x-inbound-signature'] as string
+    const payload = req.body.toString()
+    
+    if (!signature) {
+      console.error('Missing webhook signature')
+      return res.status(401).json({ error: 'Missing signature' })
+    }
+    
+    if (!verifyWebhookSignature(payload, signature, WEBHOOK_SECRET)) {
+      console.error('Invalid webhook signature')
+      return res.status(401).json({ error: 'Invalid signature' })
+    }
+    
+    // 2. Parse email data
+    const emailData: InboundEmailPayload = JSON.parse(payload)
+    console.log(`📧 Received email: ${emailData.subject} from ${emailData.from}`)
+    
+    // 3. Check for duplicate processing
+    if (processedEmails.has(emailData.id)) {
+      console.log(`⚠️  Email ${emailData.id} already processed`)
+      return res.status(200).json({ 
+        status: 'already_processed',
+        emailId: emailData.id 
+      })
+    }
+    
+    // 4. Process the email
+    await processIncomingEmail(emailData)
+    
+    // 5. Mark as processed
+    processedEmails.add(emailData.id)
+    
+    // 6. Log processing time
+    const processingTime = Date.now() - startTime
+    console.log(`✅ Email processed in ${processingTime}ms`)
+    
+    // 7. Respond with success
+    res.status(200).json({ 
+      status: 'processed',
+      emailId: emailData.id,
+      processingTime 
+    })
+    
+  } catch (error) {
+    const processingTime = Date.now() - startTime
+    console.error('Webhook processing error:', error)
+    
+    // Log error details
+    console.error({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      processingTime,
+      timestamp: new Date().toISOString()
+    })
+    
+    res.status(500).json({ 
+      error: 'Processing failed',
+      timestamp: new Date().toISOString()
+    })
+  }
+})
+
+// Process incoming email
+async function processIncomingEmail(emailData: InboundEmailPayload) {
+  console.log(`Processing email: ${emailData.id}`)
+  
+  try {
+    // Route based on email address
+    const emailAddress = emailData.emailAddress.toLowerCase()
+    
+    if (emailAddress.startsWith('support@')) {
+      await handleSupportEmail(emailData)
+    } else if (emailAddress.startsWith('sales@')) {
+      await handleSalesEmail(emailData)
+    } else if (emailAddress.startsWith('contact@')) {
+      await handleContactEmail(emailData)
+    } else {
+      await handleGeneralEmail(emailData)
+    }
+    
+    // Process attachments if any
+    if (emailData.attachments && emailData.attachments.length > 0) {
+      await processAttachments(emailData.attachments, emailData.id)
+    }
+    
+    // Send notification
+    await sendProcessingNotification(emailData)
+    
+  } catch (error) {
+    console.error(`Failed to process email ${emailData.id}:`, error)
+    throw error
+  }
+}
+
+// Handle support emails
+async function handleSupportEmail(emailData: InboundEmailPayload) {
+  console.log('📞 Processing support email')
+  
+  // Extract ticket information
+  const ticketData = {
+    id: emailData.id,
+    subject: emailData.subject,
+    from: emailData.from,
+    content: emailData.body.text || emailData.body.html || '',
+    timestamp: emailData.timestamp,
+    priority: extractPriority(emailData.subject),
+    category: categorizeEmail(emailData.body.text || '')
+  }
+  
+  // Create support ticket
+  await createSupportTicket(ticketData)
+  
+  // Send auto-reply
+  await sendAutoReply(emailData.from, ticketData.id)
+}
+
+// Handle sales emails
+async function handleSalesEmail(emailData: InboundEmailPayload) {
+  console.log('💰 Processing sales email')
+  
+  const leadData = {
+    email: emailData.from,
+    subject: emailData.subject,
+    message: emailData.body.text || emailData.body.html || '',
+    source: 'email',
+    timestamp: emailData.timestamp
+  }
+  
+  // Create lead in CRM
+  await createLead(leadData)
+  
+  // Notify sales team
+  await notifySalesTeam(leadData)
+}
+
+// Handle contact form emails
+async function handleContactEmail(emailData: InboundEmailPayload) {
+  console.log('📝 Processing contact email')
+  
+  // Save to database
+  await saveContactSubmission({
+    id: emailData.id,
+    from: emailData.from,
+    subject: emailData.subject,
+    message: emailData.body.text || emailData.body.html || '',
+    timestamp: emailData.timestamp
+  })
+  
+  // Send confirmation
+  await sendContactConfirmation(emailData.from)
+}
+
+// Handle general emails
+async function handleGeneralEmail(emailData: InboundEmailPayload) {
+  console.log('📬 Processing general email')
+  
+  // Log for review
+  await logEmailForReview(emailData)
+  
+  // Forward to appropriate team
+  await forwardToTeam(emailData)
+}
+
+// Process attachments
+async function processAttachments(
+  attachments: InboundEmailPayload['attachments'],
+  emailId: string
+) {
+  if (!attachments) return
+  
+  console.log(`📎 Processing ${attachments.length} attachment(s)`)
+  
+  for (const attachment of attachments) {
+    try {
+      // Download attachment
+      const response = await fetch(attachment.url)
+      const buffer = await response.arrayBuffer()
+      
+      // Save to storage
+      const filename = `${emailId}_${attachment.filename}`
+      const filepath = path.join('./attachments', filename)
+      
+      await fs.writeFile(filepath, Buffer.from(buffer))
+      
+      console.log(`💾 Saved attachment: ${filename} (${attachment.size} bytes)`)
+      
+      // Process based on file type
+      if (attachment.contentType.startsWith('image/')) {
+        await processImageAttachment(filepath, attachment)
+      } else if (attachment.contentType === 'application/pdf') {
+        await processPdfAttachment(filepath, attachment)
+      }
+      
+    } catch (error) {
+      console.error(`Failed to process attachment ${attachment.filename}:`, error)
+    }
+  }
+}
+
+// Utility functions
+function extractPriority(subject: string): 'low' | 'medium' | 'high' | 'urgent' {
+  const urgentKeywords = ['urgent', 'emergency', 'critical', 'asap']
+  const highKeywords = ['important', 'priority', 'escalation']
+  
+  const subjectLower = subject.toLowerCase()
+  
+  if (urgentKeywords.some(keyword => subjectLower.includes(keyword))) {
+    return 'urgent'
+  }
+  if (highKeywords.some(keyword => subjectLower.includes(keyword))) {
+    return 'high'
+  }
+  
+  return 'medium'
+}
+
+function categorizeEmail(content: string): string {
+  const categories = {
+    'billing': ['invoice', 'payment', 'billing', 'charge', 'refund'],
+    'technical': ['bug', 'error', 'issue', 'problem', 'not working'],
+    'feature': ['feature', 'enhancement', 'suggestion', 'improvement'],
+    'account': ['account', 'login', 'password', 'access', 'profile']
+  }
+  
+  const contentLower = content.toLowerCase()
+  
+  for (const [category, keywords] of Object.entries(categories)) {
+    if (keywords.some(keyword => contentLower.includes(keyword))) {
+      return category
+    }
+  }
+  
+  return 'general'
+}
+
+// Mock implementation functions (replace with your actual implementations)
+async function createSupportTicket(ticketData: any) {
+  console.log('🎫 Creating support ticket:', ticketData.id)
+  // Implement your ticketing system integration
+}
+
+async function sendAutoReply(email: string, ticketId: string) {
+  console.log(`📧 Sending auto-reply to ${email} for ticket ${ticketId}`)
+  // Implement your email sending logic
+}
+
+async function createLead(leadData: any) {
+  console.log('👤 Creating lead:', leadData.email)
+  // Implement your CRM integration
+}
+
+async function notifySalesTeam(leadData: any) {
+  console.log('🔔 Notifying sales team about new lead')
+  // Implement your notification system
+}
+
+async function saveContactSubmission(data: any) {
+  console.log('💾 Saving contact submission:', data.id)
+  // Implement your database save logic
+}
+
+async function sendContactConfirmation(email: string) {
+  console.log(`✉️  Sending confirmation to ${email}`)
+  // Implement your confirmation email logic
+}
+
+async function logEmailForReview(emailData: InboundEmailPayload) {
+  console.log('📝 Logging email for review:', emailData.id)
+  // Implement your logging system
+}
+
+async function forwardToTeam(emailData: InboundEmailPayload) {
+  console.log('↗️  Forwarding email to team')
+  // Implement your forwarding logic
+}
+
+async function processImageAttachment(filepath: string, attachment: any) {
+  console.log('🖼️  Processing image attachment:', attachment.filename)
+  // Implement image processing (resize, scan, etc.)
+}
+
+async function processPdfAttachment(filepath: string, attachment: any) {
+  console.log('📄 Processing PDF attachment:', attachment.filename)
+  // Implement PDF processing (text extraction, etc.)
+}
+
+async function sendProcessingNotification(emailData: InboundEmailPayload) {
+  console.log('🔔 Sending processing notification')
+  // Implement your notification system
+}
+
+// Health check endpoint
+app.get('/webhook/health', (req, res) => {
+  res.status(200).json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    processedEmails: processedEmails.size
+  })
+})
+
+// Webhook statistics endpoint
+app.get('/webhook/stats', (req, res) => {
+  res.status(200).json({
+    processedEmails: processedEmails.size,
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    timestamp: new Date().toISOString()
+  })
+})
+
+// Start server
+const PORT = process.env.PORT || 3000
+app.listen(PORT, () => {
+  console.log(`🚀 Webhook server running on port ${PORT}`)
+  console.log(`📊 Health check: http://localhost:${PORT}/webhook/health`)
+  console.log(`📈 Stats: http://localhost:${PORT}/webhook/stats`)
+})
+
+export default app
+```
+
+## Next.js API Route Implementation
+
+For Next.js applications, you can implement the webhook as an API route:
+
+```typescript
+// pages/api/webhook.ts or app/api/webhook/route.ts
+import { NextApiRequest, NextApiResponse } from 'next'
+import crypto from 'crypto'
+
+const processedEmails = new Set<string>()
+
+function verifyWebhookSignature(
+  payload: string,
+  signature: string,
+  secret: string
+): boolean {
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex')
+  
+  return crypto.timingSafeEqual(
+    Buffer.from(signature, 'hex'),
+    Buffer.from(expectedSignature, 'hex')
+  )
+}
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  try {
+    const signature = req.headers['x-inbound-signature'] as string
+    const payload = JSON.stringify(req.body)
+    
+    if (!verifyWebhookSignature(payload, signature, process.env.WEBHOOK_SECRET!)) {
+      return res.status(401).json({ error: 'Invalid signature' })
+    }
+
+    const emailData = req.body
+    
+    // Check for duplicates
+    if (processedEmails.has(emailData.id)) {
+      return res.status(200).json({ status: 'already_processed' })
+    }
+
+    // Process email
+    await processEmail(emailData)
+    processedEmails.add(emailData.id)
+
+    res.status(200).json({ status: 'processed' })
+  } catch (error) {
+    console.error('Webhook error:', error)
+    res.status(500).json({ error: 'Processing failed' })
+  }
+}
+
+async function processEmail(emailData: any) {
+  // Your email processing logic here
+  console.log('Processing email:', emailData.subject)
+}
+```
+
+## Environment Configuration
+
+Set up your environment variables:
+
+```bash .env
+INBOUND_WEBHOOK_SECRET=your_webhook_secret_here
+PORT=3000
+
+# Database configuration
+DATABASE_URL=your_database_url
+
+# Email service configuration
+SMTP_HOST=your_smtp_host
+SMTP_USER=your_smtp_user
+SMTP_PASS=your_smtp_password
+
+# External service APIs
+CRM_API_KEY=your_crm_api_key
+NOTIFICATION_API_KEY=your_notification_api_key
+```
+
+## Testing Your Webhook
+
+### Local Testing with ngrok
+
+```bash
+# Install ngrok
+npm install -g ngrok
+
+# Start your webhook server
+npm start
+
+# In another terminal, expose your local server
+ngrok http 3000
+
+# Use the ngrok URL for your webhook endpoint
+# Example: https://abc123.ngrok.io/webhook
+```
+
+### Testing with curl
+
+```bash
+# Test webhook endpoint
+curl -X POST http://localhost:3000/webhook \
+  -H "Content-Type: application/json" \
+  -H "x-inbound-signature: your_test_signature" \
+  -d '{
+    "id": "test_email_123",
+    "emailAddress": "support@example.com",
+    "from": "user@external.com",
+    "to": ["support@example.com"],
+    "subject": "Test Email",
+    "body": {
+      "text": "This is a test email"
+    },
+    "headers": {},
+    "timestamp": "2024-01-01T12:00:00.000Z"
+  }'
+```
+
+## Monitoring and Logging
+
+### Structured Logging
+
+```typescript
+import winston from 'winston'
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.File({ filename: 'webhook-error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'webhook.log' }),
+    new winston.transports.Console()
+  ]
+})
+
+// Use in webhook handler
+logger.info('Email processed', {
+  emailId: emailData.id,
+  from: emailData.from,
+  subject: emailData.subject,
+  processingTime
+})
+```
+
+### Metrics Collection
+
+```typescript
+interface WebhookMetrics {
+  totalProcessed: number
+  totalErrors: number
+  averageProcessingTime: number
+  lastProcessed: string
+}
+
+class MetricsCollector {
+  private metrics: WebhookMetrics = {
+    totalProcessed: 0,
+    totalErrors: 0,
+    averageProcessingTime: 0,
+    lastProcessed: ''
+  }
+  
+  private processingTimes: number[] = []
+
+  recordSuccess(processingTime: number) {
+    this.metrics.totalProcessed++
+    this.processingTimes.push(processingTime)
+    this.updateAverageProcessingTime()
+    this.metrics.lastProcessed = new Date().toISOString()
+  }
+
+  recordError() {
+    this.metrics.totalErrors++
+  }
+
+  private updateAverageProcessingTime() {
+    if (this.processingTimes.length > 100) {
+      this.processingTimes = this.processingTimes.slice(-100)
+    }
+    
+    const sum = this.processingTimes.reduce((a, b) => a + b, 0)
+    this.metrics.averageProcessingTime = sum / this.processingTimes.length
+  }
+
+  getMetrics(): WebhookMetrics {
+    return { ...this.metrics }
+  }
+}
+
+const metricsCollector = new MetricsCollector()
+```
+
+## Best Practices
+
+<Tip>
+Always verify webhook signatures and implement idempotency to handle duplicate deliveries.
+</Tip>
+
+### 1. Security
+
+- Always verify webhook signatures
+- Use HTTPS for webhook endpoints
+- Validate and sanitize input data
+- Implement rate limiting
+
+### 2. Reliability
+
+- Handle duplicate deliveries with idempotency
+- Implement proper error handling
+- Use structured logging
+- Monitor webhook health
+
+### 3. Performance
+
+- Respond quickly (under 30 seconds)
+- Process heavy tasks asynchronously
+- Implement proper timeout handling
+- Use connection pooling for databases
+
+### 4. Monitoring
+
+- Track processing times
+- Monitor error rates
+- Set up alerts for failures
+- Log important events
+
+## Deployment
+
+### Docker Deployment
+
+```dockerfile
+FROM node:18-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --only=production
+
+COPY . .
+
+EXPOSE 3000
+
+CMD ["npm", "start"]
+```
+
+### Docker Compose
+
+```yaml
+version: '3.8'
+services:
+  webhook:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - INBOUND_WEBHOOK_SECRET=${INBOUND_WEBHOOK_SECRET}
+      - DATABASE_URL=${DATABASE_URL}
+    volumes:
+      - ./attachments:/app/attachments
+    restart: unless-stopped
+```
+
+## Next Steps
+
+Now that you have a robust webhook handler:
+
+<CardGroup cols={2}>
+  <Card
+    title="API Reference"
+    icon="book"
+    href="/api-reference/introduction"
+  >
+    Explore the complete API documentation
+  </Card>
+  <Card
+    title="Error Handling"
+    icon="exclamation-triangle"
+    href="/sdk/error-handling"
+  >
+    Learn advanced error handling patterns
+  </Card>
+</CardGroup> 
