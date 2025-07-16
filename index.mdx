@@ -1,6 +1,6 @@
 ---
-title: "Inbound Email API + SDK Documentation"
-description: "Complete guide to integrating inbound email processing into your applications"
+title: "Inbound API Documentation"
+description: "Simple email processing API for receiving and managing emails programmatically"
 ---
 
 <img
@@ -16,153 +16,152 @@ description: "Complete guide to integrating inbound email processing into your a
   width="200"
 />
 
-# Welcome to Inbound
+# Inbound API v2
 
-Inbound is a powerful email processing API that allows you to receive, process, and route emails programmatically. Transform any email address into a webhook endpoint and build sophisticated email-driven workflows.
+Transform any email address into a powerful API endpoint. Inbound provides a simple yet robust way to receive, process, and manage emails programmatically.
 
-## What is Inbound?
+## Base URL
 
-Inbound provides a simple yet powerful way to:
+All API requests are made to:
 
-- **Receive emails** at custom email addresses on your verified domains
-- **Process emails** through webhooks with full email content and metadata
-- **Route emails** based on custom rules and logic
-- **Scale email processing** with reliable delivery and retry mechanisms
-
-<CardGroup cols={2}>
-  <Card
-    title="Quick Start"
-    icon="rocket"
-    href="/quickstart"
-  >
-    Get up and running with your first email endpoint in under 5 minutes
-  </Card>
-  <Card
-    title="SDK Installation"
-    icon="code"
-    href="/sdk/installation"
-  >
-    Install the TypeScript SDK and start building with type safety
-  </Card>
-  <Card
-    title="API Reference"
-    icon="book"
-    href="/api-reference/introduction"
-  >
-    Complete API documentation with examples and response schemas
-  </Card>
-  <Card
-    title="Complete Example"
-    icon="terminal"
-    href="/examples/complete-setup"
-  >
-    Full walkthrough of setting up email infrastructure from scratch
-  </Card>
-</CardGroup>
-
-## Key Features
-
-<AccordionGroup>
-  <Accordion title="Domain Management">
-    Verify and manage your email domains with automatic DNS configuration and status monitoring.
-  </Accordion>
-  
-  <Accordion title="Email Address Creation">
-    Create unlimited email addresses on your verified domains and route them to webhooks or other destinations.
-  </Accordion>
-  
-  <Accordion title="Webhook Processing">
-    Receive real-time notifications when emails arrive, with full email content, attachments, and metadata.
-  </Accordion>
-  
-  <Accordion title="Reliable Delivery">
-    Built-in retry mechanisms and delivery tracking ensure your webhooks receive every email.
-  </Accordion>
-</AccordionGroup>
+```
+https://inbound.new/api/v2
+```
 
 ## Getting Started
 
 <Steps>
-  <Step title="Create an Account">
-    Sign up for an Inbound account and verify your email address.
-  </Step>
-  
-  <Step title="Verify a Domain">
-    Add and verify a domain you own to start receiving emails.
-  </Step>
-  
   <Step title="Get Your API Key">
-    Generate an API key from your dashboard settings.
+    Sign up at [inbound.new](https://inbound.new) and generate an API key from your dashboard.
   </Step>
   
-  <Step title="Install the SDK">
-    Install the TypeScript SDK or use the REST API directly.
+  <Step title="Set Up Authentication">
+    Include your API key in the Authorization header of all requests:
     
     ```bash
-    npm install exon-inbound
+    Authorization: Bearer your_api_key_here
     ```
   </Step>
   
-  <Step title="Create Your First Email">
-    Set up an email address and webhook to start processing emails.
+  <Step title="Make Your First Request">
+    List your emails to verify authentication:
     
-    ```typescript
-    import { createInboundClient } from 'exon-inbound'
-    
-    const inbound = createInboundClient({
-      apiKey: 'your_api_key_here'
-    })
-    
-    // Create a webhook
-    const webhook = await inbound.createWebhook({
-      name: 'Email Processor',
-      endpoint: 'https://api.example.com/webhook'
-    })
-    
-    // Create an email address
-    const email = await inbound.createEmail({
-      domain: 'example.com',
-      email: 'hello@example.com',
-      webhookId: webhook.id
-    })
+    ```bash
+    curl -X GET https://inbound.new/api/v2/mail \
+      -H "Authorization: Bearer your_api_key_here"
     ```
   </Step>
 </Steps>
 
-## Use Cases
+## API Features
 
-<Tip>
-Inbound is perfect for building email-driven applications and automating email workflows.
-</Tip>
+<CardGroup cols={2}>
+  <Card title="List Emails" icon="envelope" href="/api-reference/mail/list-emails">
+    Retrieve all emails with filtering, pagination, and search capabilities
+  </Card>
+  
+  <Card title="Get Email Details" icon="eye" href="/api-reference/mail/get-email">
+    Fetch complete email content including headers, attachments, and metadata
+  </Card>
+  
+  <Card title="Reply to Emails" icon="reply" href="/api-reference/mail/reply-to-email">
+    Send replies to received emails with full threading support
+  </Card>
+  
+  <Card title="Authentication" icon="key" href="/authentication">
+    Learn how to authenticate and secure your API requests
+  </Card>
+</CardGroup>
 
-- **Customer Support**: Route support emails to your ticketing system
-- **Lead Generation**: Process contact form submissions via email
-- **Email Automation**: Trigger workflows based on incoming emails
-- **Content Processing**: Extract and process email attachments
-- **Notification Systems**: Convert emails into app notifications
+## Quick Example
+
+Here's a complete example of retrieving and processing emails:
+
+<CodeGroup>
+```bash cURL
+curl -X GET https://inbound.new/api/v2/mail \
+  -H "Authorization: Bearer your_api_key_here" \
+  -H "Content-Type: application/json"
+```
+
+```javascript JavaScript
+const response = await fetch('https://inbound.new/api/v2/mail', {
+  headers: {
+    'Authorization': `Bearer ${process.env.INBOUND_API_KEY}`,
+    'Content-Type': 'application/json'
+  }
+});
+
+const data = await response.json();
+console.log(data.emails);
+```
+
+```python Python
+import requests
+
+headers = {
+    'Authorization': f'Bearer {api_key}',
+    'Content-Type': 'application/json'
+}
+
+response = requests.get(
+    'https://inbound.new/api/v2/mail',
+    headers=headers
+)
+
+data = response.json()
+print(data['emails'])
+```
+</CodeGroup>
+
+## Response Format
+
+All API responses follow this consistent format:
+
+```json
+{
+  "emails": [...],
+  "pagination": {
+    "total": 150,
+    "limit": 50,
+    "offset": 0,
+    "hasMore": true
+  },
+  "filters": {
+    "uniqueDomains": ["example.com", "test.com"]
+  }
+}
+```
+
+## Error Handling
+
+API errors are returned with appropriate HTTP status codes and descriptive error messages:
+
+```json
+{
+  "error": "Invalid or missing API key"
+}
+```
+
+Common status codes:
+- `200` - Success
+- `400` - Bad Request (invalid parameters)
+- `401` - Unauthorized (invalid API key)
+- `404` - Not Found (email not found)
+- `500` - Internal Server Error
 
 ## Need Help?
 
 <CardGroup cols={3}>
-  <Card
-    title="Dashboard"
-    icon="chart-line"
-    href="https://inbound.run/dashboard"
-  >
-    Manage your domains, emails, and webhooks
+  <Card title="Dashboard" icon="chart-line" href="https://inbound.new/dashboard">
+    Manage your account and API keys
   </Card>
-  <Card
-    title="Support"
-    icon="envelope"
-    href="mailto:support@inbound.run"
-  >
+  
+  <Card title="Support" icon="envelope" href="mailto:support@inbound.run">
     Get help from our support team
   </Card>
-  <Card
-    title="GitHub"
-    icon="github"
-    href="https://github.com/exonlabs/inbound"
-  >
+  
+  <Card title="GitHub" icon="github" href="https://github.com/r44vc0rp/inbound">
     View source code and contribute
   </Card>
 </CardGroup>

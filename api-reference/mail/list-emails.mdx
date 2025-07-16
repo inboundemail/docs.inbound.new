@@ -1,0 +1,314 @@
+---
+title: "List Emails"
+description: "Retrieve all emails with filtering, pagination, and search capabilities"
+---
+
+<RequestExample>
+```bash
+GET https://inbound.new/api/v2/mail
+```
+</RequestExample>
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication. Format: `Bearer YOUR_API_KEY`
+</ParamField>
+
+## Query Parameters
+
+<ParamField query="limit" type="integer" default="50">
+  Maximum number of emails to return. Range: 1-100.
+</ParamField>
+
+<ParamField query="offset" type="integer" default="0">
+  Number of emails to skip for pagination. Must be non-negative.
+</ParamField>
+
+<ParamField query="search" type="string">
+  Search query to filter emails by subject, sender, or recipient.
+</ParamField>
+
+<ParamField query="status" type="string" default="all">
+  Filter emails by processing status. Options: `all`, `processed`, `failed`
+</ParamField>
+
+<ParamField query="domain" type="string" default="all">
+  Filter emails by recipient domain. Use specific domain name or `all` for no filter.
+</ParamField>
+
+<ParamField query="timeRange" type="string" default="30d">
+  Filter emails by time range. Options: `24h`, `7d`, `30d`, `90d`
+</ParamField>
+
+## Request Examples
+
+<CodeGroup>
+```bash Basic Request
+curl -X GET https://inbound.new/api/v2/mail \
+  -H "Authorization: Bearer your_api_key_here"
+```
+
+```bash With Filters
+curl -X GET "https://inbound.new/api/v2/mail?limit=20&status=processed&domain=example.com" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+
+```bash With Search
+curl -X GET "https://inbound.new/api/v2/mail?search=urgent&timeRange=7d" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+
+```javascript JavaScript
+const response = await fetch('https://inbound.new/api/v2/mail?limit=25&status=processed', {
+  headers: {
+    'Authorization': `Bearer ${process.env.INBOUND_API_KEY}`,
+    'Content-Type': 'application/json'
+  }
+});
+
+const data = await response.json();
+console.log(data.emails);
+```
+
+```python Python
+import requests
+
+params = {
+    'limit': 25,
+    'status': 'processed',
+    'domain': 'example.com'
+}
+
+response = requests.get(
+    'https://inbound.new/api/v2/mail',
+    headers={'Authorization': f'Bearer {api_key}'},
+    params=params
+)
+
+data = response.json()
+```
+</CodeGroup>
+
+## Response
+
+<ResponseExample>
+```json Success Response
+{
+  "emails": [
+    {
+      "id": "email_123",
+      "emailId": "ses_456",
+      "messageId": "<message@example.com>",
+      "subject": "Important Update",
+      "from": "sender@example.com",
+      "fromName": "John Doe",
+      "recipient": "hello@yourdomain.com",
+      "preview": "This is a preview of the email content...",
+      "receivedAt": "2024-01-15T10:30:00Z",
+      "isRead": false,
+      "readAt": null,
+      "hasAttachments": true,
+      "attachmentCount": 2,
+      "parseSuccess": true,
+      "parseError": null,
+      "createdAt": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "pagination": {
+    "total": 150,
+    "limit": 50,
+    "offset": 0,
+    "hasMore": true
+  },
+  "filters": {
+    "uniqueDomains": ["example.com", "yourdomain.com", "test.com"]
+  }
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="emails" type="array">
+  Array of email objects matching the query criteria.
+
+  <Expandable title="Email Properties">
+    <ResponseField name="id" type="string">
+      Unique identifier for the email record.
+    </ResponseField>
+    
+    <ResponseField name="emailId" type="string">
+      Original email ID from the email service.
+    </ResponseField>
+    
+    <ResponseField name="messageId" type="string">
+      Message ID from the email headers.
+    </ResponseField>
+    
+    <ResponseField name="subject" type="string">
+      Email subject line. Returns "No Subject" if empty.
+    </ResponseField>
+    
+    <ResponseField name="from" type="string">
+      Sender's email address.
+    </ResponseField>
+    
+    <ResponseField name="fromName" type="string | null">
+      Sender's display name, if available.
+    </ResponseField>
+    
+    <ResponseField name="recipient" type="string">
+      Recipient's email address.
+    </ResponseField>
+    
+    <ResponseField name="preview" type="string">
+      First 200 characters of the email content (text or HTML stripped).
+    </ResponseField>
+    
+    <ResponseField name="receivedAt" type="string">
+      ISO 8601 timestamp when the email was received.
+    </ResponseField>
+    
+    <ResponseField name="isRead" type="boolean">
+      Whether the email has been read.
+    </ResponseField>
+    
+    <ResponseField name="readAt" type="string | null">
+      ISO 8601 timestamp when the email was read, if applicable.
+    </ResponseField>
+    
+    <ResponseField name="hasAttachments" type="boolean">
+      Whether the email contains attachments.
+    </ResponseField>
+    
+    <ResponseField name="attachmentCount" type="integer">
+      Number of attachments in the email.
+    </ResponseField>
+    
+    <ResponseField name="parseSuccess" type="boolean">
+      Whether the email was successfully parsed.
+    </ResponseField>
+    
+    <ResponseField name="parseError" type="string | null">
+      Error message if parsing failed, null if successful.
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="string">
+      ISO 8601 timestamp when the email record was created.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="pagination" type="object">
+  Pagination information for the current request.
+
+  <Expandable title="Pagination Properties">
+    <ResponseField name="total" type="integer">
+      Total number of emails matching the query.
+    </ResponseField>
+    
+    <ResponseField name="limit" type="integer">
+      Maximum number of results returned in this request.
+    </ResponseField>
+    
+    <ResponseField name="offset" type="integer">
+      Number of results skipped for this request.
+    </ResponseField>
+    
+    <ResponseField name="hasMore" type="boolean">
+      Whether there are more results available.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="filters" type="object">
+  Available filter options based on your data.
+
+  <Expandable title="Filter Properties">
+    <ResponseField name="uniqueDomains" type="array">
+      Array of unique recipient domains in your emails.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Error Responses
+
+<AccordionGroup>
+  <Accordion title="400 Bad Request - Invalid Limit">
+    ```json
+    {
+      "error": "Limit must be between 1 and 100"
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="400 Bad Request - Invalid Offset">
+    ```json
+    {
+      "error": "Offset must be non-negative"
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="401 Unauthorized">
+    ```json
+    {
+      "error": "Invalid or missing API key"
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="500 Internal Server Error">
+    ```json
+    {
+      "error": "Failed to fetch emails"
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Usage Examples
+
+### Basic Pagination
+
+```javascript
+let allEmails = [];
+let offset = 0;
+const limit = 50;
+
+while (true) {
+  const response = await fetch(`https://inbound.new/api/v2/mail?limit=${limit}&offset=${offset}`, {
+    headers: { 'Authorization': `Bearer ${apiKey}` }
+  });
+  
+  const data = await response.json();
+  allEmails.push(...data.emails);
+  
+  if (!data.pagination.hasMore) break;
+  offset += limit;
+}
+```
+
+### Search with Filters
+
+```javascript
+const searchEmails = async (query, domain, timeRange) => {
+  const params = new URLSearchParams({
+    search: query,
+    domain: domain,
+    timeRange: timeRange,
+    status: 'processed'
+  });
+  
+  const response = await fetch(`https://inbound.new/api/v2/mail?${params}`, {
+    headers: { 'Authorization': `Bearer ${apiKey}` }
+  });
+  
+  return await response.json();
+};
+```
+
+<Tip>
+Use the `uniqueDomains` array from the response to populate domain filter dropdowns in your application.
+</Tip> 

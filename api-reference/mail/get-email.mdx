@@ -1,0 +1,558 @@
+---
+title: "Get Email Details"
+description: "Retrieve complete email content including headers, attachments, and metadata"
+---
+
+<RequestExample>
+```bash
+GET https://inbound.new/api/v2/mail/{id}
+```
+</RequestExample>
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication. Format: `Bearer YOUR_API_KEY`
+</ParamField>
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  Unique identifier for the email record. Must be a valid email ID.
+</ParamField>
+
+## Request Examples
+
+<CodeGroup>
+```bash cURL
+curl -X GET https://inbound.new/api/v2/mail/email_123 \
+  -H "Authorization: Bearer your_api_key_here"
+```
+
+```javascript JavaScript
+const response = await fetch('https://inbound.new/api/v2/mail/email_123', {
+  headers: {
+    'Authorization': `Bearer ${process.env.INBOUND_API_KEY}`,
+    'Content-Type': 'application/json'
+  }
+});
+
+const email = await response.json();
+console.log(email);
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://inbound.new/api/v2/mail/email_123',
+    headers={'Authorization': f'Bearer {api_key}'}
+)
+
+email = response.json()
+```
+</CodeGroup>
+
+## Response
+
+<ResponseExample>
+```json Success Response
+{
+  "id": "email_123",
+  "emailId": "ses_456",
+  "messageId": "<message@example.com>",
+  "subject": "Important Update",
+  "from": "sender@example.com",
+  "fromName": "John Doe",
+  "to": "recipient@yourdomain.com",
+  "cc": "cc@example.com",
+  "bcc": null,
+  "replyTo": "reply@example.com",
+  "recipient": "recipient@yourdomain.com",
+  "receivedAt": "2024-01-15T10:30:00Z",
+  "isRead": true,
+  "readAt": "2024-01-15T12:00:00Z",
+  "content": {
+    "textBody": "This is the plain text version of the email...",
+    "htmlBody": "<html><body><p>This is the HTML version...</p></body></html>",
+    "rawContent": "Received: from mail.example.com...",
+    "attachments": [
+      {
+        "filename": "document.pdf",
+        "contentType": "application/pdf",
+        "size": 102400,
+        "contentId": "att_123"
+      }
+    ],
+    "headers": {
+      "received": ["from mail.example.com..."],
+      "x-mailer": "Example Mailer 1.0",
+      "content-type": "multipart/mixed"
+    }
+  },
+  "addresses": {
+    "from": {
+      "text": "John Doe <sender@example.com>",
+      "addresses": [
+        {
+          "address": "sender@example.com",
+          "name": "John Doe"
+        }
+      ]
+    },
+    "to": {
+      "text": "recipient@yourdomain.com",
+      "addresses": [
+        {
+          "address": "recipient@yourdomain.com",
+          "name": null
+        }
+      ]
+    },
+    "cc": {
+      "text": "cc@example.com",
+      "addresses": [
+        {
+          "address": "cc@example.com",
+          "name": null
+        }
+      ]
+    },
+    "bcc": null,
+    "replyTo": {
+      "text": "reply@example.com",
+      "addresses": [
+        {
+          "address": "reply@example.com",
+          "name": null
+        }
+      ]
+    }
+  },
+  "metadata": {
+    "inReplyTo": "<previous@example.com>",
+    "references": [
+      "<ref1@example.com>",
+      "<ref2@example.com>"
+    ],
+    "priority": "normal",
+    "parseSuccess": true,
+    "parseError": null,
+    "hasAttachments": true,
+    "attachmentCount": 1,
+    "hasTextBody": true,
+    "hasHtmlBody": true
+  },
+  "security": {
+    "spf": "PASS",
+    "dkim": "PASS",
+    "dmarc": "PASS",
+    "spam": "PASS",
+    "virus": "PASS"
+  },
+  "processing": {
+    "processingTimeMs": 245,
+    "timestamp": "2024-01-15T10:30:00Z",
+    "receiptTimestamp": "2024-01-15T10:30:00Z",
+    "actionType": "SNS",
+    "s3Info": {
+      "bucketName": "inbound-emails",
+      "objectKey": "emails/2024/01/15/email_123.eml",
+      "contentFetched": true,
+      "contentSize": 51200,
+      "error": null
+    },
+    "commonHeaders": {
+      "from": ["sender@example.com"],
+      "to": ["recipient@yourdomain.com"],
+      "messageId": "<message@example.com>",
+      "subject": "Important Update"
+    }
+  },
+  "createdAt": "2024-01-15T10:30:00Z",
+  "updatedAt": "2024-01-15T12:00:00Z"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="id" type="string">
+  Unique identifier for the email record.
+</ResponseField>
+
+<ResponseField name="emailId" type="string">
+  Original email ID from the email service.
+</ResponseField>
+
+<ResponseField name="messageId" type="string">
+  Message ID from the email headers.
+</ResponseField>
+
+<ResponseField name="subject" type="string">
+  Email subject line.
+</ResponseField>
+
+<ResponseField name="from" type="string">
+  Sender's email address.
+</ResponseField>
+
+<ResponseField name="fromName" type="string | null">
+  Sender's display name, if available.
+</ResponseField>
+
+<ResponseField name="to" type="string">
+  Primary recipient's email address.
+</ResponseField>
+
+<ResponseField name="cc" type="string | null">
+  Carbon copy recipients, if any.
+</ResponseField>
+
+<ResponseField name="bcc" type="string | null">
+  Blind carbon copy recipients, if any.
+</ResponseField>
+
+<ResponseField name="replyTo" type="string | null">
+  Reply-to email address, if different from sender.
+</ResponseField>
+
+<ResponseField name="recipient" type="string">
+  Primary recipient's email address (same as 'to' for backward compatibility).
+</ResponseField>
+
+<ResponseField name="receivedAt" type="string">
+  ISO 8601 timestamp when the email was received.
+</ResponseField>
+
+<ResponseField name="isRead" type="boolean">
+  Whether the email has been read. Automatically set to true when fetched.
+</ResponseField>
+
+<ResponseField name="readAt" type="string">
+  ISO 8601 timestamp when the email was read.
+</ResponseField>
+
+<ResponseField name="content" type="object">
+  Complete email content and attachments.
+
+  <Expandable title="Content Properties">
+    <ResponseField name="textBody" type="string | null">
+      Plain text version of the email content.
+    </ResponseField>
+    
+    <ResponseField name="htmlBody" type="string | null">
+      HTML version of the email content (sanitized).
+    </ResponseField>
+    
+    <ResponseField name="rawContent" type="string | null">
+      Raw email content including headers.
+    </ResponseField>
+    
+    <ResponseField name="attachments" type="array">
+      Array of attachment objects.
+      
+      <Expandable title="Attachment Properties">
+        <ResponseField name="filename" type="string">
+          Original filename of the attachment.
+        </ResponseField>
+        
+        <ResponseField name="contentType" type="string">
+          MIME type of the attachment.
+        </ResponseField>
+        
+        <ResponseField name="size" type="integer">
+          Size of the attachment in bytes.
+        </ResponseField>
+        
+        <ResponseField name="contentId" type="string">
+          Unique identifier for the attachment.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="headers" type="object">
+      Email headers as key-value pairs.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="addresses" type="object">
+  Parsed email addresses with names.
+
+  <Expandable title="Address Properties">
+    <ResponseField name="from" type="object">
+      Sender address information.
+      
+      <Expandable title="Address Format">
+        <ResponseField name="text" type="string">
+          Full address string with name.
+        </ResponseField>
+        
+        <ResponseField name="addresses" type="array">
+          Array of parsed address objects.
+          
+          <Expandable title="Address Object">
+            <ResponseField name="address" type="string">
+              Email address.
+            </ResponseField>
+            
+            <ResponseField name="name" type="string | null">
+              Display name, if available.
+            </ResponseField>
+          </Expandable>
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="to" type="object">
+      Primary recipient address information.
+    </ResponseField>
+    
+    <ResponseField name="cc" type="object | null">
+      Carbon copy recipients, if any.
+    </ResponseField>
+    
+    <ResponseField name="bcc" type="object | null">
+      Blind carbon copy recipients, if any.
+    </ResponseField>
+    
+    <ResponseField name="replyTo" type="object | null">
+      Reply-to address information, if different from sender.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="metadata" type="object">
+  Email metadata and parsing information.
+
+  <Expandable title="Metadata Properties">
+    <ResponseField name="inReplyTo" type="string | null">
+      Message ID this email is replying to.
+    </ResponseField>
+    
+    <ResponseField name="references" type="array">
+      Array of referenced message IDs.
+    </ResponseField>
+    
+    <ResponseField name="priority" type="string | null">
+      Email priority level.
+    </ResponseField>
+    
+    <ResponseField name="parseSuccess" type="boolean">
+      Whether the email was successfully parsed.
+    </ResponseField>
+    
+    <ResponseField name="parseError" type="string | null">
+      Error message if parsing failed.
+    </ResponseField>
+    
+    <ResponseField name="hasAttachments" type="boolean">
+      Whether the email contains attachments.
+    </ResponseField>
+    
+    <ResponseField name="attachmentCount" type="integer">
+      Number of attachments in the email.
+    </ResponseField>
+    
+    <ResponseField name="hasTextBody" type="boolean">
+      Whether the email has a text body.
+    </ResponseField>
+    
+    <ResponseField name="hasHtmlBody" type="boolean">
+      Whether the email has an HTML body.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="security" type="object">
+  Email security verification results.
+
+  <Expandable title="Security Properties">
+    <ResponseField name="spf" type="string">
+      SPF verification result. Values: PASS, FAIL, NEUTRAL, SOFTFAIL, TEMPERROR, PERMERROR, UNKNOWN.
+    </ResponseField>
+    
+    <ResponseField name="dkim" type="string">
+      DKIM verification result. Values: PASS, FAIL, UNKNOWN.
+    </ResponseField>
+    
+    <ResponseField name="dmarc" type="string">
+      DMARC verification result. Values: PASS, FAIL, UNKNOWN.
+    </ResponseField>
+    
+    <ResponseField name="spam" type="string">
+      Spam verification result. Values: PASS, FAIL, UNKNOWN.
+    </ResponseField>
+    
+    <ResponseField name="virus" type="string">
+      Virus verification result. Values: PASS, FAIL, UNKNOWN.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="processing" type="object">
+  Email processing and storage information.
+
+  <Expandable title="Processing Properties">
+    <ResponseField name="processingTimeMs" type="integer | null">
+      Time taken to process the email in milliseconds.
+    </ResponseField>
+    
+    <ResponseField name="timestamp" type="string | null">
+      ISO 8601 timestamp when processing started.
+    </ResponseField>
+    
+    <ResponseField name="receiptTimestamp" type="string | null">
+      ISO 8601 timestamp when email was received by the service.
+    </ResponseField>
+    
+    <ResponseField name="actionType" type="string | null">
+      Type of action taken (e.g., SNS, S3).
+    </ResponseField>
+    
+    <ResponseField name="s3Info" type="object">
+      S3 storage information for the email.
+      
+      <Expandable title="S3 Info Properties">
+        <ResponseField name="bucketName" type="string | null">
+          S3 bucket name where the email is stored.
+        </ResponseField>
+        
+        <ResponseField name="objectKey" type="string | null">
+          S3 object key for the email file.
+        </ResponseField>
+        
+        <ResponseField name="contentFetched" type="boolean | null">
+          Whether the email content was successfully fetched from S3.
+        </ResponseField>
+        
+        <ResponseField name="contentSize" type="integer | null">
+          Size of the email content in bytes.
+        </ResponseField>
+        
+        <ResponseField name="error" type="string | null">
+          Error message if S3 fetch failed.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="commonHeaders" type="object | null">
+      Common headers parsed from the email.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp when the email record was created.
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string">
+  ISO 8601 timestamp when the email record was last updated.
+</ResponseField>
+
+## Error Responses
+
+<AccordionGroup>
+  <Accordion title="400 Bad Request - Invalid ID">
+    ```json
+    {
+      "error": "Valid email ID is required"
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="401 Unauthorized">
+    ```json
+    {
+      "error": "Invalid or missing API key"
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="404 Not Found">
+    ```json
+    {
+      "error": "Email not found"
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="500 Internal Server Error">
+    ```json
+    {
+      "error": "Failed to fetch email"
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Usage Examples
+
+### Basic Email Retrieval
+
+```javascript
+const getEmailDetails = async (emailId) => {
+  const response = await fetch(`https://inbound.new/api/v2/mail/${emailId}`, {
+    headers: {
+      'Authorization': `Bearer ${process.env.INBOUND_API_KEY}`
+    }
+  });
+  
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  
+  return await response.json();
+};
+
+// Usage
+const email = await getEmailDetails('email_123');
+console.log(email.subject);
+console.log(email.content.textBody);
+```
+
+### Processing Attachments
+
+```javascript
+const processEmailAttachments = async (emailId) => {
+  const email = await getEmailDetails(emailId);
+  
+  if (email.metadata.hasAttachments) {
+    email.content.attachments.forEach(attachment => {
+      console.log(`Attachment: ${attachment.filename}`);
+      console.log(`Type: ${attachment.contentType}`);
+      console.log(`Size: ${attachment.size} bytes`);
+    });
+  }
+};
+```
+
+### Security Verification Check
+
+```javascript
+const checkEmailSecurity = async (emailId) => {
+  const email = await getEmailDetails(emailId);
+  
+  const securityPassed = 
+    email.security.spf === 'PASS' &&
+    email.security.dkim === 'PASS' &&
+    email.security.dmarc === 'PASS' &&
+    email.security.spam === 'PASS' &&
+    email.security.virus === 'PASS';
+  
+  return {
+    emailId,
+    securityPassed,
+    details: email.security
+  };
+};
+```
+
+<Note>
+When you fetch an email using this endpoint, it's automatically marked as read and the `readAt` timestamp is updated.
+</Note>
+
+<Tip>
+Use the `metadata.parseSuccess` field to check if the email was parsed correctly. If `parseSuccess` is false, check the `parseError` field for details.
+</Tip> 

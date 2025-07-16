@@ -1,7 +1,7 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Inbound",
+  "name": "Inbound API",
   "colors": {
     "primary": "#6C47FF",
     "light": "#6C47FF",
@@ -14,61 +14,18 @@
         "tab": "Documentation",
         "groups": [
           {
-            "group": "Get Started",
+            "group": "Getting Started",
             "pages": [
               "index",
               "authentication"
             ]
           },
           {
-            "group": "SDK Guide",
+            "group": "API Reference",
             "pages": [
-              "sdk/installation",
-              "sdk/domains",
-              "sdk/email-addresses",
-              "sdk/webhooks",
-              "sdk/error-handling"
-            ]
-          },
-          {
-            "group": "Examples",
-            "pages": [
-              "examples/complete-setup",
-              "examples/webhook-handling"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "API Reference",
-        "groups": [
-          {
-            "group": "API Documentation",
-            "pages": [
-              "api-reference/introduction"
-            ]
-          },
-          {
-            "group": "Domains",
-            "pages": [
-              "api-reference/domains/list-domains",
-              "api-reference/domains/domain-status"
-            ]
-          },
-          {
-            "group": "Email Addresses",
-            "pages": [
-              "api-reference/emails/create-email",
-              "api-reference/emails/list-emails",
-              "api-reference/emails/delete-email"
-            ]
-          },
-          {
-            "group": "Webhooks",
-            "pages": [
-              "api-reference/webhooks/create-webhook",
-              "api-reference/webhooks/list-webhooks",
-              "api-reference/webhooks/delete-webhook"
+              "api-reference/mail/list-emails",
+              "api-reference/mail/get-email",
+              "api-reference/mail/reply-to-email"
             ]
           }
         ]
@@ -102,13 +59,13 @@
     "links": [
       {
         "label": "Dashboard",
-        "href": "https://inbound.run/dashboard"
+        "href": "https://inbound.new/dashboard"
       }
     ],
     "primary": {
       "type": "button",
       "label": "Get Started",
-      "href": "https://inbound.run"
+      "href": "https://inbound.new"
     }
   },
   "footer": {

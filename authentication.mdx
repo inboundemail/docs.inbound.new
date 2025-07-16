@@ -1,18 +1,29 @@
 ---
 title: "Authentication"
-description: "Learn how to authenticate with the Inbound API using API keys"
+description: "Learn how to authenticate with the Inbound API v2 using API keys"
 ---
 
 # Authentication
 
-All API requests to Inbound require authentication using an API key. This guide explains how to obtain and use your API key securely.
+All API requests to Inbound v2 require authentication using an API key. This guide explains how to obtain and use your API key securely.
+
+## Base URL
+
+All authenticated requests are made to:
+
+```
+https://inbound.new/api/v2
+```
 
 ## Getting Your API Key
 
 <Steps>
   <Step title="Access Your Dashboard">
     Log in to your Inbound dashboard and navigate to the Settings page.
-    <Link href="https://inbound.new/dashboard"> Click here to go to settings </Link>
+    
+    <Card title="Dashboard" icon="external-link" href="https://inbound.new/settings">
+      Go to inbound settings
+    </Card>
   </Step>
   
   <Step title="Generate API Key">
@@ -36,35 +47,24 @@ Include your API key in the `Authorization` header of all API requests:
 Authorization: Bearer your_api_key_here
 ```
 
-### SDK Authentication
-
-When using the TypeScript SDK, pass your API key during client initialization:
-
-```typescript
-import { createInboundClient } from 'exon-inbound'
-
-const inbound = createInboundClient({
-  apiKey: process.env.INBOUND_API_KEY
-})
-```
-
-### REST API Authentication
-
-For direct REST API calls, include the Authorization header:
+## API Examples
 
 <CodeGroup>
 ```bash cURL
-curl -X GET https://inbound.new/api/v1/domains \
-  -H "Authorization: Bearer your_api_key_here"
+curl -X GET https://inbound.new/api/v2/mail \
+  -H "Authorization: Bearer your_api_key_here" \
+  -H "Content-Type: application/json"
 ```
 
-```javascript Fetch
-const response = await fetch('https://inbound.new/api/v1/domains', {
+```javascript JavaScript
+const response = await fetch('https://inbound.new/api/v2/mail', {
   headers: {
     'Authorization': `Bearer ${process.env.INBOUND_API_KEY}`,
     'Content-Type': 'application/json'
   }
-})
+});
+
+const data = await response.json();
 ```
 
 ```python Python
@@ -76,11 +76,27 @@ headers = {
 }
 
 response = requests.get(
-    'https://inbound.new/api/v1/domains',
+    'https://inbound.new/api/v2/mail',
     headers=headers
 )
 ```
 </CodeGroup>
+
+## Authentication Methods
+
+The Inbound API v2 supports both API key authentication and session-based authentication:
+
+### API Key Authentication (Recommended)
+
+Use API keys for server-to-server communication and automated workflows:
+
+```bash
+Authorization: Bearer your_api_key_here
+```
+
+### Session Authentication
+
+For browser-based applications, you can use session authentication after logging in through the dashboard.
 
 ## Security Best Practices
 
@@ -97,7 +113,7 @@ response = requests.get(
     Regularly rotate your API keys for enhanced security. You can create multiple keys and rotate them without downtime.
   </Accordion>
   
-  <Accordion title="Scope Limitation">
+  <Accordion title="Environment Separation">
     Use separate API keys for different environments (development, staging, production) to limit potential exposure.
   </Accordion>
   
@@ -105,6 +121,38 @@ response = requests.get(
     Monitor your API key usage in the dashboard to detect any unauthorized access.
   </Accordion>
 </AccordionGroup>
+
+## Testing Authentication
+
+Test your authentication by making a simple request to list emails:
+
+<RequestExample>
+```bash
+curl -X GET https://inbound.new/api/v2/mail \
+  -H "Authorization: Bearer your_api_key_here"
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success
+{
+  "emails": [
+    {
+      "id": "email_123",
+      "subject": "Test Email",
+      "from": "sender@example.com",
+      "receivedAt": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "pagination": {
+    "total": 1,
+    "limit": 50,
+    "offset": 0,
+    "hasMore": false
+  }
+}
+```
+</ResponseExample>
 
 ## Error Responses
 
@@ -124,26 +172,35 @@ Common authentication errors:
 - **Incorrect key**: Double-check that you're using the correct API key
 
 <Tip>
-Test your authentication by making a simple request to list your domains. This is a quick way to verify your API key is working correctly.
+Test your authentication with the list emails endpoint first. This is a quick way to verify your API key is working correctly.
 </Tip>
+
+## Rate Limiting
+
+API requests are rate-limited to ensure fair usage:
+
+- **Standard users**: 100 requests per minute
+- **Pro users**: 500 requests per minute
+- **Enterprise users**: Custom limits
+
+Rate limit headers are included in all responses:
+
+```bash
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 99
+X-RateLimit-Reset: 1642252800
+```
 
 ## Next Steps
 
-Once you have authentication set up, you're ready to start using the Inbound API:
+Once you have authentication set up, you're ready to start using the Inbound API v2:
 
 <CardGroup cols={2}>
-  <Card
-    title="Install SDK"
-    icon="download"
-    href="/sdk/installation"
-  >
-    Get started with the TypeScript SDK
+  <Card title="List Emails" icon="envelope" href="/api-reference/mail/list-emails">
+    Retrieve all your emails with filtering and pagination
   </Card>
-  <Card
-    title="Manage Domains"
-    icon="globe"
-    href="/sdk/domains"
-  >
-    Learn how to work with domains
+  
+  <Card title="Get Email Details" icon="eye" href="/api-reference/mail/get-email">
+    Fetch complete email content and metadata
   </Card>
 </CardGroup> 
