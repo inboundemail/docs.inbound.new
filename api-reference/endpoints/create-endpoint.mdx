@@ -1,0 +1,475 @@
+---
+title: "Create Endpoint"
+description: "Create a new endpoint for routing emails to webhooks or forwarding to email addresses"
+---
+
+## Overview
+
+Create a new endpoint to handle incoming emails. Endpoints support three types: webhooks (HTTP POST), email forwarding (single recipient), and email groups (multiple recipients).
+
+<RequestExample>
+```bash
+POST https://inbound.new/api/v2/endpoints
+```
+</RequestExample>
+
+## Authentication
+
+This endpoint requires authentication using either:
+- Session-based authentication (logged in user)
+- API key authentication via `Authorization: Bearer {api_key}` header
+
+## Request Body
+
+<ParamField body="name" type="string" required>
+  User-friendly name for the endpoint.
+</ParamField>
+
+<ParamField body="type" type="string" required>
+  Type of endpoint. Valid values: `webhook`, `email`, `email_group`.
+</ParamField>
+
+<ParamField body="config" type="object" required>
+  Configuration specific to the endpoint type. Structure varies by type (see examples below).
+</ParamField>
+
+<ParamField body="description" type="string">
+  Optional description of the endpoint's purpose.
+</ParamField>
+
+## Configuration by Type
+
+### Webhook Configuration
+
+<ParamField body="config.url" type="string" required>
+  The URL where webhook payloads will be sent via HTTP POST.
+</ParamField>
+
+<ParamField body="config.secret" type="string">
+  Optional secret for webhook signature verification.
+</ParamField>
+
+<ParamField body="config.headers" type="object">
+  Optional custom headers to include in webhook requests.
+</ParamField>
+
+<ParamField body="config.timeout" type="number" default="30">
+  Request timeout in seconds. Range: 1-300.
+</ParamField>
+
+<ParamField body="config.retryAttempts" type="number" default="3">
+  Number of retry attempts for failed requests. Range: 0-10.
+</ParamField>
+
+### Email Forward Configuration
+
+<ParamField body="config.forwardTo" type="string" required>
+  Email address where emails will be forwarded.
+</ParamField>
+
+<ParamField body="config.includeAttachments" type="boolean" default="true">
+  Whether to include attachments in forwarded emails.
+</ParamField>
+
+<ParamField body="config.subjectPrefix" type="string">
+  Optional prefix to add to the subject line of forwarded emails.
+</ParamField>
+
+<ParamField body="config.fromAddress" type="string">
+  Optional custom from address for forwarded emails.
+</ParamField>
+
+### Email Group Configuration
+
+<ParamField body="config.emails" type="string[]" required>
+  Array of email addresses where emails will be forwarded. Maximum 50 addresses.
+</ParamField>
+
+<ParamField body="config.includeAttachments" type="boolean" default="true">
+  Whether to include attachments in forwarded emails.
+</ParamField>
+
+<ParamField body="config.subjectPrefix" type="string">
+  Optional prefix to add to the subject line of forwarded emails.
+</ParamField>
+
+<ParamField body="config.fromAddress" type="string">
+  Optional custom from address for forwarded emails.
+</ParamField>
+
+## Response
+
+<ResponseExample>
+```json Success
+{
+  "id": "ep_abc123",
+  "name": "Production Webhook",
+  "type": "webhook",
+  "config": {
+    "url": "https://api.example.com/webhook",
+    "timeout": 30,
+    "retryAttempts": 3
+  },
+  "isActive": true,
+  "description": "Main webhook for production alerts",
+  "userId": "user_123",
+  "createdAt": "2024-01-15T10:30:00Z",
+  "updatedAt": "2024-01-15T10:30:00Z",
+  "groupEmails": null,
+  "deliveryStats": {
+    "total": 0,
+    "successful": 0,
+    "failed": 0,
+    "lastDelivery": null
+  }
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="id" type="string">
+  Unique identifier for the created endpoint.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  User-friendly name for the endpoint.
+</ResponseField>
+
+<ResponseField name="type" type="string">
+  Type of endpoint: `webhook`, `email`, or `email_group`.
+</ResponseField>
+
+<ResponseField name="config" type="object">
+  Configuration object specific to the endpoint type.
+</ResponseField>
+
+<ResponseField name="isActive" type="boolean">
+  Whether the endpoint is active (always `true` for new endpoints).
+</ResponseField>
+
+<ResponseField name="description" type="string | null">
+  Description of the endpoint.
+</ResponseField>
+
+<ResponseField name="userId" type="string">
+  ID of the user who owns this endpoint.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp when the endpoint was created.
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string">
+  ISO 8601 timestamp when the endpoint was last updated.
+</ResponseField>
+
+<ResponseField name="groupEmails" type="string[] | null">
+  Array of email addresses (only for `email_group` type endpoints).
+</ResponseField>
+
+<ResponseField name="deliveryStats" type="object">
+  Initial delivery statistics (all zeros for new endpoints).
+  
+  <Expandable title="Delivery Stats">
+    <ResponseField name="total" type="number">
+      Total number of delivery attempts.
+    </ResponseField>
+    
+    <ResponseField name="successful" type="number">
+      Number of successful deliveries.
+    </ResponseField>
+    
+    <ResponseField name="failed" type="number">
+      Number of failed deliveries.
+    </ResponseField>
+    
+    <ResponseField name="lastDelivery" type="string | null">
+      ISO 8601 timestamp of the last delivery attempt.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+### Create Webhook Endpoint
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://inbound.new/api/v2/endpoints" \
+  -H "Authorization: Bearer your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Production Webhook",
+    "type": "webhook",
+    "description": "Main webhook for production alerts",
+    "config": {
+      "url": "https://api.example.com/webhook",
+      "timeout": 30,
+      "retryAttempts": 3,
+      "headers": {
+        "X-Custom-Header": "value"
+      }
+    }
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('https://inbound.new/api/v2/endpoints', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${process.env.API_KEY}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    name: 'Production Webhook',
+    type: 'webhook',
+    description: 'Main webhook for production alerts',
+    config: {
+      url: 'https://api.example.com/webhook',
+      timeout: 30,
+      retryAttempts: 3,
+      headers: {
+        'X-Custom-Header': 'value'
+      }
+    }
+  })
+});
+
+const endpoint = await response.json();
+console.log(`Created endpoint: ${endpoint.id}`);
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://inbound.new/api/v2/endpoints',
+    headers={'Authorization': f'Bearer {api_key}'},
+    json={
+        'name': 'Production Webhook',
+        'type': 'webhook',
+        'description': 'Main webhook for production alerts',
+        'config': {
+            'url': 'https://api.example.com/webhook',
+            'timeout': 30,
+            'retryAttempts': 3,
+            'headers': {
+                'X-Custom-Header': 'value'
+            }
+        }
+    }
+)
+
+endpoint = response.json()
+print(f"Created endpoint: {endpoint['id']}")
+```
+</CodeGroup>
+
+### Create Email Forward Endpoint
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://inbound.new/api/v2/endpoints" \
+  -H "Authorization: Bearer your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Sales Forward",
+    "type": "email",
+    "description": "Forward sales emails to sales team",
+    "config": {
+      "forwardTo": "sales@example.com",
+      "includeAttachments": true,
+      "subjectPrefix": "[SALES]"
+    }
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('https://inbound.new/api/v2/endpoints', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${process.env.API_KEY}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    name: 'Sales Forward',
+    type: 'email',
+    description: 'Forward sales emails to sales team',
+    config: {
+      forwardTo: 'sales@example.com',
+      includeAttachments: true,
+      subjectPrefix: '[SALES]'
+    }
+  })
+});
+
+const endpoint = await response.json();
+console.log(`Created endpoint: ${endpoint.id}`);
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://inbound.new/api/v2/endpoints',
+    headers={'Authorization': f'Bearer {api_key}'},
+    json={
+        'name': 'Sales Forward',
+        'type': 'email',
+        'description': 'Forward sales emails to sales team',
+        'config': {
+            'forwardTo': 'sales@example.com',
+            'includeAttachments': True,
+            'subjectPrefix': '[SALES]'
+        }
+    }
+)
+
+endpoint = response.json()
+print(f"Created endpoint: {endpoint['id']}")
+```
+</CodeGroup>
+
+### Create Email Group Endpoint
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://inbound.new/api/v2/endpoints" \
+  -H "Authorization: Bearer your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Support Team",
+    "type": "email_group",
+    "description": "Forward emails to support team",
+    "config": {
+      "emails": ["support@example.com", "alerts@example.com"],
+      "includeAttachments": true,
+      "subjectPrefix": "[SUPPORT]"
+    }
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('https://inbound.new/api/v2/endpoints', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${process.env.API_KEY}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    name: 'Support Team',
+    type: 'email_group',
+    description: 'Forward emails to support team',
+    config: {
+      emails: ['support@example.com', 'alerts@example.com'],
+      includeAttachments: true,
+      subjectPrefix: '[SUPPORT]'
+    }
+  })
+});
+
+const endpoint = await response.json();
+console.log(`Created endpoint: ${endpoint.id}`);
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://inbound.new/api/v2/endpoints',
+    headers={'Authorization': f'Bearer {api_key}'},
+    json={
+        'name': 'Support Team',
+        'type': 'email_group',
+        'description': 'Forward emails to support team',
+        'config': {
+            'emails': ['support@example.com', 'alerts@example.com'],
+            'includeAttachments': True,
+            'subjectPrefix': '[SUPPORT]'
+        }
+    }
+)
+
+endpoint = response.json()
+print(f"Created endpoint: {endpoint['id']}")
+```
+</CodeGroup>
+
+## Error Responses
+
+<AccordionGroup>
+  <Accordion title="400 Bad Request">
+    ```json
+    {
+      "error": "Missing required fields",
+      "required": ["name", "type", "config"]
+    }
+    ```
+    Required fields are missing or invalid configuration provided.
+  </Accordion>
+  
+  <Accordion title="400 Bad Request - Invalid Type">
+    ```json
+    {
+      "error": "Invalid endpoint type",
+      "validTypes": ["webhook", "email", "email_group"]
+    }
+    ```
+    Invalid endpoint type specified.
+  </Accordion>
+  
+  <Accordion title="400 Bad Request - Invalid Configuration">
+    ```json
+    {
+      "error": "Invalid configuration",
+      "details": "Webhook URL is required"
+    }
+    ```
+    Configuration validation failed for the specified endpoint type.
+  </Accordion>
+  
+  <Accordion title="401 Unauthorized">
+    ```json
+    {
+      "error": "Unauthorized"
+    }
+    ```
+    Missing or invalid authentication credentials.
+  </Accordion>
+  
+  <Accordion title="500 Internal Server Error">
+    ```json
+    {
+      "error": "Internal server error"
+    }
+    ```
+    An unexpected error occurred. Please try again or contact support.
+  </Accordion>
+</AccordionGroup>
+
+## Configuration Validation
+
+<Note>
+Each endpoint type has specific configuration requirements. The API will validate these before creating the endpoint.
+</Note>
+
+<Tabs>
+  <Tab title="Webhook">
+    - `url` is required and must be a valid URL
+    - `timeout` must be between 1-300 seconds
+    - `retryAttempts` must be between 0-10
+    - `headers` must be a valid object
+  </Tab>
+  
+  <Tab title="Email">
+    - `forwardTo` is required and must be a valid email address
+    - Other fields are optional
+  </Tab>
+  
+  <Tab title="Email Group">
+    - `emails` is required and must be an array of 1-50 valid email addresses
+    - No duplicate email addresses allowed
+    - Other fields are optional
+  </Tab>
+</Tabs> 

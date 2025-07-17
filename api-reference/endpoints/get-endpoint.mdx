@@ -1,0 +1,388 @@
+---
+title: "Get Endpoint"
+description: "Retrieve detailed information about a specific endpoint"
+---
+
+## Overview
+
+Get comprehensive information about a specific endpoint including its configuration, delivery statistics, recent deliveries, associated email addresses, and catch-all domain configurations.
+
+<RequestExample>
+```bash
+GET https://inbound.new/api/v2/endpoints/{id}
+```
+</RequestExample>
+
+## Authentication
+
+This endpoint requires authentication using either:
+- Session-based authentication (logged in user)
+- API key authentication via `Authorization: Bearer {api_key}` header
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the endpoint to retrieve.
+</ParamField>
+
+## Response
+
+<ResponseExample>
+```json Success
+{
+  "id": "ep_abc123",
+  "name": "Production Webhook",
+  "type": "webhook",
+  "config": {
+    "url": "https://api.example.com/webhook",
+    "timeout": 30,
+    "retryAttempts": 3,
+    "headers": {
+      "X-Custom-Header": "value"
+    }
+  },
+  "isActive": true,
+  "description": "Main webhook for production alerts",
+  "userId": "user_123",
+  "createdAt": "2024-01-15T10:30:00Z",
+  "updatedAt": "2024-01-15T10:30:00Z",
+  "groupEmails": null,
+  "deliveryStats": {
+    "total": 145,
+    "successful": 142,
+    "failed": 3,
+    "lastDelivery": "2024-01-15T14:30:00Z"
+  },
+  "recentDeliveries": [
+    {
+      "id": "del_xyz789",
+      "emailId": "email_456",
+      "deliveryType": "webhook",
+      "status": "success",
+      "attempts": 1,
+      "lastAttemptAt": "2024-01-15T14:30:00Z",
+      "createdAt": "2024-01-15T14:30:00Z",
+      "responseData": {
+        "responseCode": 200,
+        "responseBody": "OK",
+        "deliveryTime": 250,
+        "url": "https://api.example.com/webhook"
+      }
+    }
+  ],
+  "associatedEmails": [
+    {
+      "id": "addr_123",
+      "address": "alerts@example.com",
+      "isActive": true,
+      "createdAt": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "catchAllDomains": [
+    {
+      "id": "dom_456",
+      "domain": "example.com",
+      "status": "ses_verified"
+    }
+  ]
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="id" type="string">
+  Unique identifier for the endpoint.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  User-friendly name for the endpoint.
+</ResponseField>
+
+<ResponseField name="type" type="string">
+  Type of endpoint: `webhook`, `email`, or `email_group`.
+</ResponseField>
+
+<ResponseField name="config" type="object">
+  Configuration object specific to the endpoint type.
+</ResponseField>
+
+<ResponseField name="isActive" type="boolean">
+  Whether the endpoint is active and will receive emails.
+</ResponseField>
+
+<ResponseField name="description" type="string | null">
+  Description of the endpoint.
+</ResponseField>
+
+<ResponseField name="userId" type="string">
+  ID of the user who owns this endpoint.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp when the endpoint was created.
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string">
+  ISO 8601 timestamp when the endpoint was last updated.
+</ResponseField>
+
+<ResponseField name="groupEmails" type="string[] | null">
+  Array of email addresses (only for `email_group` type endpoints).
+</ResponseField>
+
+<ResponseField name="deliveryStats" type="object">
+  Statistics about email deliveries to this endpoint.
+  
+  <Expandable title="Delivery Stats">
+    <ResponseField name="total" type="number">
+      Total number of delivery attempts.
+    </ResponseField>
+    
+    <ResponseField name="successful" type="number">
+      Number of successful deliveries.
+    </ResponseField>
+    
+    <ResponseField name="failed" type="number">
+      Number of failed deliveries.
+    </ResponseField>
+    
+    <ResponseField name="lastDelivery" type="string | null">
+      ISO 8601 timestamp of the last delivery attempt.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="recentDeliveries" type="array">
+  Array of the 10 most recent delivery attempts.
+  
+  <Expandable title="Delivery Properties">
+    <ResponseField name="id" type="string">
+      Unique identifier for the delivery.
+    </ResponseField>
+    
+    <ResponseField name="emailId" type="string">
+      ID of the email that was delivered.
+    </ResponseField>
+    
+    <ResponseField name="deliveryType" type="string">
+      Type of delivery: `webhook` or `email_forward`.
+    </ResponseField>
+    
+    <ResponseField name="status" type="string">
+      Delivery status: `success`, `failed`, or `pending`.
+    </ResponseField>
+    
+    <ResponseField name="attempts" type="number">
+      Number of delivery attempts made.
+    </ResponseField>
+    
+    <ResponseField name="lastAttemptAt" type="string">
+      ISO 8601 timestamp of the last delivery attempt.
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="string">
+      ISO 8601 timestamp when the delivery was created.
+    </ResponseField>
+    
+    <ResponseField name="responseData" type="object | null">
+      Additional response data from the delivery attempt.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="associatedEmails" type="array">
+  Array of email addresses that route to this endpoint.
+  
+  <Expandable title="Email Address Properties">
+    <ResponseField name="id" type="string">
+      Unique identifier for the email address.
+    </ResponseField>
+    
+    <ResponseField name="address" type="string">
+      The email address.
+    </ResponseField>
+    
+    <ResponseField name="isActive" type="boolean">
+      Whether the email address is active.
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="string">
+      ISO 8601 timestamp when the email address was created.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="catchAllDomains" type="array">
+  Array of domains that use this endpoint for catch-all routing.
+  
+  <Expandable title="Domain Properties">
+    <ResponseField name="id" type="string">
+      Unique identifier for the domain.
+    </ResponseField>
+    
+    <ResponseField name="domain" type="string">
+      The domain name.
+    </ResponseField>
+    
+    <ResponseField name="status" type="string">
+      Domain verification status.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+### Get Webhook Endpoint
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://inbound.new/api/v2/endpoints/ep_abc123" \
+  -H "Authorization: Bearer your_api_key"
+```
+
+```javascript JavaScript
+const response = await fetch('https://inbound.new/api/v2/endpoints/ep_abc123', {
+  headers: {
+    'Authorization': `Bearer ${process.env.API_KEY}`
+  }
+});
+
+const endpoint = await response.json();
+console.log(`Endpoint: ${endpoint.name} (${endpoint.type})`);
+console.log(`Deliveries: ${endpoint.deliveryStats.total} total, ${endpoint.deliveryStats.successful} successful`);
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://inbound.new/api/v2/endpoints/ep_abc123',
+    headers={'Authorization': f'Bearer {api_key}'}
+)
+
+endpoint = response.json()
+print(f"Endpoint: {endpoint['name']} ({endpoint['type']})")
+print(f"Deliveries: {endpoint['deliveryStats']['total']} total, {endpoint['deliveryStats']['successful']} successful")
+```
+</CodeGroup>
+
+### Get Email Group Endpoint
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://inbound.new/api/v2/endpoints/ep_def456" \
+  -H "Authorization: Bearer your_api_key"
+```
+
+```javascript JavaScript
+const response = await fetch('https://inbound.new/api/v2/endpoints/ep_def456', {
+  headers: {
+    'Authorization': `Bearer ${process.env.API_KEY}`
+  }
+});
+
+const endpoint = await response.json();
+console.log(`Email Group: ${endpoint.name}`);
+console.log(`Recipients: ${endpoint.groupEmails?.join(', ')}`);
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://inbound.new/api/v2/endpoints/ep_def456',
+    headers={'Authorization': f'Bearer {api_key}'}
+)
+
+endpoint = response.json()
+print(f"Email Group: {endpoint['name']}")
+print(f"Recipients: {', '.join(endpoint['groupEmails'])}")
+```
+</CodeGroup>
+
+## Error Responses
+
+<AccordionGroup>
+  <Accordion title="401 Unauthorized">
+    ```json
+    {
+      "error": "Unauthorized"
+    }
+    ```
+    Missing or invalid authentication credentials.
+  </Accordion>
+  
+  <Accordion title="404 Not Found">
+    ```json
+    {
+      "error": "Endpoint not found"
+    }
+    ```
+    The specified endpoint does not exist or you don't have access to it.
+  </Accordion>
+  
+  <Accordion title="500 Internal Server Error">
+    ```json
+    {
+      "error": "Internal server error"
+    }
+    ```
+    An unexpected error occurred. Please try again or contact support.
+  </Accordion>
+</AccordionGroup>
+
+## Understanding the Response
+
+<Tabs>
+  <Tab title="Webhook Endpoint">
+    For webhook endpoints, the `config` object contains:
+    - `url` - The webhook destination URL
+    - `timeout` - Request timeout in seconds
+    - `retryAttempts` - Number of retry attempts
+    - `headers` - Custom headers to include in requests
+    - `secret` - Webhook secret for signature verification
+  </Tab>
+  
+  <Tab title="Email Forward">
+    For email forward endpoints, the `config` object contains:
+    - `forwardTo` - The destination email address
+    - `includeAttachments` - Whether to include attachments
+    - `subjectPrefix` - Optional subject line prefix
+    - `fromAddress` - Optional custom from address
+  </Tab>
+  
+  <Tab title="Email Group">
+    For email group endpoints, the `config` object contains:
+    - `emails` - Array of destination email addresses
+    - `includeAttachments` - Whether to include attachments
+    - `subjectPrefix` - Optional subject line prefix
+    - `fromAddress` - Optional custom from address
+    
+    The `groupEmails` field provides a flattened array of all email addresses in the group.
+  </Tab>
+</Tabs>
+
+## Delivery Statistics
+
+The `deliveryStats` object provides insights into how the endpoint is performing:
+
+<CardGroup cols={2}>
+  <Card title="Success Rate" icon="chart-line">
+    `successful / total * 100` gives you the success percentage
+  </Card>
+  
+  <Card title="Recent Activity" icon="clock">
+    `lastDelivery` shows when the endpoint was last used
+  </Card>
+</CardGroup>
+
+## Recent Deliveries
+
+The `recentDeliveries` array shows the 10 most recent delivery attempts, including:
+- Success/failure status
+- Response data (for webhooks)
+- Delivery timing information
+- Number of attempts made
+
+This information is useful for debugging delivery issues or monitoring endpoint performance. 

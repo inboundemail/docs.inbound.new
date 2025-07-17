@@ -1,0 +1,291 @@
+---
+title: "Delete Endpoint"
+description: "Delete an endpoint and handle cleanup of associated resources"
+---
+
+## Overview
+
+Permanently delete an endpoint and clean up all associated resources. This action cannot be undone. The endpoint will be removed and all associated email addresses and domains will be updated accordingly.
+
+<RequestExample>
+```bash
+DELETE https://inbound.new/api/v2/endpoints/{id}
+```
+</RequestExample>
+
+## Authentication
+
+This endpoint requires authentication using either:
+- Session-based authentication (logged in user)
+- API key authentication via `Authorization: Bearer {api_key}` header
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the endpoint to delete.
+</ParamField>
+
+## Response
+
+<ResponseExample>
+```json Success
+{
+  "message": "Endpoint deleted successfully",
+  "cleanup": {
+    "emailAddressesUpdated": 3,
+    "emailAddresses": [
+      "alerts@example.com",
+      "support@example.com",
+      "notifications@example.com"
+    ],
+    "domainsUpdated": 1,
+    "domains": [
+      "example.com"
+    ],
+    "groupEmailsDeleted": 2,
+    "deliveriesDeleted": 145
+  }
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+<ResponseField name="message" type="string">
+  Confirmation message that the endpoint was deleted successfully.
+</ResponseField>
+
+<ResponseField name="cleanup" type="object">
+  Details about the cleanup operations performed during deletion.
+  
+  <Expandable title="Cleanup Details">
+    <ResponseField name="emailAddressesUpdated" type="number">
+      Number of email addresses that were updated to "store only" mode.
+    </ResponseField>
+    
+    <ResponseField name="emailAddresses" type="string[]">
+      Array of email addresses that were affected by the deletion.
+    </ResponseField>
+    
+    <ResponseField name="domainsUpdated" type="number">
+      Number of domains that had their catch-all configuration updated.
+    </ResponseField>
+    
+    <ResponseField name="domains" type="string[]">
+      Array of domain names that were affected by the deletion.
+    </ResponseField>
+    
+    <ResponseField name="groupEmailsDeleted" type="number">
+      Number of email group entries deleted (only for email_group endpoints).
+    </ResponseField>
+    
+    <ResponseField name="deliveriesDeleted" type="number">
+      Number of delivery history records deleted.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+### Delete Webhook Endpoint
+
+<CodeGroup>
+```bash cURL
+curl -X DELETE "https://inbound.new/api/v2/endpoints/ep_abc123" \
+  -H "Authorization: Bearer your_api_key"
+```
+
+```javascript JavaScript
+const response = await fetch('https://inbound.new/api/v2/endpoints/ep_abc123', {
+  method: 'DELETE',
+  headers: {
+    'Authorization': `Bearer ${process.env.API_KEY}`
+  }
+});
+
+const result = await response.json();
+console.log(`Deleted endpoint: ${result.message}`);
+console.log(`Cleanup: ${result.cleanup.emailAddressesUpdated} email addresses updated`);
+```
+
+```python Python
+import requests
+
+response = requests.delete(
+    'https://inbound.new/api/v2/endpoints/ep_abc123',
+    headers={'Authorization': f'Bearer {api_key}'}
+)
+
+result = response.json()
+print(f"Deleted endpoint: {result['message']}")
+print(f"Cleanup: {result['cleanup']['emailAddressesUpdated']} email addresses updated")
+```
+</CodeGroup>
+
+### Delete Email Group Endpoint
+
+<CodeGroup>
+```bash cURL
+curl -X DELETE "https://inbound.new/api/v2/endpoints/ep_def456" \
+  -H "Authorization: Bearer your_api_key"
+```
+
+```javascript JavaScript
+const response = await fetch('https://inbound.new/api/v2/endpoints/ep_def456', {
+  method: 'DELETE',
+  headers: {
+    'Authorization': `Bearer ${process.env.API_KEY}`
+  }
+});
+
+const result = await response.json();
+console.log(`Deleted email group: ${result.message}`);
+console.log(`Group emails deleted: ${result.cleanup.groupEmailsDeleted}`);
+```
+
+```python Python
+import requests
+
+response = requests.delete(
+    'https://inbound.new/api/v2/endpoints/ep_def456',
+    headers={'Authorization': f'Bearer {api_key}'}
+)
+
+result = response.json()
+print(f"Deleted email group: {result['message']}")
+print(f"Group emails deleted: {result['cleanup']['groupEmailsDeleted']}")
+```
+</CodeGroup>
+
+## Error Responses
+
+<AccordionGroup>
+  <Accordion title="401 Unauthorized">
+    ```json
+    {
+      "error": "Unauthorized"
+    }
+    ```
+    Missing or invalid authentication credentials.
+  </Accordion>
+  
+  <Accordion title="404 Not Found">
+    ```json
+    {
+      "error": "Endpoint not found"
+    }
+    ```
+    The specified endpoint does not exist or you don't have access to it.
+  </Accordion>
+  
+  <Accordion title="500 Internal Server Error">
+    ```json
+    {
+      "error": "Internal server error"
+    }
+    ```
+    An unexpected error occurred. Please try again or contact support.
+  </Accordion>
+</AccordionGroup>
+
+## What Happens During Deletion
+
+<Steps>
+  <Step title="Email Address Cleanup">
+    All email addresses that route to this endpoint are updated to "store only" mode. They will continue to receive emails but won't be forwarded or sent to webhooks.
+  </Step>
+  
+  <Step title="Domain Catch-All Updates">
+    Any domains using this endpoint for catch-all routing will have their catch-all configuration removed.
+  </Step>
+  
+  <Step title="Email Group Cleanup">
+    If this is an email group endpoint, all email addresses in the group are deleted from the group table.
+  </Step>
+  
+  <Step title="Delivery History Cleanup">
+    All delivery history records associated with this endpoint are permanently deleted.
+  </Step>
+  
+  <Step title="Endpoint Deletion">
+    Finally, the endpoint itself is deleted from the system.
+  </Step>
+</Steps>
+
+## Important Considerations
+
+<Warning>
+**This action cannot be undone.** Once an endpoint is deleted, all its configuration and delivery history are permanently lost.
+</Warning>
+
+<Note>
+Email addresses affected by the deletion will continue to receive emails in "store only" mode. You can later configure them to route to a different endpoint.
+</Note>
+
+<Tip>
+Before deleting an endpoint, consider disabling it first using the update endpoint to test the impact on your email routing.
+</Tip>
+
+## Impact on Email Routing
+
+<CardGroup cols={2}>
+  <Card title="Email Addresses" icon="envelope">
+    Emails will be stored but not forwarded or sent to webhooks
+  </Card>
+  
+  <Card title="Catch-All Domains" icon="globe">
+    Unknown emails to these domains will be stored but not routed
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+### Before Deletion
+1. **Review dependencies** - Check which email addresses and domains use this endpoint
+2. **Test impact** - Disable the endpoint first to see the impact
+3. **Backup configuration** - Save endpoint configuration if you might need to recreate it
+4. **Plan migration** - Set up replacement endpoints for affected email addresses
+
+### After Deletion
+1. **Update email addresses** - Configure affected email addresses to route to new endpoints
+2. **Update catch-all domains** - Configure new catch-all endpoints for affected domains
+3. **Monitor email flow** - Ensure emails are being routed correctly to new endpoints
+4. **Clean up unused resources** - Remove any other resources that depended on this endpoint
+
+## Cleanup Response Breakdown
+
+The cleanup response helps you understand what was affected:
+
+<Tabs>
+  <Tab title="Email Addresses">
+    Shows which email addresses were set to "store only" mode and need to be reconfigured with new endpoints.
+  </Tab>
+  
+  <Tab title="Domains">
+    Shows which domains had their catch-all routing disabled and need new catch-all endpoints configured.
+  </Tab>
+  
+  <Tab title="Group Emails">
+    For email group endpoints, shows how many individual email addresses were removed from the group.
+  </Tab>
+  
+  <Tab title="Delivery History">
+    Shows how many delivery records were deleted. This affects analytics and reporting.
+  </Tab>
+</Tabs>
+
+## Recovery Options
+
+<AccordionGroup>
+  <Accordion title="Recreate Endpoint">
+    You can create a new endpoint with the same configuration, but it will have a new ID and no delivery history.
+  </Accordion>
+  
+  <Accordion title="Migrate Email Addresses">
+    Use the update email address endpoint to point affected addresses to new endpoints.
+  </Accordion>
+  
+  <Accordion title="Restore Catch-All">
+    Update domain catch-all configurations to point to new endpoints.
+  </Accordion>
+</AccordionGroup> 

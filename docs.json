@@ -21,11 +21,21 @@
             ]
           },
           {
-            "group": "API Reference",
+            "group": "Emails",
             "pages": [
               "api-reference/mail/list-emails",
               "api-reference/mail/get-email",
               "api-reference/mail/reply-to-email"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api-reference/endpoints/list-endpoints",
+              "api-reference/endpoints/create-endpoint",
+              "api-reference/endpoints/get-endpoint",
+              "api-reference/endpoints/update-endpoint",
+              "api-reference/endpoints/delete-endpoint"
             ]
           }
         ]
