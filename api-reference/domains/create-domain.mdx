@@ -1,0 +1,262 @@
+---
+title: "Create Domain"
+api: "POST /api/v2/domains"
+description: "Add a new domain for email receiving with automatic DNS and SES verification setup"
+---
+
+## Overview
+
+This endpoint adds a new domain to your account for email receiving. It performs DNS validation, checks domain limits, and initiates AWS SES verification automatically.
+
+<Warning>
+The domain must not have existing MX or CNAME records that would conflict with email receiving. The endpoint will check for these conflicts before creating the domain.
+</Warning>
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication. Format: `Bearer YOUR_API_KEY`
+</ParamField>
+
+## Request Body
+
+<ParamField body="domain" type="string" required>
+  The domain name to add (e.g., "example.com"). Must be a valid domain format and not already exist in your account.
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string" required>
+  Unique identifier for the newly created domain.
+</ResponseField>
+
+<ResponseField name="domain" type="string" required>
+  The domain name that was added.
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Initial verification status: `pending`, `verified`, or `failed`.
+</ResponseField>
+
+<ResponseField name="canReceiveEmails" type="boolean" required>
+  Whether the domain is configured to receive emails (based on initial DNS check).
+</ResponseField>
+
+<ResponseField name="hasMxRecords" type="boolean" required>
+  Whether the domain has valid MX records configured.
+</ResponseField>
+
+<ResponseField name="domainProvider" type="string | null">
+  Detected domain provider (e.g., "Cloudflare", "GoDaddy").
+</ResponseField>
+
+<ResponseField name="providerConfidence" type="string | null">
+  Confidence level of provider detection: `high`, `medium`, `low`.
+</ResponseField>
+
+<ResponseField name="dnsRecords" type="array" required>
+  Array of DNS records that need to be added to complete verification.
+  
+  <Expandable title="DNS record properties">
+    <ResponseField name="type" type="string" required>
+      DNS record type (e.g., "TXT", "MX", "CNAME").
+    </ResponseField>
+    
+    <ResponseField name="name" type="string" required>
+      DNS record name/hostname to create.
+    </ResponseField>
+    
+    <ResponseField name="value" type="string" required>
+      DNS record value to set.
+    </ResponseField>
+    
+    <ResponseField name="isRequired" type="boolean" required>
+      Whether this DNS record is required for verification (always `true` for new domains).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="createdAt" type="string" required>
+  ISO 8601 timestamp when the domain was created.
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string" required>
+  ISO 8601 timestamp when the domain was last updated.
+</ResponseField>
+
+## Examples
+
+### Request
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.inbound.email/api/v2/domains' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "domain": "example.com"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.inbound.email/api/v2/domains', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    domain: 'example.com'
+  })
+});
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://api.inbound.email/api/v2/domains',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'Content-Type': 'application/json'
+    },
+    json={
+        'domain': 'example.com'
+    }
+)
+data = response.json()
+```
+</RequestExample>
+
+### Response
+
+<ResponseExample>
+```json 201 Created
+{
+  "id": "dom_abc123",
+  "domain": "example.com",
+  "status": "pending",
+  "canReceiveEmails": true,
+  "hasMxRecords": false,
+  "domainProvider": "Cloudflare",
+  "providerConfidence": "high",
+  "dnsRecords": [
+    {
+      "type": "TXT",
+      "name": "_amazonses.example.com",
+      "value": "abc123def456ghi789jkl",
+      "isRequired": true
+    },
+    {
+      "type": "MX",
+      "name": "example.com",
+      "value": "10 inbound-smtp.us-east-1.amazonaws.com",
+      "isRequired": true
+    }
+  ],
+  "createdAt": "2024-01-15T10:30:00Z",
+  "updatedAt": "2024-01-15T10:30:00Z"
+}
+```
+</ResponseExample>
+
+## Error Responses
+
+<ResponseExample>
+```json 400 Bad Request - Invalid Domain
+{
+  "error": "Invalid domain format"
+}
+```
+
+```json 400 Bad Request - DNS Conflicts
+{
+  "error": "Domain has conflicting DNS records (MX or CNAME). Please remove them before adding this domain."
+}
+```
+
+```json 403 Forbidden - Domain Limit
+{
+  "error": "Domain limit reached. Please upgrade your plan to add more domains."
+}
+```
+
+```json 409 Conflict - Domain Exists
+{
+  "error": "Domain already exists"
+}
+```
+
+```json 401 Unauthorized
+{
+  "error": "Unauthorized"
+}
+```
+
+```json 500 Internal Server Error
+{
+  "error": "Failed to create domain",
+  "details": "Database connection failed"
+}
+```
+</ResponseExample>
+
+## Domain Verification Process
+
+After creating a domain, you'll need to complete the verification process:
+
+<Steps>
+<Step title="Add DNS Records">
+  Add the DNS records returned in the `dnsRecords` array to your domain's DNS configuration.
+  
+  <Tip>
+  The exact method depends on your DNS provider. Most providers have a DNS management interface where you can add TXT and MX records.
+  </Tip>
+</Step>
+
+<Step title="Wait for Propagation">
+  DNS changes can take up to 24 hours to propagate, but typically complete within 1-2 hours.
+  
+  <Info>
+  You can check the current verification status using the GET endpoint with `check=true` parameter.
+  </Info>
+</Step>
+
+<Step title="Verification Complete">
+  Once all DNS records are verified, the domain status will automatically update to `verified` and you can start receiving emails.
+  
+  <Check>
+  Verified domains can receive emails and have catch-all forwarding configured.
+  </Check>
+</Step>
+</Steps>
+
+## Important Notes
+
+<Info>
+Domain creation includes automatic checks for plan limits using the billing system. If you've reached your domain limit, you'll need to upgrade your plan.
+</Info>
+
+<Warning>
+The domain must not have existing MX or CNAME records that would conflict with email receiving. Remove any existing email routing before adding the domain.
+</Warning>
+
+<Tip>
+Use descriptive domain names and ensure you have admin access to the DNS configuration before adding a domain.
+</Tip>
+
+## Related Endpoints
+
+After creating a domain, you might want to:
+- **Check verification status**: Use `GET /api/v2/domains/{id}?check=true`
+- **Configure catch-all**: Use `PUT /api/v2/domains/{id}`
+- **View DNS records**: Use `GET /api/v2/domains/{id}/dns-records`
+
+## Notes
+
+- Domain verification is initiated automatically upon creation
+- The `dnsRecords` array contains all records needed for complete verification
+- Domain limits are checked against your current plan before creation
+- Provider detection helps identify the DNS service for better user guidance
+- All domains start in `pending` status until DNS records are verified 

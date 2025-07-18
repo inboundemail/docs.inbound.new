@@ -1,0 +1,330 @@
+---
+title: "Get Email Address"
+api: "GET /api/v2/email-addresses/{id}"
+description: "Retrieve detailed information about a specific email address including routing configuration and status"
+---
+
+## Overview
+
+This endpoint retrieves comprehensive information about a specific email address, including its routing configuration, domain details, and AWS SES status.
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication. Format: `Bearer YOUR_API_KEY`
+</ParamField>
+
+## Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the email address to retrieve.
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string" required>
+  Unique identifier for the email address.
+</ResponseField>
+
+<ResponseField name="address" type="string" required>
+  The email address (e.g., "hello@example.com").
+</ResponseField>
+
+<ResponseField name="domainId" type="string" required>
+  ID of the domain this email address belongs to.
+</ResponseField>
+
+<ResponseField name="webhookId" type="string | null">
+  ID of the webhook endpoint for routing emails (if using webhook routing).
+</ResponseField>
+
+<ResponseField name="endpointId" type="string | null">
+  ID of the endpoint for routing emails (if using endpoint routing).
+</ResponseField>
+
+<ResponseField name="isActive" type="boolean" required>
+  Whether this email address is active and can receive emails.
+</ResponseField>
+
+<ResponseField name="isReceiptRuleConfigured" type="boolean" required>
+  Whether AWS SES receipt rule is configured for this email address.
+</ResponseField>
+
+<ResponseField name="receiptRuleName" type="string | null">
+  Name of the AWS SES receipt rule for this email address.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string" required>
+  ISO 8601 timestamp when the email address was created.
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string" required>
+  ISO 8601 timestamp when the email address was last updated.
+</ResponseField>
+
+<ResponseField name="userId" type="string" required>
+  ID of the user who owns this email address.
+</ResponseField>
+
+<ResponseField name="domain" type="object" required>
+  Domain information for this email address.
+  
+  <Expandable title="Domain properties">
+    <ResponseField name="id" type="string" required>
+      Domain ID.
+    </ResponseField>
+    
+    <ResponseField name="name" type="string" required>
+      Domain name (e.g., "example.com").
+    </ResponseField>
+    
+    <ResponseField name="status" type="string" required>
+      Domain verification status: `pending`, `verified`, or `failed`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="routing" type="object" required>
+  Email routing configuration.
+  
+  <Expandable title="Routing properties">
+    <ResponseField name="type" type="string" required>
+      Type of routing: `webhook`, `endpoint`, or `none`.
+    </ResponseField>
+    
+    <ResponseField name="id" type="string | null">
+      ID of the routing destination (webhook or endpoint ID).
+    </ResponseField>
+    
+    <ResponseField name="name" type="string | null">
+      Name of the routing destination.
+    </ResponseField>
+    
+    <ResponseField name="config" type="object" optional>
+      Configuration details for the routing destination.
+    </ResponseField>
+    
+    <ResponseField name="isActive" type="boolean" required>
+      Whether the routing destination is active.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+### Request
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.inbound.email/api/v2/email-addresses/email_addr_123' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.inbound.email/api/v2/email-addresses/email_addr_123', {
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY'
+  }
+});
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://api.inbound.email/api/v2/email-addresses/email_addr_123',
+    headers={'Authorization': 'Bearer YOUR_API_KEY'}
+)
+data = response.json()
+```
+</RequestExample>
+
+### Response
+
+<ResponseExample>
+```json Success
+{
+  "id": "email_addr_123",
+  "address": "hello@example.com",
+  "domainId": "dom_abc123",
+  "webhookId": null,
+  "endpointId": "end_xyz789",
+  "isActive": true,
+  "isReceiptRuleConfigured": true,
+  "receiptRuleName": "example.com-individual-rule",
+  "createdAt": "2024-01-01T00:00:00Z",
+  "updatedAt": "2024-01-15T10:30:00Z",
+  "userId": "user_123",
+  "domain": {
+    "id": "dom_abc123",
+    "name": "example.com",
+    "status": "verified"
+  },
+  "routing": {
+    "type": "endpoint",
+    "id": "end_xyz789",
+    "name": "Main Endpoint",
+    "config": {
+      "type": "webhook",
+      "url": "https://api.yourapp.com/webhooks/email"
+    },
+    "isActive": true
+  }
+}
+```
+</ResponseExample>
+
+### Response with Webhook Routing
+
+<ResponseExample>
+```json Webhook Routing
+{
+  "id": "email_addr_456",
+  "address": "support@example.com",
+  "domainId": "dom_abc123",
+  "webhookId": "webhook_789",
+  "endpointId": null,
+  "isActive": true,
+  "isReceiptRuleConfigured": true,
+  "receiptRuleName": "example.com-individual-rule",
+  "createdAt": "2024-01-01T00:00:00Z",
+  "updatedAt": "2024-01-15T10:30:00Z",
+  "userId": "user_123",
+  "domain": {
+    "id": "dom_abc123",
+    "name": "example.com",
+    "status": "verified"
+  },
+  "routing": {
+    "type": "webhook",
+    "id": "webhook_789",
+    "name": "Support Webhook",
+    "config": {
+      "url": "https://api.yourapp.com/webhooks/support"
+    },
+    "isActive": true
+  }
+}
+```
+</ResponseExample>
+
+### Response with No Routing
+
+<ResponseExample>
+```json No Routing
+{
+  "id": "email_addr_789",
+  "address": "noreply@example.com",
+  "domainId": "dom_abc123",
+  "webhookId": null,
+  "endpointId": null,
+  "isActive": true,
+  "isReceiptRuleConfigured": false,
+  "receiptRuleName": null,
+  "createdAt": "2024-01-01T00:00:00Z",
+  "updatedAt": "2024-01-15T10:30:00Z",
+  "userId": "user_123",
+  "domain": {
+    "id": "dom_abc123",
+    "name": "example.com",
+    "status": "verified"
+  },
+  "routing": {
+    "type": "none",
+    "id": null,
+    "name": null,
+    "isActive": false
+  }
+}
+```
+</ResponseExample>
+
+## Error Responses
+
+<ResponseExample>
+```json 404 Not Found
+{
+  "error": "Email address not found"
+}
+```
+
+```json 401 Unauthorized
+{
+  "error": "Unauthorized"
+}
+```
+
+```json 500 Internal Server Error
+{
+  "error": "Internal server error"
+}
+```
+</ResponseExample>
+
+## Understanding the Response
+
+### Routing Types
+
+The `routing.type` field indicates how emails are processed:
+
+<Steps>
+<Step title="Endpoint Routing (routing.type: 'endpoint')">
+  Emails are routed through a configured endpoint with additional processing options.
+  
+  <Info>
+  Endpoints provide more flexibility and can include multiple routing targets or transformations.
+  </Info>
+</Step>
+
+<Step title="Webhook Routing (routing.type: 'webhook')">
+  Emails are sent directly to a webhook URL via HTTP POST.
+  
+  <Tip>
+  Webhook routing is simpler and more direct for basic email forwarding needs.
+  </Tip>
+</Step>
+
+<Step title="No Routing (routing.type: 'none')">
+  Emails are received and stored but not forwarded anywhere.
+  
+  <Warning>
+  Email addresses with no routing cannot forward emails and may not have SES receipt rules configured.
+  </Warning>
+</Step>
+</Steps>
+
+### Status Indicators
+
+- **isActive**: Whether the email address can receive new emails
+- **isReceiptRuleConfigured**: Whether AWS SES is properly configured
+- **domain.status**: Whether the domain is verified for email receiving
+
+## Important Notes
+
+<Info>
+Only email addresses with `isActive: true` and `domain.status: "verified"` can receive emails successfully.
+</Info>
+
+<Tip>
+Check the `routing` object to understand how emails will be processed and forwarded for this address.
+</Tip>
+
+<Warning>
+If `isReceiptRuleConfigured` is `false`, the email address may not receive emails properly even if it's active.
+</Warning>
+
+## Related Endpoints
+
+- **Update email address**: `PUT /api/v2/email-addresses/{id}`
+- **Delete email address**: `DELETE /api/v2/email-addresses/{id}`
+- **List all email addresses**: `GET /api/v2/email-addresses`
+- **View domain details**: `GET /api/v2/domains/{domainId}`
+
+## Notes
+
+- Email addresses inherit email-receiving capability from their domain's verification status
+- The `routing` configuration determines how incoming emails are processed
+- SES receipt rules are automatically managed based on the email address configuration
+- Both endpoint and webhook routing options provide reliable email delivery
+- Email addresses without routing can still receive emails but won't forward them 

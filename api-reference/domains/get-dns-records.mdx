@@ -1,0 +1,282 @@
+---
+title: "Get Domain DNS Records"
+api: "GET /api/v2/domains/{id}/dns-records"
+description: "Retrieve all DNS records required for domain verification including their current verification status"
+---
+
+## Overview
+
+This endpoint retrieves all DNS records that are required for domain verification. It includes both the records that need to be added to your DNS provider and their current verification status.
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication. Format: `Bearer YOUR_API_KEY`
+</ParamField>
+
+## Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the domain to retrieve DNS records for.
+</ParamField>
+
+## Response
+
+<ResponseField name="domainId" type="string" required>
+  The unique identifier of the domain.
+</ResponseField>
+
+<ResponseField name="domain" type="string" required>
+  The domain name (e.g., "example.com").
+</ResponseField>
+
+<ResponseField name="records" type="array" required>
+  Array of DNS records required for domain verification.
+  
+  <Expandable title="DNS record properties">
+    <ResponseField name="id" type="string" required>
+      Unique identifier for the DNS record.
+    </ResponseField>
+    
+    <ResponseField name="domainId" type="string" required>
+      The domain ID this record belongs to.
+    </ResponseField>
+    
+    <ResponseField name="recordType" type="string" required>
+      Type of DNS record (e.g., "TXT", "MX", "CNAME").
+    </ResponseField>
+    
+    <ResponseField name="name" type="string" required>
+      The DNS record name/hostname that needs to be created.
+    </ResponseField>
+    
+    <ResponseField name="value" type="string" required>
+      The DNS record value that needs to be set.
+    </ResponseField>
+    
+    <ResponseField name="priority" type="integer | null">
+      Priority for MX records (typically 10). Null for other record types.
+    </ResponseField>
+    
+    <ResponseField name="isRequired" type="boolean" required>
+      Whether this DNS record is required for domain verification.
+    </ResponseField>
+    
+    <ResponseField name="isVerified" type="boolean" required>
+      Whether this DNS record has been verified as correctly configured.
+    </ResponseField>
+    
+    <ResponseField name="lastChecked" type="string | null">
+      ISO 8601 timestamp of when this record was last checked for verification.
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="string" required>
+      ISO 8601 timestamp when the DNS record was created.
+    </ResponseField>
+    
+    <ResponseField name="updatedAt" type="string" required>
+      ISO 8601 timestamp when the DNS record was last updated.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+### Request
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.inbound.email/api/v2/domains/dom_abc123/dns-records' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.inbound.email/api/v2/domains/dom_abc123/dns-records', {
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY'
+  }
+});
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://api.inbound.email/api/v2/domains/dom_abc123/dns-records',
+    headers={'Authorization': 'Bearer YOUR_API_KEY'}
+)
+data = response.json()
+```
+</RequestExample>
+
+### Response
+
+<ResponseExample>
+```json 200 Success
+{
+  "domainId": "dom_abc123",
+  "domain": "example.com",
+  "records": [
+    {
+      "id": "dns_rec_001",
+      "domainId": "dom_abc123",
+      "recordType": "TXT",
+      "name": "_amazonses.example.com",
+      "value": "abc123def456ghi789jkl",
+      "priority": null,
+      "isRequired": true,
+      "isVerified": true,
+      "lastChecked": "2024-01-15T10:30:00Z",
+      "createdAt": "2024-01-01T00:00:00Z",
+      "updatedAt": "2024-01-01T00:00:00Z"
+    },
+    {
+      "id": "dns_rec_002",
+      "domainId": "dom_abc123",
+      "recordType": "MX",
+      "name": "example.com",
+      "value": "10 inbound-smtp.us-east-1.amazonaws.com",
+      "priority": null,
+      "isRequired": true,
+      "isVerified": false,
+      "lastChecked": "2024-01-15T10:25:00Z",
+      "createdAt": "2024-01-01T00:00:00Z",
+      "updatedAt": "2024-01-01T00:00:00Z"
+    }
+  ]
+}
+```
+</ResponseExample>
+
+## Error Responses
+
+<ResponseExample>
+```json 404 Not Found
+{
+  "error": "Domain not found"
+}
+```
+
+```json 401 Unauthorized
+{
+  "error": "Unauthorized"
+}
+```
+
+```json 500 Internal Server Error
+{
+  "error": "Failed to fetch DNS records",
+  "details": "Database connection failed"
+}
+```
+</ResponseExample>
+
+## DNS Record Types
+
+The following DNS record types are commonly used for domain verification:
+
+### TXT Records
+Used for domain verification and AWS SES identity verification.
+
+<CodeGroup>
+```dns TXT Record Example
+Name: _amazonses.example.com
+Value: abc123def456ghi789jkl
+```
+</CodeGroup>
+
+### MX Records
+Used to route emails to the correct mail servers.
+
+<CodeGroup>
+```dns MX Record Example
+Name: example.com
+Value: 10 inbound-smtp.us-east-1.amazonaws.com
+Priority: 10
+```
+</CodeGroup>
+
+### CNAME Records
+Sometimes used for specific subdomain configurations.
+
+<CodeGroup>
+```dns CNAME Record Example
+Name: mail.example.com
+Value: inbound-smtp.us-east-1.amazonaws.com
+```
+</CodeGroup>
+
+## Verification Status
+
+Each DNS record has a verification status that indicates whether it's properly configured:
+
+<Steps>
+<Step title="Not Verified (isVerified: false)">
+  The DNS record has not been verified yet or is incorrectly configured.
+  
+  <Warning>
+  Check that the record has been added to your DNS provider with the exact name and value.
+  </Warning>
+</Step>
+
+<Step title="Verified (isVerified: true)">
+  The DNS record has been verified and is correctly configured.
+  
+  <Check>
+  This record is properly set up and contributing to domain verification.
+  </Check>
+</Step>
+</Steps>
+
+## Common DNS Configuration
+
+Here's how to configure the most common DNS records:
+
+### Adding TXT Records
+1. Log into your DNS provider (Cloudflare, GoDaddy, etc.)
+2. Navigate to DNS management
+3. Add a new TXT record with the exact name and value provided
+4. Save the changes
+
+### Adding MX Records
+1. Remove any existing MX records for the domain
+2. Add the new MX record with the provided hostname and priority
+3. Ensure no conflicting MX records exist
+
+## Important Notes
+
+<Info>
+DNS propagation can take up to 24 hours, but typically completes within 1-2 hours. Check the `lastChecked` timestamp to see when verification was last attempted.
+</Info>
+
+<Tip>
+Use the domain's GET endpoint with `check=true` to trigger a real-time verification check of all DNS records.
+</Tip>
+
+<Warning>
+All required DNS records must be verified before the domain can receive emails. Missing or incorrect records will prevent email delivery.
+</Warning>
+
+## Troubleshooting
+
+If DNS records are not verifying:
+
+1. **Check DNS propagation**: Use online DNS lookup tools to verify records are visible
+2. **Verify exact values**: Ensure the name and value match exactly (case-sensitive)
+3. **Remove conflicting records**: Delete any existing MX or CNAME records that might conflict
+4. **Wait for propagation**: DNS changes can take time to propagate globally
+
+## Related Endpoints
+
+- **Trigger verification check**: `GET /api/v2/domains/{id}?check=true`
+- **View domain status**: `GET /api/v2/domains/{id}`
+- **List all domains**: `GET /api/v2/domains`
+
+## Notes
+
+- DNS records are automatically created when a domain is added
+- The `isVerified` status is updated during verification checks
+- All required records must be verified for the domain to become active
+- DNS records are automatically deleted when a domain is removed
+- Record verification happens automatically but can be triggered manually 

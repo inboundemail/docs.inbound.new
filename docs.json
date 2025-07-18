@@ -52,8 +52,11 @@
             "group": "Domains",
             "pages": [
               "api-reference/domains/list-domains",
+              "api-reference/domains/create-domain",
               "api-reference/domains/get-domain",
-              "api-reference/domains/update-domain"
+              "api-reference/domains/update-domain",
+              "api-reference/domains/delete-domain",
+              "api-reference/domains/get-dns-records"
             ]
           }
         ]

@@ -1,0 +1,263 @@
+---
+title: "Delete Email Address"
+api: "DELETE /api/v2/email-addresses/{id}"
+description: "Delete an email address and automatically clean up AWS SES receipt rules"
+---
+
+## Overview
+
+This endpoint permanently deletes an email address and automatically updates AWS SES receipt rules. If other email addresses exist on the same domain, the SES rules are updated to exclude the deleted address. If no other addresses exist, the entire SES rule is removed.
+
+<Warning>
+This action is irreversible. The email address and its configuration will be permanently deleted.
+</Warning>
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication. Format: `Bearer YOUR_API_KEY`
+</ParamField>
+
+## Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the email address to delete.
+</ParamField>
+
+## Response
+
+<ResponseField name="message" type="string" required>
+  Success message confirming the deletion.
+</ResponseField>
+
+<ResponseField name="cleanup" type="object" required>
+  Details about the cleanup operations performed.
+  
+  <Expandable title="Cleanup details">
+    <ResponseField name="sesRuleUpdated" type="boolean" required>
+      Whether the AWS SES receipt rule was successfully updated or removed.
+    </ResponseField>
+    
+    <ResponseField name="emailAddress" type="string" required>
+      The email address that was deleted.
+    </ResponseField>
+    
+    <ResponseField name="domain" type="string" required>
+      The domain name the email address belonged to.
+    </ResponseField>
+    
+    <ResponseField name="warning" type="string" optional>
+      Warning message if there were issues with AWS SES cleanup.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+### Request
+
+<RequestExample>
+```bash cURL
+curl -X DELETE 'https://api.inbound.email/api/v2/email-addresses/email_addr_123' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.inbound.email/api/v2/email-addresses/email_addr_123', {
+  method: 'DELETE',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY'
+  }
+});
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.delete(
+    'https://api.inbound.email/api/v2/email-addresses/email_addr_123',
+    headers={'Authorization': 'Bearer YOUR_API_KEY'}
+)
+data = response.json()
+```
+</RequestExample>
+
+### Response (SES Rule Updated)
+
+<ResponseExample>
+```json Rule Updated
+{
+  "message": "Email address deleted successfully",
+  "cleanup": {
+    "sesRuleUpdated": true,
+    "emailAddress": "hello@example.com",
+    "domain": "example.com"
+  }
+}
+```
+</ResponseExample>
+
+### Response (SES Rule Removed)
+
+<ResponseExample>
+```json Rule Removed
+{
+  "message": "Email address deleted successfully", 
+  "cleanup": {
+    "sesRuleUpdated": true,
+    "emailAddress": "last@example.com",
+    "domain": "example.com"
+  }
+}
+```
+</ResponseExample>
+
+### Response (With Warning)
+
+<ResponseExample>
+```json With AWS Warning
+{
+  "message": "Email address deleted successfully",
+  "cleanup": {
+    "sesRuleUpdated": false,
+    "emailAddress": "hello@example.com",
+    "domain": "example.com",
+    "warning": "AWS configuration incomplete. SES rules may need manual cleanup."
+  }
+}
+```
+</ResponseExample>
+
+## Error Responses
+
+<ResponseExample>
+```json 404 Not Found
+{
+  "error": "Email address not found"
+}
+```
+
+```json 401 Unauthorized
+{
+  "error": "Unauthorized"
+}
+```
+
+```json 500 Internal Server Error
+{
+  "error": "Internal server error",
+  "details": "Database connection failed"
+}
+```
+</ResponseExample>
+
+## Deletion Process
+
+The email address deletion follows these steps:
+
+<Steps>
+<Step title="Validate Ownership">
+  Verify that the email address exists and belongs to the authenticated user.
+</Step>
+
+<Step title="Check Domain Context">
+  Identify other active email addresses on the same domain to determine SES rule updates needed.
+  
+  <Info>
+  This ensures proper SES rule management for remaining email addresses.
+  </Info>
+</Step>
+
+<Step title="Delete Email Address">
+  Remove the email address record from the database.
+  
+  <Warning>
+  This step is irreversible - the email address configuration is permanently lost.
+  </Warning>
+</Step>
+
+<Step title="Update SES Rules">
+  Update AWS SES receipt rules based on remaining email addresses:
+  - If other addresses exist: Update rule to exclude deleted address
+  - If no addresses remain: Remove the entire SES rule for the domain
+  
+  <Check>
+  This ensures proper email routing for remaining addresses and cleanup when none remain.
+  </Check>
+</Step>
+</Steps>
+
+## SES Rule Management
+
+### Multiple Email Addresses on Domain
+When other email addresses exist on the same domain:
+- The SES receipt rule is updated to remove the deleted address
+- Other email addresses continue to function normally
+- The domain's SES configuration remains intact
+
+### Last Email Address on Domain
+When deleting the last email address on a domain:
+- The entire SES receipt rule for the domain is removed
+- The domain can still receive catch-all emails if configured
+- Individual email routing for that domain stops completely
+
+## Important Notes
+
+<Info>
+Email address deletion automatically manages AWS SES receipt rules to ensure proper email routing for remaining addresses.
+</Info>
+
+<Warning>
+Deleting an email address is permanent. The address cannot be recovered, though it can be recreated as a new address.
+</Warning>
+
+<Tip>
+If you encounter SES cleanup warnings, the email address is still deleted from the database, but you may need to manually clean up AWS SES rules.
+</Tip>
+
+## Impact on Email Delivery
+
+### Before Deletion
+- Emails to the address are received and forwarded according to routing configuration
+- SES receipt rules include this address in their configuration
+
+### After Deletion
+- Emails to the deleted address are no longer received
+- SES receipt rules are updated to exclude this address
+- Other email addresses on the domain continue to function normally
+
+## AWS SES Integration
+
+The deletion process handles SES integration automatically:
+
+### Successful SES Updates
+- `sesRuleUpdated: true` indicates successful AWS SES cleanup
+- Email routing is properly updated for remaining addresses
+- No manual intervention required
+
+### Failed SES Updates  
+- `sesRuleUpdated: false` with warning message
+- Email address still deleted from database
+- Manual SES rule cleanup may be required
+- Common causes: AWS configuration issues, permissions problems
+
+## Related Actions
+
+Before deleting an email address, you might want to:
+- **Check current configuration**: `GET /api/v2/email-addresses/{id}`
+- **Update routing temporarily**: `PUT /api/v2/email-addresses/{id}`
+- **List other addresses on domain**: `GET /api/v2/email-addresses?domainId={domainId}`
+
+After deletion, you can:
+- **Recreate the address**: `POST /api/v2/email-addresses`
+- **Check domain status**: `GET /api/v2/domains/{domainId}`
+- **Review remaining addresses**: `GET /api/v2/email-addresses`
+
+## Notes
+
+- Email address deletion affects AWS SES receipt rules automatically
+- Other email addresses on the same domain continue to function
+- The domain itself remains unaffected by individual email address deletion
+- Deleted email addresses can be recreated with the same address
+- SES rule management ensures no interruption to other email addresses on the domain 

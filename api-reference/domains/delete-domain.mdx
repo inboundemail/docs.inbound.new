@@ -1,0 +1,238 @@
+---
+title: "Delete Domain"
+api: "DELETE /api/v2/domains/{id}"
+description: "Permanently delete a domain and all associated resources including email addresses, DNS records, and AWS SES configuration"
+---
+
+## Overview
+
+This endpoint permanently deletes a domain and all associated resources. This includes email addresses, DNS records, blocked emails, AWS SES receipt rules, and the SES identity.
+
+<Warning>
+This action is irreversible. All emails and configuration associated with this domain will be permanently deleted.
+</Warning>
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication. Format: `Bearer YOUR_API_KEY`
+</ParamField>
+
+## Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the domain to delete.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean" required>
+  Whether the deletion was successful.
+</ResponseField>
+
+<ResponseField name="message" type="string" required>
+  Success message describing what was deleted.
+</ResponseField>
+
+<ResponseField name="deletedResources" type="object" required>
+  Summary of all resources that were deleted.
+  
+  <Expandable title="Deleted resources breakdown">
+    <ResponseField name="domain" type="string" required>
+      The domain name that was deleted.
+    </ResponseField>
+    
+    <ResponseField name="emailAddresses" type="integer" required>
+      Number of email addresses that were deleted.
+    </ResponseField>
+    
+    <ResponseField name="dnsRecords" type="integer" required>
+      Number of DNS records that were deleted.
+    </ResponseField>
+    
+    <ResponseField name="blockedEmails" type="integer" required>
+      Number of blocked email entries that were deleted.
+    </ResponseField>
+    
+    <ResponseField name="sesIdentity" type="boolean" required>
+      Whether the AWS SES identity was successfully deleted.
+    </ResponseField>
+    
+    <ResponseField name="sesReceiptRules" type="boolean" required>
+      Whether AWS SES receipt rules were successfully deleted.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+### Request
+
+<RequestExample>
+```bash cURL
+curl -X DELETE 'https://api.inbound.email/api/v2/domains/dom_abc123' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.inbound.email/api/v2/domains/dom_abc123', {
+  method: 'DELETE',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY'
+  }
+});
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.delete(
+    'https://api.inbound.email/api/v2/domains/dom_abc123',
+    headers={'Authorization': 'Bearer YOUR_API_KEY'}
+)
+data = response.json()
+```
+</RequestExample>
+
+### Response
+
+<ResponseExample>
+```json 200 Success
+{
+  "success": true,
+  "message": "Successfully deleted domain example.com and all associated resources",
+  "deletedResources": {
+    "domain": "example.com",
+    "emailAddresses": 5,
+    "dnsRecords": 3,
+    "blockedEmails": 2,
+    "sesIdentity": true,
+    "sesReceiptRules": true
+  }
+}
+```
+</ResponseExample>
+
+## Error Responses
+
+<ResponseExample>
+```json 404 Not Found
+{
+  "error": "Domain not found"
+}
+```
+
+```json 401 Unauthorized
+{
+  "error": "Unauthorized"
+}
+```
+
+```json 500 Internal Server Error
+{
+  "error": "Failed to delete domain",
+  "details": "Database connection failed"
+}
+```
+</ResponseExample>
+
+## Deletion Process
+
+The domain deletion process follows these steps:
+
+<Steps>
+<Step title="Validate Domain Ownership">
+  Verify that the domain exists and belongs to the authenticated user.
+</Step>
+
+<Step title="Remove AWS SES Receipt Rules">
+  Delete both catch-all and individual email receipt rules from AWS SES.
+  
+  <Info>
+  This prevents any new emails from being processed for this domain.
+  </Info>
+</Step>
+
+<Step title="Delete AWS SES Identity">
+  Remove the domain identity from AWS SES to complete the AWS cleanup.
+  
+  <Warning>
+  This step is irreversible and will immediately stop email receiving for the domain.
+  </Warning>
+</Step>
+
+<Step title="Clean Up Database Records">
+  Delete all associated records in the following order:
+  - Blocked emails
+  - Email addresses
+  - DNS records
+  - Domain record
+  
+  <Check>
+  All data is permanently removed from the database.
+  </Check>
+</Step>
+</Steps>
+
+## Important Notes
+
+<Warning>
+Domain deletion is permanent and cannot be undone. All emails, addresses, and configuration will be lost.
+</Warning>
+
+<Info>
+If AWS SES operations fail, the domain will still be deleted from the database. You may need to manually clean up AWS resources if needed.
+</Info>
+
+<Tip>
+Before deleting a domain, consider downloading any important emails or exporting configuration if you need to recreate the domain later.
+</Tip>
+
+## What Gets Deleted
+
+When you delete a domain, the following resources are permanently removed:
+
+### Email Resources
+- All email addresses configured for the domain
+- All received emails stored for the domain
+- All blocked email entries for the domain
+
+### DNS Configuration
+- All DNS records required for domain verification
+- Verification status and history
+
+### AWS SES Configuration
+- Domain identity in AWS SES
+- All receipt rules (catch-all and individual email rules)
+- SES verification tokens and status
+
+### Domain Settings
+- Catch-all configuration
+- Domain verification status
+- Provider detection information
+- All timestamps and metadata
+
+## After Deletion
+
+After successfully deleting a domain:
+
+- The domain can be re-added as a new domain (it will go through verification again)
+- AWS SES resources are cleaned up and billing should stop
+- All email receiving for the domain stops immediately
+- DNS records in your DNS provider remain (you may want to remove them manually)
+
+## Related Actions
+
+Before deleting a domain, you might want to:
+- **Export data**: Download emails or configuration
+- **Update forwarding**: Redirect emails to other domains
+- **Check usage**: Review email statistics or recent activity
+
+## Notes
+
+- Domain deletion affects all users who have access to the domain
+- AWS SES cleanup is attempted but may not always succeed (this doesn't prevent domain deletion)
+- DNS records in your DNS provider are not automatically removed
+- The domain can be re-added later, but all configuration will need to be set up again
+- Billing for the domain stops immediately after deletion 

@@ -1,0 +1,289 @@
+---
+title: "List Email Addresses"
+api: "GET /api/v2/email-addresses"
+description: "Retrieve all email addresses for the authenticated user with filtering and pagination"
+---
+
+## Overview
+
+This endpoint retrieves a paginated list of all email addresses associated with the authenticated user. It supports filtering by domain, active status, and SES configuration status.
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication. Format: `Bearer YOUR_API_KEY`
+</ParamField>
+
+## Parameters
+
+<ParamField query="limit" type="integer" default="50">
+  Maximum number of email addresses to return. Range: 1-100.
+</ParamField>
+
+<ParamField query="offset" type="integer" default="0">
+  Number of email addresses to skip for pagination. Must be non-negative.
+</ParamField>
+
+<ParamField query="domainId" type="string">
+  Filter email addresses by domain ID.
+</ParamField>
+
+<ParamField query="isActive" type="string">
+  Filter email addresses by active status. Valid values: `true`, `false`.
+</ParamField>
+
+<ParamField query="isReceiptRuleConfigured" type="string">
+  Filter email addresses by SES receipt rule configuration status. Valid values: `true`, `false`.
+</ParamField>
+
+## Response
+
+<ResponseField name="data" type="array" required>
+  Array of email address objects with detailed information.
+  
+  <Expandable title="Email address object properties">
+    <ResponseField name="id" type="string" required>
+      Unique identifier for the email address.
+    </ResponseField>
+    
+    <ResponseField name="address" type="string" required>
+      The email address (e.g., "hello@example.com").
+    </ResponseField>
+    
+    <ResponseField name="domainId" type="string" required>
+      ID of the domain this email address belongs to.
+    </ResponseField>
+    
+    <ResponseField name="webhookId" type="string | null">
+      ID of the webhook endpoint for routing emails (if using webhook routing).
+    </ResponseField>
+    
+    <ResponseField name="endpointId" type="string | null">
+      ID of the endpoint for routing emails (if using endpoint routing).
+    </ResponseField>
+    
+    <ResponseField name="isActive" type="boolean" required>
+      Whether this email address is active and can receive emails.
+    </ResponseField>
+    
+    <ResponseField name="isReceiptRuleConfigured" type="boolean" required>
+      Whether AWS SES receipt rule is configured for this email address.
+    </ResponseField>
+    
+    <ResponseField name="receiptRuleName" type="string | null">
+      Name of the AWS SES receipt rule for this email address.
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="string" required>
+      ISO 8601 timestamp when the email address was created.
+    </ResponseField>
+    
+    <ResponseField name="updatedAt" type="string" required>
+      ISO 8601 timestamp when the email address was last updated.
+    </ResponseField>
+    
+    <ResponseField name="userId" type="string" required>
+      ID of the user who owns this email address.
+    </ResponseField>
+    
+    <ResponseField name="domain" type="object" required>
+      Domain information for this email address.
+      
+      <Expandable title="Domain properties">
+        <ResponseField name="id" type="string" required>
+          Domain ID.
+        </ResponseField>
+        
+        <ResponseField name="name" type="string" required>
+          Domain name (e.g., "example.com").
+        </ResponseField>
+        
+        <ResponseField name="status" type="string" required>
+          Domain verification status: `pending`, `verified`, or `failed`.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="routing" type="object" required>
+      Email routing configuration.
+      
+      <Expandable title="Routing properties">
+        <ResponseField name="type" type="string" required>
+          Type of routing: `webhook`, `endpoint`, or `none`.
+        </ResponseField>
+        
+        <ResponseField name="id" type="string | null">
+          ID of the routing destination (webhook or endpoint ID).
+        </ResponseField>
+        
+        <ResponseField name="name" type="string | null">
+          Name of the routing destination.
+        </ResponseField>
+        
+        <ResponseField name="config" type="object" optional>
+          Configuration details for the routing destination.
+        </ResponseField>
+        
+        <ResponseField name="isActive" type="boolean" required>
+          Whether the routing destination is active.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="pagination" type="object" required>
+  Pagination information for the result set.
+  
+  <Expandable title="Pagination properties">
+    <ResponseField name="limit" type="integer" required>
+      Maximum number of results per page.
+    </ResponseField>
+    
+    <ResponseField name="offset" type="integer" required>
+      Number of results skipped.
+    </ResponseField>
+    
+    <ResponseField name="total" type="integer" required>
+      Total number of email addresses matching the query.
+    </ResponseField>
+    
+    <ResponseField name="hasMore" type="boolean" required>
+      Whether there are more results available.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+### Basic Request
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.inbound.email/api/v2/email-addresses' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.inbound.email/api/v2/email-addresses', {
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY'
+  }
+});
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://api.inbound.email/api/v2/email-addresses',
+    headers={'Authorization': 'Bearer YOUR_API_KEY'}
+)
+data = response.json()
+```
+</RequestExample>
+
+### Filtered Request
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.inbound.email/api/v2/email-addresses?domainId=dom_abc123&isActive=true&limit=10' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.inbound.email/api/v2/email-addresses?domainId=dom_abc123&isActive=true&limit=10', {
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY'
+  }
+});
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://api.inbound.email/api/v2/email-addresses',
+    params={'domainId': 'dom_abc123', 'isActive': 'true', 'limit': 10},
+    headers={'Authorization': 'Bearer YOUR_API_KEY'}
+)
+data = response.json()
+```
+</RequestExample>
+
+### Response Example
+
+<ResponseExample>
+```json Success
+{
+  "data": [
+    {
+      "id": "email_addr_123",
+      "address": "hello@example.com",
+      "domainId": "dom_abc123",
+      "webhookId": null,
+      "endpointId": "end_xyz789",
+      "isActive": true,
+      "isReceiptRuleConfigured": true,
+      "receiptRuleName": "example.com-individual-rule",
+      "createdAt": "2024-01-01T00:00:00Z",
+      "updatedAt": "2024-01-15T10:30:00Z",
+      "userId": "user_123",
+      "domain": {
+        "id": "dom_abc123",
+        "name": "example.com",
+        "status": "verified"
+      },
+      "routing": {
+        "type": "endpoint",
+        "id": "end_xyz789",
+        "name": "Main Endpoint",
+        "config": {
+          "type": "webhook",
+          "url": "https://api.yourapp.com/webhooks/email"
+        },
+        "isActive": true
+      }
+    }
+  ],
+  "pagination": {
+    "limit": 50,
+    "offset": 0,
+    "total": 1,
+    "hasMore": false
+  }
+}
+```
+</ResponseExample>
+
+## Error Responses
+
+<ResponseExample>
+```json 400 Bad Request
+{
+  "error": "Limit must be between 1 and 100"
+}
+```
+
+```json 401 Unauthorized
+{
+  "error": "Unauthorized"
+}
+```
+
+```json 500 Internal Server Error
+{
+  "error": "Internal server error"
+}
+```
+</ResponseExample>
+
+## Notes
+
+- Email addresses must be associated with a verified domain to receive emails
+- The `routing` field shows how emails are forwarded (webhook, endpoint, or none)
+- Only active email addresses with configured receipt rules can receive emails
+- Email addresses inherit the domain's verification status for email receiving capability
+- The `isReceiptRuleConfigured` field indicates if AWS SES is properly configured for this address 
