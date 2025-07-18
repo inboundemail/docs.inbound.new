@@ -1,5 +1,6 @@
 ---
 title: "Create Endpoint"
+api: "POST /api/v2/endpoints"
 description: "Create a new endpoint for routing emails to webhooks or forwarding to email addresses"
 ---
 
@@ -15,9 +16,9 @@ POST https://inbound.new/api/v2/endpoints
 
 ## Authentication
 
-This endpoint requires authentication using either:
-- Session-based authentication (logged in user)
-- API key authentication via `Authorization: Bearer {api_key}` header
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication. Format: `Bearer YOUR_API_KEY`
+</ParamField>
 
 ## Request Body
 

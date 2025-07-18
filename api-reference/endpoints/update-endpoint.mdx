@@ -1,5 +1,6 @@
 ---
 title: "Update Endpoint"
+api: "PUT /api/v2/endpoints/{id}"
 description: "Update an existing endpoint's configuration and settings"
 ---
 
@@ -15,9 +16,9 @@ PUT https://inbound.new/api/v2/endpoints/{id}
 
 ## Authentication
 
-This endpoint requires authentication using either:
-- Session-based authentication (logged in user)
-- API key authentication via `Authorization: Bearer {api_key}` header
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication. Format: `Bearer YOUR_API_KEY`
+</ParamField>
 
 ## Path Parameters
 

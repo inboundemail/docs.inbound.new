@@ -1,0 +1,338 @@
+---
+title: "List Domains"
+api: "GET /api/v2/domains"
+description: "Retrieve all domains for the authenticated user with filtering and pagination"
+---
+
+## Overview
+
+This endpoint retrieves a paginated list of all domains associated with the authenticated user. It supports filtering by domain status and whether domains can receive emails.
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication. Format: `Bearer YOUR_API_KEY`
+</ParamField>
+
+## Parameters
+
+<ParamField query="limit" type="integer" default="50">
+  Maximum number of domains to return. Range: 1-100.
+</ParamField>
+
+<ParamField query="offset" type="integer" default="0">
+  Number of domains to skip for pagination. Must be non-negative.
+</ParamField>
+
+<ParamField query="status" type="string">
+  Filter domains by verification status. Valid values: `pending`, `verified`, `failed`.
+</ParamField>
+
+<ParamField query="canReceive" type="string">
+  Filter domains by email receiving capability. Valid values: `true`, `false`.
+</ParamField>
+
+## Response
+
+<ResponseField name="data" type="array" required>
+  Array of domain objects with detailed information and statistics.
+  
+  <Expandable title="Domain object properties">
+    <ResponseField name="id" type="string" required>
+      Unique identifier for the domain.
+    </ResponseField>
+    
+    <ResponseField name="domain" type="string" required>
+      The domain name (e.g., "example.com").
+    </ResponseField>
+    
+    <ResponseField name="status" type="string" required>
+      Current verification status: `pending`, `verified`, or `failed`.
+    </ResponseField>
+    
+    <ResponseField name="canReceiveEmails" type="boolean" required>
+      Whether the domain is configured to receive emails.
+    </ResponseField>
+    
+    <ResponseField name="hasMxRecords" type="boolean" required>
+      Whether the domain has valid MX records configured.
+    </ResponseField>
+    
+    <ResponseField name="domainProvider" type="string | null">
+      Detected domain provider (e.g., "Cloudflare", "GoDaddy").
+    </ResponseField>
+    
+    <ResponseField name="providerConfidence" type="string | null">
+      Confidence level of provider detection: `high`, `medium`, `low`.
+    </ResponseField>
+    
+    <ResponseField name="lastDnsCheck" type="string | null">
+      ISO 8601 timestamp of the last DNS verification check.
+    </ResponseField>
+    
+    <ResponseField name="lastSesCheck" type="string | null">
+      ISO 8601 timestamp of the last AWS SES verification check.
+    </ResponseField>
+    
+    <ResponseField name="isCatchAllEnabled" type="boolean" required>
+      Whether catch-all email forwarding is enabled for this domain.
+    </ResponseField>
+    
+    <ResponseField name="catchAllEndpointId" type="string | null">
+      ID of the endpoint used for catch-all email forwarding.
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="string" required>
+      ISO 8601 timestamp when the domain was added.
+    </ResponseField>
+    
+    <ResponseField name="updatedAt" type="string" required>
+      ISO 8601 timestamp when the domain was last updated.
+    </ResponseField>
+    
+    <ResponseField name="userId" type="string" required>
+      ID of the user who owns this domain.
+    </ResponseField>
+    
+    <ResponseField name="stats" type="object" required>
+      Domain statistics and usage information.
+      
+      <Expandable title="Stats properties">
+        <ResponseField name="totalEmailAddresses" type="integer" required>
+          Total number of email addresses configured for this domain.
+        </ResponseField>
+        
+        <ResponseField name="activeEmailAddresses" type="integer" required>
+          Number of active email addresses for this domain.
+        </ResponseField>
+        
+        <ResponseField name="hasCatchAll" type="boolean" required>
+          Whether this domain has catch-all forwarding enabled.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="catchAllEndpoint" type="object | null">
+      Information about the catch-all endpoint (if configured).
+      
+      <Expandable title="Catch-all endpoint properties">
+        <ResponseField name="id" type="string" required>
+          Unique identifier for the endpoint.
+        </ResponseField>
+        
+        <ResponseField name="name" type="string" required>
+          Display name of the endpoint.
+        </ResponseField>
+        
+        <ResponseField name="type" type="string" required>
+          Type of endpoint: `webhook`, `email`, or `email_group`.
+        </ResponseField>
+        
+        <ResponseField name="isActive" type="boolean" required>
+          Whether the endpoint is currently active.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="pagination" type="object" required>
+  Pagination information for the result set.
+  
+  <Expandable title="Pagination properties">
+    <ResponseField name="limit" type="integer" required>
+      Maximum number of results per page.
+    </ResponseField>
+    
+    <ResponseField name="offset" type="integer" required>
+      Number of results skipped.
+    </ResponseField>
+    
+    <ResponseField name="total" type="integer" required>
+      Total number of domains matching the query.
+    </ResponseField>
+    
+    <ResponseField name="hasMore" type="boolean" required>
+      Whether there are more results available.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="meta" type="object" required>
+  Summary statistics about the user's domains.
+  
+  <Expandable title="Meta properties">
+    <ResponseField name="totalCount" type="integer" required>
+      Total number of domains for the user.
+    </ResponseField>
+    
+    <ResponseField name="verifiedCount" type="integer" required>
+      Number of verified domains.
+    </ResponseField>
+    
+    <ResponseField name="withCatchAllCount" type="integer" required>
+      Number of domains with catch-all forwarding enabled.
+    </ResponseField>
+    
+    <ResponseField name="statusBreakdown" type="object" required>
+      Breakdown of domains by verification status.
+      
+      <Expandable title="Status breakdown properties">
+        <ResponseField name="verified" type="integer" required>
+          Number of verified domains.
+        </ResponseField>
+        
+        <ResponseField name="pending" type="integer" required>
+          Number of pending domains.
+        </ResponseField>
+        
+        <ResponseField name="failed" type="integer" required>
+          Number of failed domains.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+### Basic Request
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.inbound.email/api/v2/domains' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.inbound.email/api/v2/domains', {
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY'
+  }
+});
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://api.inbound.email/api/v2/domains',
+    headers={'Authorization': 'Bearer YOUR_API_KEY'}
+)
+data = response.json()
+```
+</RequestExample>
+
+### Filtered Request
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.inbound.email/api/v2/domains?status=verified&limit=10' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.inbound.email/api/v2/domains?status=verified&limit=10', {
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY'
+  }
+});
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://api.inbound.email/api/v2/domains',
+    params={'status': 'verified', 'limit': 10},
+    headers={'Authorization': 'Bearer YOUR_API_KEY'}
+)
+data = response.json()
+```
+</RequestExample>
+
+### Response Example
+
+<ResponseExample>
+```json Success
+{
+  "data": [
+    {
+      "id": "dom_abc123",
+      "domain": "example.com",
+      "status": "verified",
+      "canReceiveEmails": true,
+      "hasMxRecords": true,
+      "domainProvider": "Cloudflare",
+      "providerConfidence": "high",
+      "lastDnsCheck": "2024-01-15T10:30:00Z",
+      "lastSesCheck": "2024-01-15T10:30:00Z",
+      "isCatchAllEnabled": true,
+      "catchAllEndpointId": "end_xyz789",
+      "createdAt": "2024-01-01T00:00:00Z",
+      "updatedAt": "2024-01-15T10:30:00Z",
+      "userId": "user_123",
+      "stats": {
+        "totalEmailAddresses": 5,
+        "activeEmailAddresses": 4,
+        "hasCatchAll": true
+      },
+      "catchAllEndpoint": {
+        "id": "end_xyz789",
+        "name": "Main Webhook",
+        "type": "webhook",
+        "isActive": true
+      }
+    }
+  ],
+  "pagination": {
+    "limit": 50,
+    "offset": 0,
+    "total": 1,
+    "hasMore": false
+  },
+  "meta": {
+    "totalCount": 1,
+    "verifiedCount": 1,
+    "withCatchAllCount": 1,
+    "statusBreakdown": {
+      "verified": 1,
+      "pending": 0,
+      "failed": 0
+    }
+  }
+}
+```
+</ResponseExample>
+
+## Error Responses
+
+<ResponseExample>
+```json 400 Bad Request
+{
+  "error": "Limit must be between 1 and 100"
+}
+```
+
+```json 401 Unauthorized
+{
+  "error": "Unauthorized"
+}
+```
+
+```json 500 Internal Server Error
+{
+  "error": "Failed to fetch domains",
+  "details": "Database connection failed"
+}
+```
+</ResponseExample>
+
+## Notes
+
+- The `catchAllEndpoint` field is only populated when `isCatchAllEnabled` is `true` and a valid endpoint is configured
+- Domain statistics are calculated in real-time and may impact response performance for users with many domains
+- The `providerConfidence` field indicates how certain the system is about the detected domain provider
+- Domains in `pending` status are still undergoing verification and cannot receive emails yet 

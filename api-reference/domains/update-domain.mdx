@@ -1,0 +1,311 @@
+---
+title: "Update Domain"
+api: "PUT /api/v2/domains/{id}"
+description: "Update domain catch-all settings to enable or disable email forwarding for all addresses on the domain"
+---
+
+## Overview
+
+This endpoint allows you to enable or disable catch-all email forwarding for a domain. When enabled, all emails sent to any address on the domain (including non-existent ones) will be forwarded to the specified endpoint.
+
+<Warning>
+This endpoint can only be used with verified domains. Domains in `pending` or `failed` status cannot have catch-all enabled.
+</Warning>
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication. Format: `Bearer YOUR_API_KEY`
+</ParamField>
+
+## Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the domain to update.
+</ParamField>
+
+<ParamField body="isCatchAllEnabled" type="boolean" required>
+  Whether to enable or disable catch-all email forwarding for this domain.
+</ParamField>
+
+<ParamField body="catchAllEndpointId" type="string">
+  The ID of the endpoint to use for catch-all email forwarding. Required when `isCatchAllEnabled` is `true`. Set to `null` when disabling catch-all.
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string" required>
+  Unique identifier for the domain.
+</ResponseField>
+
+<ResponseField name="domain" type="string" required>
+  The domain name (e.g., "example.com").
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Current verification status: `pending`, `verified`, or `failed`.
+</ResponseField>
+
+<ResponseField name="isCatchAllEnabled" type="boolean" required>
+  Whether catch-all email forwarding is enabled for this domain.
+</ResponseField>
+
+<ResponseField name="catchAllEndpointId" type="string | null">
+  ID of the endpoint used for catch-all email forwarding.
+</ResponseField>
+
+<ResponseField name="catchAllEndpoint" type="object | null">
+  Information about the catch-all endpoint (if configured).
+  
+  <Expandable title="Catch-all endpoint properties">
+    <ResponseField name="id" type="string" required>
+      Unique identifier for the endpoint.
+    </ResponseField>
+    
+    <ResponseField name="name" type="string" required>
+      Display name of the endpoint.
+    </ResponseField>
+    
+    <ResponseField name="type" type="string" required>
+      Type of endpoint: `webhook`, `email`, or `email_group`.
+    </ResponseField>
+    
+    <ResponseField name="isActive" type="boolean" required>
+      Whether the endpoint is currently active.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="receiptRuleName" type="string | null">
+  Name of the AWS SES receipt rule created for this catch-all configuration.
+</ResponseField>
+
+<ResponseField name="awsConfigurationWarning" type="string" optional>
+  Warning message if there were issues with AWS SES configuration.
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string" required>
+  ISO 8601 timestamp when the domain was last updated.
+</ResponseField>
+
+## Examples
+
+### Enable Catch-All
+
+<RequestExample>
+```bash cURL
+curl -X PUT 'https://api.inbound.email/api/v2/domains/dom_abc123' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "isCatchAllEnabled": true,
+    "catchAllEndpointId": "end_xyz789"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.inbound.email/api/v2/domains/dom_abc123', {
+  method: 'PUT',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    isCatchAllEnabled: true,
+    catchAllEndpointId: 'end_xyz789'
+  })
+});
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.put(
+    'https://api.inbound.email/api/v2/domains/dom_abc123',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'Content-Type': 'application/json'
+    },
+    json={
+        'isCatchAllEnabled': True,
+        'catchAllEndpointId': 'end_xyz789'
+    }
+)
+data = response.json()
+```
+</RequestExample>
+
+### Disable Catch-All
+
+<RequestExample>
+```bash cURL
+curl -X PUT 'https://api.inbound.email/api/v2/domains/dom_abc123' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "isCatchAllEnabled": false,
+    "catchAllEndpointId": null
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.inbound.email/api/v2/domains/dom_abc123', {
+  method: 'PUT',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    isCatchAllEnabled: false,
+    catchAllEndpointId: null
+  })
+});
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.put(
+    'https://api.inbound.email/api/v2/domains/dom_abc123',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'Content-Type': 'application/json'
+    },
+    json={
+        'isCatchAllEnabled': False,
+        'catchAllEndpointId': None
+    }
+)
+data = response.json()
+```
+</RequestExample>
+
+### Success Response
+
+<ResponseExample>
+```json Enable Catch-All Success
+{
+  "id": "dom_abc123",
+  "domain": "example.com",
+  "status": "verified",
+  "isCatchAllEnabled": true,
+  "catchAllEndpointId": "end_xyz789",
+  "catchAllEndpoint": {
+    "id": "end_xyz789",
+    "name": "Main Webhook",
+    "type": "webhook",
+    "isActive": true
+  },
+  "receiptRuleName": "example.com-catchall-rule",
+  "updatedAt": "2024-01-15T10:30:00Z"
+}
+```
+
+```json Disable Catch-All Success
+{
+  "id": "dom_abc123",
+  "domain": "example.com",
+  "status": "verified",
+  "isCatchAllEnabled": false,
+  "catchAllEndpointId": null,
+  "catchAllEndpoint": null,
+  "receiptRuleName": null,
+  "updatedAt": "2024-01-15T10:30:00Z"
+}
+```
+
+```json With AWS Warning
+{
+  "id": "dom_abc123",
+  "domain": "example.com",
+  "status": "verified",
+  "isCatchAllEnabled": true,
+  "catchAllEndpointId": "end_xyz789",
+  "catchAllEndpoint": {
+    "id": "end_xyz789",
+    "name": "Main Webhook",
+    "type": "webhook",
+    "isActive": true
+  },
+  "receiptRuleName": null,
+  "awsConfigurationWarning": "AWS configuration incomplete. Missing S3_BUCKET_NAME or AWS_ACCOUNT_ID",
+  "updatedAt": "2024-01-15T10:30:00Z"
+}
+```
+</ResponseExample>
+
+## Error Responses
+
+<ResponseExample>
+```json 400 Bad Request - Domain Not Verified
+{
+  "error": "Domain must be verified before configuring catch-all"
+}
+```
+
+```json 400 Bad Request - Invalid Endpoint
+{
+  "error": "Endpoint not found or does not belong to user"
+}
+```
+
+```json 400 Bad Request - Inactive Endpoint
+{
+  "error": "Selected endpoint is not active"
+}
+```
+
+```json 404 Not Found
+{
+  "error": "Domain not found"
+}
+```
+
+```json 401 Unauthorized
+{
+  "error": "Unauthorized"
+}
+```
+
+```json 500 Internal Server Error
+{
+  "error": "Failed to update domain",
+  "details": "Database connection failed"
+}
+```
+</ResponseExample>
+
+## Important Notes
+
+<Info>
+When catch-all is enabled, it configures AWS SES receipt rules to forward all emails to the specified endpoint. This includes emails to non-existent addresses on your domain.
+</Info>
+
+<Warning>
+Enabling catch-all will remove any existing individual email receipt rules for this domain to prevent conflicts. When disabling catch-all, individual email rules will be restored automatically.
+</Warning>
+
+<Tip>
+The endpoint you specify must be active and belong to your account. We recommend using webhook endpoints for catch-all forwarding as they provide the most flexibility.
+</Tip>
+
+## Behavior Details
+
+### When Enabling Catch-All:
+1. The system validates that the domain is verified
+2. The specified endpoint is validated to ensure it exists and is active
+3. AWS SES receipt rules are configured to forward all emails to the endpoint
+4. Any existing individual email rules for this domain are removed to prevent conflicts
+5. The domain's catch-all configuration is updated in the database
+
+### When Disabling Catch-All:
+1. AWS SES catch-all receipt rules are removed
+2. Individual email rules for existing email addresses are restored
+3. The domain's catch-all configuration is cleared in the database
+
+### AWS SES Integration:
+- Receipt rules are created using the domain name (e.g., `example.com-catchall-rule`)
+- AWS SES uses the domain name pattern to catch all emails to that domain
+- If AWS configuration is incomplete, the database will still be updated but no receipt rules will be created 

@@ -37,6 +37,24 @@
               "api-reference/endpoints/update-endpoint",
               "api-reference/endpoints/delete-endpoint"
             ]
+          },
+          {
+            "group": "Email Addresses",
+            "pages": [
+              "api-reference/email-addresses/list-email-addresses",
+              "api-reference/email-addresses/create-email-address",
+              "api-reference/email-addresses/get-email-address",
+              "api-reference/email-addresses/update-email-address",
+              "api-reference/email-addresses/delete-email-address"
+            ]
+          },
+          {
+            "group": "Domains",
+            "pages": [
+              "api-reference/domains/list-domains",
+              "api-reference/domains/get-domain",
+              "api-reference/domains/update-domain"
+            ]
           }
         ]
       }
@@ -45,12 +63,12 @@
       "anchors": [
         {
           "anchor": "Dashboard",
-          "href": "https://inbound.new/dashboard",
+          "href": "https://inbound.new/mail",
           "icon": "chart-line"
         },
         {
           "anchor": "Support",
-          "href": "mailto:support@inbound.run",
+          "href": "mailto:support@inbound.new",
           "icon": "envelope"
         },
         {

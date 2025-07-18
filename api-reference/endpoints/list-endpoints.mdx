@@ -1,5 +1,6 @@
 ---
 title: "List Endpoints"
+api: "GET /api/v2/endpoints"
 description: "Retrieve all endpoints for your account with filtering and pagination"
 ---
 
@@ -15,9 +16,9 @@ GET https://inbound.new/api/v2/endpoints
 
 ## Authentication
 
-This endpoint requires authentication using either:
-- Session-based authentication (logged in user)
-- API key authentication via `Authorization: Bearer {api_key}` header
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication. Format: `Bearer YOUR_API_KEY`
+</ParamField>
 
 ## Query Parameters
 
