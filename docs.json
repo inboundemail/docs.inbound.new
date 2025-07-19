@@ -21,11 +21,19 @@
             ]
           },
           {
-            "group": "Emails",
+            "group": "Inbound Emails",
             "pages": [
               "api-reference/mail/list-emails",
               "api-reference/mail/get-email",
               "api-reference/mail/reply-to-email"
+            ]
+          },
+          {
+            "group": "Sending Emails",
+            "pages": [
+              "api-reference/emails/send-email",
+              "api-reference/emails/get-email",
+              "api-reference/emails/reply-to-email"
             ]
           },
           {
