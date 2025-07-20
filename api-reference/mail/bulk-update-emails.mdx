@@ -1,0 +1,195 @@
+---
+title: "Bulk Update Emails"
+api: "POST /api/v2/mail/bulk"
+description: "Bulk update multiple emails at once (archive, mark as read, etc.)"
+---
+
+Update properties of multiple emails simultaneously, such as marking them as read or archived.
+
+## Body Parameters
+
+<ParamField body="emailIds" type="string[]" required>
+  Array of email IDs to update. Maximum 100 emails per request.
+</ParamField>
+
+<ParamField body="updates" type="object" required>
+  Object containing the updates to apply to all specified emails
+  
+  <Expandable title="Updates object properties">
+    <ParamField body="updates.isRead" type="boolean">
+      Whether the emails should be marked as read or unread
+    </ParamField>
+    
+    <ParamField body="updates.isArchived" type="boolean">
+      Whether the emails should be archived or unarchived
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<Note>
+At least one property in the `updates` object (`isRead` or `isArchived`) must be provided.
+</Note>
+
+## Response
+
+<ResponseField name="updatedCount" type="number">
+  The number of emails that were successfully updated
+</ResponseField>
+
+<ResponseField name="emails" type="array">
+  Array of updated email objects with their new status
+  
+  <Expandable title="Email object properties">
+    <ResponseField name="emails[].id" type="string">
+      The unique identifier of the updated email
+    </ResponseField>
+    
+    <ResponseField name="emails[].isRead" type="boolean">
+      Current read status of the email
+    </ResponseField>
+    
+    <ResponseField name="emails[].isArchived" type="boolean">
+      Current archive status of the email
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X POST "https://api.inbound.email/v2/mail/bulk" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "emailIds": ["email_123", "email_456", "email_789"],
+    "updates": {
+      "isRead": true,
+      "isArchived": true
+    }
+  }'
+```
+
+```javascript Node.js
+const response = await fetch('https://api.inbound.email/v2/mail/bulk', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    emailIds: ['email_123', 'email_456', 'email_789'],
+    updates: {
+      isRead: true,
+      isArchived: true
+    }
+  })
+});
+
+const result = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://api.inbound.email/v2/mail/bulk',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'Content-Type': 'application/json'
+    },
+    json={
+        'emailIds': ['email_123', 'email_456', 'email_789'],
+        'updates': {
+            'isRead': True,
+            'isArchived': True
+        }
+    }
+)
+
+result = response.json()
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json Success
+{
+  "updatedCount": 3,
+  "emails": [
+    {
+      "id": "email_123",
+      "isRead": true,
+      "isArchived": true
+    },
+    {
+      "id": "email_456", 
+      "isRead": true,
+      "isArchived": true
+    },
+    {
+      "id": "email_789",
+      "isRead": true,
+      "isArchived": true
+    }
+  ]
+}
+```
+
+```json Error
+{
+  "error": "Cannot update more than 100 emails at once"
+}
+```
+
+</ResponseExample>
+
+## Use Cases
+
+### Bulk Archive
+Archive multiple selected emails:
+
+```javascript
+await fetch('/api/v2/mail/bulk', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    emailIds: selectedEmailIds,
+    updates: { isArchived: true }
+  })
+});
+```
+
+### Mark All as Read
+Mark multiple emails as read:
+
+```javascript
+await fetch('/api/v2/mail/bulk', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    emailIds: unreadEmailIds,
+    updates: { isRead: true }
+  })
+});
+```
+
+### Bulk Unarchive
+Restore multiple archived emails:
+
+```javascript
+await fetch('/api/v2/mail/bulk', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    emailIds: archivedEmailIds,
+    updates: { isArchived: false }
+  })
+});
+```
+
+## Limits
+
+- Maximum 100 emails per request
+- All specified email IDs must belong to the authenticated user
+- At least one update field must be provided 

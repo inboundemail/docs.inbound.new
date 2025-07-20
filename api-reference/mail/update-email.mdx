@@ -1,0 +1,152 @@
+---
+title: "Update Email"
+api: "PATCH /api/v2/mail/{id}"
+description: "Update email properties such as read status or archive status"
+---
+
+Update properties of a specific email, such as marking it as read or archived.
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the email to update
+</ParamField>
+
+## Body Parameters
+
+<ParamField body="isRead" type="boolean">
+  Whether the email should be marked as read or unread
+</ParamField>
+
+<ParamField body="isArchived" type="boolean">
+  Whether the email should be archived or unarchived
+</ParamField>
+
+<Note>
+At least one of `isRead` or `isArchived` must be provided in the request body.
+</Note>
+
+## Response
+
+<ResponseField name="id" type="string">
+  The unique identifier of the updated email
+</ResponseField>
+
+<ResponseField name="isRead" type="boolean">
+  Current read status of the email
+</ResponseField>
+
+<ResponseField name="isArchived" type="boolean">
+  Current archive status of the email
+</ResponseField>
+
+<ResponseField name="readAt" type="string | null">
+  ISO 8601 timestamp when the email was marked as read, or null if unread
+</ResponseField>
+
+<ResponseField name="archivedAt" type="string | null">
+  ISO 8601 timestamp when the email was archived, or null if not archived
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X PATCH "https://api.inbound.email/v2/mail/email_123" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "isRead": true,
+    "isArchived": false
+  }'
+```
+
+```javascript Node.js
+const response = await fetch('https://api.inbound.email/v2/mail/email_123', {
+  method: 'PATCH',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    isRead: true,
+    isArchived: false
+  })
+});
+
+const updatedEmail = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.patch(
+    'https://api.inbound.email/v2/mail/email_123',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'Content-Type': 'application/json'
+    },
+    json={
+        'isRead': True,
+        'isArchived': False
+    }
+)
+
+updated_email = response.json()
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json Success
+{
+  "id": "email_123",
+  "isRead": true,
+  "isArchived": false,
+  "readAt": "2024-01-15T10:30:00Z",
+  "archivedAt": null
+}
+```
+
+```json Error
+{
+  "error": "Email not found"
+}
+```
+
+</ResponseExample>
+
+## Use Cases
+
+### Mark as Read
+Mark an email as read when a user views it:
+
+```javascript
+await fetch('/api/v2/mail/email_123', {
+  method: 'PATCH',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ isRead: true })
+});
+```
+
+### Archive Email
+Archive an email to remove it from the main inbox:
+
+```javascript
+await fetch('/api/v2/mail/email_123', {
+  method: 'PATCH',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ isArchived: true })
+});
+```
+
+### Unarchive Email
+Restore an archived email back to the inbox:
+
+```javascript
+await fetch('/api/v2/mail/email_123', {
+  method: 'PATCH',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ isArchived: false })
+});
+``` 

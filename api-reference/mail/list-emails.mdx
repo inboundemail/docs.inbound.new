@@ -42,6 +42,10 @@ GET https://inbound.new/api/v2/mail
   Filter emails by time range. Options: `24h`, `7d`, `30d`, `90d`
 </ParamField>
 
+<ParamField query="includeArchived" type="boolean" default="false">
+  Whether to include archived emails in the results. By default, archived emails are excluded.
+</ParamField>
+
 ## Request Examples
 
 <CodeGroup>
