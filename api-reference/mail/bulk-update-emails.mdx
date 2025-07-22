@@ -57,7 +57,7 @@ At least one property in the `updates` object (`isRead` or `isArchived`) must be
 <RequestExample>
 
 ```bash cURL
-curl -X POST "https://api.inbound.email/v2/mail/bulk" \
+curl -X POST "https://inbound.new/v2/mail/bulk" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -70,7 +70,7 @@ curl -X POST "https://api.inbound.email/v2/mail/bulk" \
 ```
 
 ```javascript Node.js
-const response = await fetch('https://api.inbound.email/v2/mail/bulk', {
+const response = await fetch('https://inbound.new/v2/mail/bulk', {
   method: 'POST',
   headers: {
     'Authorization': 'Bearer YOUR_API_KEY',
@@ -92,7 +92,7 @@ const result = await response.json();
 import requests
 
 response = requests.post(
-    'https://api.inbound.email/v2/mail/bulk',
+    'https://inbound.new/v2/mail/bulk',
     headers={
         'Authorization': 'Bearer YOUR_API_KEY',
         'Content-Type': 'application/json'

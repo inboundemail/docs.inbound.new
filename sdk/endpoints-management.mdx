@@ -1,0 +1,387 @@
+---
+title: "Endpoints Management"
+description: "Configure webhooks, email forwarding, and email groups"
+---
+
+## Overview
+
+Endpoints define where incoming emails are routed. Inbound supports three endpoint types:
+- **Webhooks** - Send email data to your HTTP endpoints
+- **Email** - Forward to a single email address
+- **Email Groups** - Forward to multiple email addresses
+
+## List Endpoints
+
+Retrieve all configured endpoints:
+
+```typescript
+import { Inbound } from '@inboundemail/sdk'
+
+const inbound = new Inbound({ apiKey: process.env.INBOUND_API_KEY! })
+
+// List all endpoints
+const endpoints = await inbound.endpoints.list()
+
+// Filter by type
+const webhooks = await inbound.endpoints.list({
+  type: 'webhook',
+  active: 'true'
+})
+
+// With pagination
+const paginatedEndpoints = await inbound.endpoints.list({
+  limit: 20,
+  offset: 0
+})
+```
+
+### List Parameters
+
+<ParamField query="limit" type="number" default="50">
+  Maximum number of results (1-100)
+</ParamField>
+
+<ParamField query="offset" type="number" default="0">
+  Number of results to skip
+</ParamField>
+
+<ParamField query="type" type="string">
+  Filter by type: `webhook`, `email`, `email_group`
+</ParamField>
+
+<ParamField query="active" type="string">
+  Filter by status: `true` or `false`
+</ParamField>
+
+## Create Endpoint
+
+### Create Webhook Endpoint
+
+```typescript
+const webhook = await inbound.endpoints.create({
+  name: 'Production Webhook',
+  type: 'webhook',
+  description: 'Main webhook for production emails',
+  config: {
+    url: 'https://api.yourdomain.com/webhook',
+    timeout: 30,
+    retryAttempts: 3,
+    headers: {
+      'X-API-Key': 'your-secret-key'
+    }
+  }
+})
+
+console.log('Webhook created:', webhook.id)
+```
+
+### Create Email Forward
+
+```typescript
+const emailForward = await inbound.endpoints.create({
+  name: 'Support Forward',
+  type: 'email',
+  description: 'Forward to support team',
+  config: {
+    email: 'support@yourdomain.com'
+  }
+})
+```
+
+### Create Email Group
+
+```typescript
+const emailGroup = await inbound.endpoints.create({
+  name: 'Dev Team',
+  type: 'email_group',
+  description: 'Forward to development team',
+  config: {
+    emails: [
+      'dev1@yourdomain.com',
+      'dev2@yourdomain.com',
+      'dev3@yourdomain.com'
+    ]
+  }
+})
+```
+
+### Create Parameters
+
+<ParamField body="name" type="string" required>
+  Unique name for the endpoint
+</ParamField>
+
+<ParamField body="type" type="string" required>
+  Endpoint type: `webhook`, `email`, or `email_group`
+</ParamField>
+
+<ParamField body="description" type="string">
+  Optional description
+</ParamField>
+
+<ParamField body="config" type="object" required>
+  Configuration specific to endpoint type
+</ParamField>
+
+### Webhook Config
+
+<ParamField body="url" type="string" required>
+  HTTPS URL to receive webhooks
+</ParamField>
+
+<ParamField body="timeout" type="number" default="30">
+  Request timeout in seconds (5-60)
+</ParamField>
+
+<ParamField body="retryAttempts" type="number" default="3">
+  Number of retry attempts (0-5)
+</ParamField>
+
+<ParamField body="headers" type="object">
+  Custom headers to send with webhooks
+</ParamField>
+
+## Get Endpoint Details
+
+```typescript
+const endpoint = await inbound.endpoints.get('endp_abc123')
+
+console.log('Endpoint:', endpoint.name)
+console.log('Type:', endpoint.type)
+console.log('Active:', endpoint.isActive)
+console.log('Total deliveries:', endpoint.deliveryStats.total)
+console.log('Success rate:', 
+  (endpoint.deliveryStats.successful / endpoint.deliveryStats.total * 100).toFixed(2) + '%'
+)
+```
+
+## Update Endpoint
+
+```typescript
+// Update webhook URL
+const updated = await inbound.endpoints.update('endp_abc123', {
+  config: {
+    url: 'https://api.yourdomain.com/new-webhook',
+    timeout: 45,
+    retryAttempts: 5
+  }
+})
+
+// Disable endpoint
+const disabled = await inbound.endpoints.update('endp_abc123', {
+  isActive: false
+})
+
+// Update description
+const described = await inbound.endpoints.update('endp_abc123', {
+  description: 'Updated webhook for v2 API'
+})
+```
+
+### Update Parameters
+
+<ParamField body="name" type="string">
+  New name for the endpoint
+</ParamField>
+
+<ParamField body="description" type="string">
+  New description
+</ParamField>
+
+<ParamField body="isActive" type="boolean">
+  Enable or disable the endpoint
+</ParamField>
+
+<ParamField body="config" type="object">
+  New configuration (replaces existing)
+</ParamField>
+
+## Delete Endpoint
+
+```typescript
+const result = await inbound.endpoints.delete('endp_abc123')
+
+console.log('Endpoint deleted')
+console.log('Email addresses updated:', result.cleanup.emailAddressesUpdated)
+console.log('Domains updated:', result.cleanup.domainsUpdated)
+```
+
+<Warning>
+Deleting an endpoint will update all associated email addresses and domains to remove the routing. This action cannot be undone.
+</Warning>
+
+## Practical Examples
+
+### Health Check Monitoring
+
+```typescript
+async function checkEndpointHealth() {
+  const endpoints = await inbound.endpoints.list({ active: 'true' })
+  
+  const unhealthy = endpoints.data.filter(endpoint => {
+    const { deliveryStats } = endpoint
+    if (deliveryStats.total === 0) return false
+    
+    const successRate = deliveryStats.successful / deliveryStats.total
+    return successRate < 0.95 // Less than 95% success
+  })
+  
+  if (unhealthy.length > 0) {
+    console.log('Unhealthy endpoints:', unhealthy.map(e => ({
+      name: e.name,
+      successRate: (e.deliveryStats.successful / e.deliveryStats.total * 100).toFixed(2) + '%',
+      failed: e.deliveryStats.failed
+    })))
+  }
+}
+```
+
+### Webhook with Authentication
+
+```typescript
+// Create secure webhook
+const secureWebhook = await inbound.endpoints.create({
+  name: 'Secure API Webhook',
+  type: 'webhook',
+  config: {
+    url: 'https://api.yourdomain.com/secure-webhook',
+    timeout: 30,
+    retryAttempts: 3,
+    headers: {
+      'Authorization': `Bearer ${process.env.WEBHOOK_SECRET}`,
+      'X-Webhook-Version': '1.0'
+    }
+  }
+})
+
+// Verify webhook in your handler
+export async function POST(request: Request) {
+  const authHeader = request.headers.get('Authorization')
+  if (authHeader !== `Bearer ${process.env.WEBHOOK_SECRET}`) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+  
+  // Process webhook...
+}
+```
+
+### Dynamic Email Groups
+
+```typescript
+async function createDepartmentGroup(
+  department: string,
+  emails: string[]
+) {
+  // Validate email limit (max 50)
+  if (emails.length > 50) {
+    throw new Error('Email groups support maximum 50 addresses')
+  }
+  
+  return await inbound.endpoints.create({
+    name: `${department} Team`,
+    type: 'email_group',
+    description: `Auto-forward to ${department} team members`,
+    config: {
+      emails: emails
+    }
+  })
+}
+
+// Update group members
+async function updateGroupMembers(
+  endpointId: string,
+  newEmails: string[]
+) {
+  return await inbound.endpoints.update(endpointId, {
+    config: {
+      emails: newEmails
+    }
+  })
+}
+```
+
+### Failover Configuration
+
+```typescript
+// Create primary and backup endpoints
+const primary = await inbound.endpoints.create({
+  name: 'Primary Webhook',
+  type: 'webhook',
+  config: {
+    url: 'https://api.primary.com/webhook',
+    timeout: 30,
+    retryAttempts: 2
+  }
+})
+
+const backup = await inbound.endpoints.create({
+  name: 'Backup Email Forward',
+  type: 'email',
+  config: {
+    email: 'backup@yourdomain.com'
+  }
+})
+
+// Monitor and switch if needed
+async function checkAndSwitch(emailAddressId: string) {
+  const endpoint = await inbound.endpoints.get(primary.id)
+  const failureRate = endpoint.deliveryStats.failed / endpoint.deliveryStats.total
+  
+  if (failureRate > 0.1) { // More than 10% failure
+    // Switch to backup
+    await inbound.emailAddresses.update(emailAddressId, {
+      endpointId: backup.id
+    })
+    
+    // Notify admin
+    await notifyAdmin('Switched to backup endpoint due to high failure rate')
+  }
+}
+```
+
+### Endpoint Analytics
+
+```typescript
+async function getEndpointAnalytics() {
+  const endpoints = await inbound.endpoints.list()
+  
+  const analytics = endpoints.data.map(endpoint => ({
+    name: endpoint.name,
+    type: endpoint.type,
+    totalEmails: endpoint.deliveryStats.total,
+    successRate: endpoint.deliveryStats.total > 0 
+      ? (endpoint.deliveryStats.successful / endpoint.deliveryStats.total * 100).toFixed(2)
+      : 'N/A',
+    lastDelivery: endpoint.deliveryStats.lastDelivery,
+    isActive: endpoint.isActive,
+    emailCount: endpoint.type === 'email_group' 
+      ? endpoint.groupEmails?.length || 0
+      : 1
+  }))
+  
+  return analytics
+}
+```
+
+## Best Practices
+
+<Tip>
+- Use descriptive names for endpoints to easily identify their purpose
+- Set appropriate timeouts based on your webhook processing time
+- Configure retry attempts to handle temporary failures
+- Use webhook headers for authentication and versioning
+- Monitor delivery statistics regularly
+- Keep email groups under 50 addresses for optimal delivery
+</Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+<Card title="Email Addresses" icon="at" href="/sdk/email-addresses-management">
+  Configure individual email addresses
+</Card>
+
+<Card title="Domains Management" icon="globe" href="/sdk/domains-management">
+  Set up and verify domains
+</Card>
+</CardGroup> 

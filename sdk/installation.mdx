@@ -1,0 +1,88 @@
+---
+title: "Installation"
+description: "Install and set up the Inbound SDK in your project"
+---
+
+## Installation
+
+Install the Inbound SDK using your preferred package manager:
+
+<CodeGroup>
+```bash npm
+npm install @inboundemail/sdk
+```
+
+```bash yarn
+yarn add @inboundemail/sdk
+```
+
+```bash pnpm
+pnpm add @inboundemail/sdk
+```
+
+```bash bun
+bun add @inboundemail/sdk
+```
+</CodeGroup>
+
+## Requirements
+
+- Node.js 18.0 or later
+- TypeScript 4.5+ (for TypeScript projects)
+
+## Quick Start
+
+<Steps>
+<Step title="Import the SDK">
+```typescript
+import { Inbound } from '@inboundemail/sdk'
+```
+</Step>
+
+<Step title="Initialize with your API key">
+```typescript
+const inbound = new Inbound({
+  apiKey: process.env.INBOUND_API_KEY
+})
+```
+</Step>
+
+<Step title="Make your first API call">
+```typescript
+const domains = await inbound.domains.list()
+console.log(`You have ${domains.data.length} domains`)
+```
+</Step>
+</Steps>
+
+## TypeScript Support
+
+The SDK includes comprehensive TypeScript definitions. All request and response types are fully typed for excellent IDE support and type safety.
+
+```typescript
+import type { 
+  InboundWebhookPayload,
+  InboundWebhookEmail,
+  Webhook
+} from '@inboundemail/sdk'
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+<Card title="Configuration" icon="gear" href="/sdk/configuration">
+  Learn about SDK configuration options
+</Card>
+
+<Card title="Webhook Handling" icon="webhook" href="/sdk/webhook-handling">
+  Handle incoming email webhooks
+</Card>
+
+<Card title="Examples" icon="code" href="/sdk/examples">
+  See complete implementation examples
+</Card>
+
+<Card title="API Reference" icon="book" href="/api-reference/mail/list-emails">
+  Explore the full API reference
+</Card>
+</CardGroup> 

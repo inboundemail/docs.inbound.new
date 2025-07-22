@@ -1,0 +1,160 @@
+---
+title: "Configuration"
+description: "Configure the Inbound SDK for your application"
+---
+
+## Basic Configuration
+
+Initialize the SDK with your API key:
+
+```typescript
+import { Inbound } from '@inboundemail/sdk'
+
+const inbound = new Inbound({
+  apiKey: 'your_api_key_here'
+})
+```
+
+## Configuration Options
+
+<ParamField body="apiKey" type="string" required>
+  Your Inbound API key. Get it from your [dashboard](https://inbound.new/settings).
+</ParamField>
+
+<ParamField body="baseUrl" type="string" default="https://inbound.new/api/v2">
+  Base URL for API requests. Only change this for custom deployments.
+</ParamField>
+
+<ParamField body="defaultReplyFrom" type="string">
+  Default email address for simplified reply operations.
+</ParamField>
+
+## Environment Variables
+
+<Note>
+Store your API key securely in environment variables. Never commit API keys to version control.
+</Note>
+
+### Node.js / Next.js
+
+```bash .env
+INBOUND_API_KEY=your_api_key_here
+INBOUND_DEFAULT_REPLY_FROM=support@yourdomain.com
+```
+
+```typescript
+const inbound = new Inbound({
+  apiKey: process.env.INBOUND_API_KEY!,
+  defaultReplyFrom: process.env.INBOUND_DEFAULT_REPLY_FROM
+})
+```
+
+### Vercel
+
+```bash
+vercel env add INBOUND_API_KEY
+```
+
+### Netlify
+
+Add environment variables in your site settings or `netlify.toml`:
+
+```toml netlify.toml
+[build.environment]
+  INBOUND_API_KEY = "your_api_key_here"
+```
+
+## Advanced Configuration
+
+### Custom Base URL
+
+For self-hosted or enterprise deployments:
+
+```typescript
+const inbound = new Inbound({
+  apiKey: process.env.INBOUND_API_KEY!,
+  baseUrl: 'https://api.custom-domain.com/v2'
+})
+```
+
+### Default Reply Configuration
+
+Configure a default reply address for simplified reply operations:
+
+```typescript
+const inbound = new Inbound({
+  apiKey: process.env.INBOUND_API_KEY!,
+  defaultReplyFrom: 'support@yourdomain.com'
+})
+
+// Now you can use simple replies
+await inbound.reply(email, "Thanks for your message!")
+```
+
+Without default configuration, you must specify the from address:
+
+```typescript
+await inbound.reply(email, {
+  from: 'support@yourdomain.com',
+  text: 'Thanks for your message!'
+})
+```
+
+## Multiple Instances
+
+Create multiple SDK instances for different use cases:
+
+```typescript
+// Customer support instance
+const supportInbound = new Inbound({
+  apiKey: process.env.SUPPORT_API_KEY!,
+  defaultReplyFrom: 'support@company.com'
+})
+
+// Sales instance
+const salesInbound = new Inbound({
+  apiKey: process.env.SALES_API_KEY!,
+  defaultReplyFrom: 'sales@company.com'
+})
+```
+
+## Error Handling
+
+The SDK throws errors for failed API requests. Always wrap calls in try-catch blocks:
+
+```typescript
+try {
+  const domains = await inbound.domains.list()
+  console.log(domains)
+} catch (error) {
+  if (error instanceof Error) {
+    console.error('API Error:', error.message)
+  }
+}
+```
+
+## TypeScript Configuration
+
+The SDK is written in TypeScript and includes all type definitions. No additional configuration needed:
+
+```json tsconfig.json
+{
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+<Card title="Webhook Handling" icon="webhook" href="/sdk/webhook-handling">
+  Learn to handle incoming email webhooks
+</Card>
+
+<Card title="Mail Management" icon="envelope" href="/sdk/mail-management">
+  Manage your email inbox
+</Card>
+</CardGroup> 

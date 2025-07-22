@@ -1,0 +1,367 @@
+---
+title: "Test Endpoint"
+description: "Test an endpoint by sending a test payload to verify functionality"
+---
+
+## Test Endpoint
+
+<RequestExample>
+
+```bash cURL
+curl -X POST 'https://inbound.new/v2/endpoints/{id}/test' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "webhookFormat": "inbound"
+  }'
+```
+
+```javascript Node.js
+const response = await fetch('https://inbound.new/v2/endpoints/{id}/test', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    webhookFormat: 'inbound'
+  })
+});
+
+const result = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://inbound.new/v2/endpoints/{id}/test',
+    headers={'Authorization': 'Bearer YOUR_API_KEY'},
+    json={'webhookFormat': 'inbound'}
+)
+
+result = response.json()
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json Webhook Test Success
+{
+  "success": true,
+  "message": "Webhook responded successfully (200)",
+  "responseTime": 156,
+  "statusCode": 200,
+  "responseBody": "{\"success\": true, \"message\": \"Webhook received\"}",
+  "webhookFormat": "inbound",
+  "testPayload": {
+    "event": "webhook_test",
+    "timestamp": "2024-01-15T10:30:00.000Z",
+    "messageId": "test-1705316200000-abc123def",
+    "source": "test@example.com",
+    "destination": ["test@yourdomain.com"],
+    "subject": "Test Email - Inbound Email Service",
+    "body": {
+      "text": "This is a test email from the Inbound Email service to verify webhook functionality.",
+      "html": "<p>This is a test email from the <strong>Inbound Email service</strong> to verify webhook functionality.</p>"
+    },
+    "attachments": [],
+    "headers": {
+      "From": "test@example.com",
+      "To": "test@yourdomain.com",
+      "Subject": "Test Email - Inbound Email Service",
+      "Date": "2024-01-15T10:30:00.000Z"
+    },
+    "test": true,
+    "endpoint": {
+      "id": "ep_abc123",
+      "name": "My Webhook Endpoint"
+    }
+  }
+}
+```
+
+```json Email Forward Test Success
+{
+  "success": true,
+  "message": "Email forwarding endpoint configured to forward to: user@company.com",
+  "responseTime": 12,
+  "testPayload": {
+    "type": "email_forward_test",
+    "forwardTo": "user@company.com",
+    "preserveHeaders": false,
+    "subject": "Test Email - Inbound Email Service",
+    "from": "test@example.com",
+    "timestamp": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+```json Test Failed
+{
+  "success": false,
+  "message": "Webhook test failed: Connection refused",
+  "responseTime": 5000,
+  "error": "Connection refused",
+  "webhookFormat": "inbound"
+}
+```
+
+</ResponseExample>
+
+Tests an endpoint by sending a test payload to verify that it's configured correctly and responding as expected.
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the endpoint to test
+</ParamField>
+
+<ParamField body="webhookFormat" type="string">
+  The webhook format to use for testing webhook endpoints. Only applies to webhook-type endpoints.
+  
+  **Options:** `inbound`, `discord`, `slack`
+  
+  **Default:** `inbound`
+</ParamField>
+
+## Webhook Formats
+
+The test endpoint supports three different webhook formats for webhook-type endpoints:
+
+### Inbound Format
+
+The standard Inbound webhook format with complete email data:
+
+```json
+{
+  "event": "webhook_test",
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "messageId": "test-1705316200000-abc123def",
+  "source": "test@example.com",
+  "destination": ["test@yourdomain.com"],
+  "subject": "Test Email - Inbound Email Service",
+  "body": {
+    "text": "Test email content...",
+    "html": "<p>Test email content...</p>"
+  },
+  "attachments": [],
+  "headers": {},
+  "test": true
+}
+```
+
+### Discord Format
+
+Discord-compatible webhook format with rich embeds:
+
+```json
+{
+  "content": "📧 **Test Email Received**",
+  "embeds": [{
+    "title": "Test Email - Inbound Email Service",
+    "description": "This is a test email from the Inbound Email service...",
+    "color": 65280,
+    "timestamp": "2024-01-15T10:30:00.000Z",
+    "footer": {
+      "text": "Inbound Email Service - Test",
+      "icon_url": "https://inbound.email/favicon.ico"
+    },
+    "fields": [
+      {
+        "name": "From",
+        "value": "test@example.com",
+        "inline": true
+      },
+      {
+        "name": "To", 
+        "value": "test@yourdomain.com",
+        "inline": true
+      }
+    ]
+  }]
+}
+```
+
+### Slack Format
+
+Slack-compatible webhook format with attachments:
+
+```json
+{
+  "text": "📧 *Test Email Received*",
+  "username": "Inbound Email",
+  "icon_url": "https://inbound.email/favicon.ico",
+  "attachments": [{
+    "fallback": "Test email: Test Email - Inbound Email Service",
+    "color": "good",
+    "title": "Test Email - Inbound Email Service",
+    "text": "This is a test email from the Inbound Email service...",
+    "fields": [
+      {
+        "title": "From",
+        "value": "test@example.com",
+        "short": true
+      },
+      {
+        "title": "To",
+        "value": "test@yourdomain.com", 
+        "short": true
+      }
+    ],
+    "footer": "Inbound Email Service - Test"
+  }]
+}
+```
+
+## Endpoint Type Support
+
+### Webhook Endpoints
+
+For webhook endpoints, the test will:
+
+1. Generate a test payload in the specified format (inbound, discord, or slack)
+2. Send a POST request to the webhook URL with appropriate headers
+3. Measure response time and capture the response
+4. Return success/failure status with detailed information
+
+<Tip>
+Webhook tests include custom headers configured for the endpoint and add test-specific headers like `X-Test-Request: true`.
+</Tip>
+
+### Email Endpoints
+
+For email forwarding endpoints, the test will:
+
+1. Validate the forwarding configuration
+2. Return information about where emails would be forwarded
+3. Show the test payload that would be used for forwarding
+
+### Email Group Endpoints
+
+For email group endpoints, the test will:
+
+1. Validate the group configuration
+2. Return information about the group members
+3. Show how many recipients would receive forwarded emails
+
+## Response Fields
+
+<ResponseField name="success" type="boolean" required>
+  Whether the test was successful
+</ResponseField>
+
+<ResponseField name="message" type="string" required>
+  Human-readable description of the test result
+</ResponseField>
+
+<ResponseField name="responseTime" type="number" required>
+  Time taken for the test in milliseconds
+</ResponseField>
+
+<ResponseField name="statusCode" type="number">
+  HTTP status code returned by the webhook (webhook endpoints only)
+</ResponseField>
+
+<ResponseField name="responseBody" type="string">
+  Response body from the webhook, truncated to 1000 characters (webhook endpoints only)
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error message if the test failed
+</ResponseField>
+
+<ResponseField name="testPayload" type="object">
+  The payload that was sent during the test
+</ResponseField>
+
+<ResponseField name="webhookFormat" type="string">
+  The webhook format used for the test (webhook endpoints only)
+</ResponseField>
+
+## Error Handling
+
+<Warning>
+If an endpoint is disabled (`isActive: false`), the test will return a 400 error with an appropriate message.
+</Warning>
+
+Common error scenarios:
+
+- **Endpoint not found**: Returns 404 if the endpoint doesn't exist or doesn't belong to your account
+- **Endpoint disabled**: Returns 400 if the endpoint is not active
+- **Invalid webhook format**: Returns 400 if an unsupported webhook format is specified
+- **Network timeout**: Webhook tests will timeout based on the endpoint's configured timeout setting
+- **Connection refused**: Webhook URL is unreachable or refusing connections
+
+## Usage Examples
+
+### Test with Default Format
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST 'https://inbound.new/v2/endpoints/ep_abc123/test' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+```javascript Node.js
+const result = await fetch('https://inbound.new/v2/endpoints/ep_abc123/test', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY'
+  }
+});
+```
+
+</CodeGroup>
+
+### Test Discord Webhook
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST 'https://inbound.new/v2/endpoints/ep_abc123/test' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{"webhookFormat": "discord"}'
+```
+
+```javascript Node.js
+const result = await fetch('https://inbound.new/v2/endpoints/ep_abc123/test', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    webhookFormat: 'discord'
+  })
+});
+```
+
+</CodeGroup>
+
+### Test Slack Webhook
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST 'https://inbound.new/v2/endpoints/ep_abc123/test' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{"webhookFormat": "slack"}'
+```
+
+```javascript Node.js
+const result = await fetch('https://inbound.new/v2/endpoints/ep_abc123/test', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    webhookFormat: 'slack'
+  })
+});
+```
+
+</CodeGroup> 

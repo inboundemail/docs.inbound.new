@@ -11,15 +11,50 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Documentation",
+        "tab": "SDK Documentation",
         "groups": [
           {
             "group": "Getting Started",
             "pages": [
               "index",
-              "authentication"
+              "authentication",
+              "sdk/installation",
+              "sdk/configuration"
             ]
           },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "sdk/types",
+              "sdk/webhook-handling"
+            ]
+          },
+          {
+            "group": "Email Operations",
+            "pages": [
+              "sdk/mail-management",
+              "sdk/email-sending"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "sdk/endpoints-management",
+              "sdk/email-addresses-management",
+              "sdk/domains-management"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "sdk/examples"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
           {
             "group": "Inbound Emails",
             "pages": [

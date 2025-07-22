@@ -1,0 +1,374 @@
+---
+title: "Webhook Handling"
+description: "Handle incoming email webhooks with type safety"
+---
+
+## Overview
+
+When emails arrive at your configured addresses, Inbound sends a webhook to your endpoint with the complete email data.
+
+## Webhook Payload Structure
+
+```typescript
+import type { InboundWebhookPayload } from '@inboundemail/sdk'
+
+const payload: InboundWebhookPayload = {
+  event: 'email.received',
+  timestamp: '2024-01-15T10:30:00Z',
+  email: {
+    id: 'email_abc123',
+    messageId: '<unique@example.com>',
+    from: {
+      text: 'John Doe <john@example.com>',
+      addresses: [{
+        name: 'John Doe',
+        address: 'john@example.com'
+      }]
+    },
+    to: {
+      text: 'support@yourdomain.com',
+      addresses: [{
+        name: null,
+        address: 'support@yourdomain.com'
+      }]
+    },
+    recipient: 'support@yourdomain.com',
+    subject: 'Help with my order',
+    receivedAt: '2024-01-15T10:30:00Z',
+    parsedData: { /* ... */ },
+    cleanedContent: {
+      html: '<p>Hello...</p>',
+      text: 'Hello...',
+      hasHtml: true,
+      hasText: true,
+      attachments: [],
+      headers: { /* ... */ }
+    }
+  },
+  endpoint: {
+    id: 'endp_xyz789',
+    name: 'Support Webhook',
+    type: 'webhook'
+  }
+}
+```
+
+## Next.js App Router
+
+<CodeGroup>
+```typescript app/api/webhook/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+import { Inbound, isInboundWebhook } from '@inboundemail/sdk'
+import type { InboundWebhookPayload } from '@inboundemail/sdk'
+
+const inbound = new Inbound({
+  apiKey: process.env.INBOUND_API_KEY!,
+  defaultReplyFrom: 'support@yourdomain.com'
+})
+
+export async function POST(request: NextRequest) {
+  try {
+    const payload: InboundWebhookPayload = await request.json()
+    
+    // Validate webhook payload
+    if (!isInboundWebhook(payload)) {
+      return NextResponse.json(
+        { error: 'Invalid webhook payload' },
+        { status: 400 }
+      )
+    }
+    
+    const { email } = payload
+    
+    // Process the email
+    console.log(`New email from: ${email.from?.text}`)
+    console.log(`Subject: ${email.subject}`)
+    console.log(`Body: ${email.cleanedContent.text}`)
+    
+    // Auto-reply example
+    if (email.subject?.toLowerCase().includes('urgent')) {
+      await inbound.reply(email, 
+        "We received your urgent request and will respond within 1 hour."
+      )
+    }
+    
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Webhook error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+```
+
+```typescript app/api/webhook/route.ts (with database)
+import { NextRequest, NextResponse } from 'next/server'
+import { Inbound, isInboundWebhook } from '@inboundemail/sdk'
+import { db } from '@/lib/db'
+
+const inbound = new Inbound({
+  apiKey: process.env.INBOUND_API_KEY!
+})
+
+export async function POST(request: NextRequest) {
+  const payload = await request.json()
+  
+  if (!isInboundWebhook(payload)) {
+    return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
+  }
+  
+  const { email } = payload
+  
+  // Save to database
+  await db.emails.create({
+    data: {
+      emailId: email.id,
+      from: email.from?.text || '',
+      subject: email.subject || '',
+      body: email.cleanedContent.text || '',
+      receivedAt: new Date(email.receivedAt)
+    }
+  })
+  
+  // Process based on content
+  if (email.subject?.includes('order')) {
+    await processOrderEmail(email)
+  } else if (email.subject?.includes('support')) {
+    await createSupportTicket(email)
+  }
+  
+  return NextResponse.json({ success: true })
+}
+```
+</CodeGroup>
+
+## Express.js
+
+```typescript
+import express from 'express'
+import { Inbound, isInboundWebhook } from '@inboundemail/sdk'
+import type { InboundWebhookPayload } from '@inboundemail/sdk'
+
+const app = express()
+app.use(express.json())
+
+const inbound = new Inbound({
+  apiKey: process.env.INBOUND_API_KEY!,
+  defaultReplyFrom: 'noreply@yourdomain.com'
+})
+
+app.post('/webhook', async (req, res) => {
+  const payload: InboundWebhookPayload = req.body
+  
+  if (!isInboundWebhook(payload)) {
+    return res.status(400).json({ error: 'Invalid webhook payload' })
+  }
+  
+  const { email } = payload
+  
+  // Log email details
+  console.log('New email:', {
+    from: email.from?.text,
+    subject: email.subject,
+    hasAttachments: email.cleanedContent.attachments.length > 0
+  })
+  
+  // Reply to the email
+  await inbound.reply(email, {
+    from: 'support@yourdomain.com',
+    html: '<p>Thanks for your email! We\'ll get back to you soon.</p>',
+    text: 'Thanks for your email! We\'ll get back to you soon.'
+  })
+  
+  res.json({ success: true })
+})
+```
+
+## Webhook Headers
+
+Inbound sends these headers with each webhook request:
+
+```typescript
+interface InboundWebhookHeaders {
+  'content-type': 'application/json'
+  'user-agent': 'InboundEmail-Webhook/1.0'
+  'x-webhook-event': 'email.received'
+  'x-endpoint-id': string        // Your endpoint ID
+  'x-webhook-timestamp': string   // ISO timestamp
+  'x-email-id': string           // Email ID
+  'x-message-id': string         // Email Message-ID
+}
+```
+
+## Helper Functions
+
+The SDK provides utility functions for common tasks:
+
+```typescript
+import { 
+  getEmailText, 
+  getEmailHtml, 
+  getSenderInfo,
+  getRecipientAddresses,
+  getAttachmentInfo
+} from '@inboundemail/sdk'
+
+// Extract text content
+const textContent = getEmailText(email)
+
+// Extract HTML content
+const htmlContent = getEmailHtml(email)
+
+// Get sender details
+const { name, address } = getSenderInfo(email)
+
+// Get all recipients
+const recipients = getRecipientAddresses(email)
+
+// Check attachment types
+email.cleanedContent.attachments.forEach(attachment => {
+  const info = getAttachmentInfo(attachment)
+  if (info.isImage) {
+    console.log('Image attachment:', info.filename)
+  }
+})
+```
+
+## Error Handling
+
+<Warning>
+Always respond with 2xx status codes for successfully received webhooks, even if processing fails. Return error status codes only for invalid payloads.
+</Warning>
+
+```typescript
+export async function POST(request: Request) {
+  try {
+    const payload = await request.json()
+    
+    if (!isInboundWebhook(payload)) {
+      // Invalid payload - return 400
+      return new Response('Invalid payload', { status: 400 })
+    }
+    
+    try {
+      await processEmail(payload.email)
+    } catch (processingError) {
+      // Log error but return success
+      console.error('Processing failed:', processingError)
+      await notifyAdmins(processingError)
+    }
+    
+    // Always return success for valid webhooks
+    return new Response('OK', { status: 200 })
+    
+  } catch (error) {
+    // JSON parsing failed
+    return new Response('Bad request', { status: 400 })
+  }
+}
+```
+
+## Testing Webhooks
+
+### Local Development with ngrok
+
+```bash
+# Install ngrok
+npm install -g ngrok
+
+# Start your local server
+npm run dev
+
+# In another terminal, expose your local server
+ngrok http 3000
+
+# Use the ngrok URL for your webhook endpoint
+# https://abc123.ngrok.io/api/webhook
+```
+
+### Test Webhook Payload
+
+```typescript
+// test-webhook.ts
+import { InboundWebhookPayload } from '@inboundemail/sdk'
+
+const testPayload: InboundWebhookPayload = {
+  event: 'email.received',
+  timestamp: new Date().toISOString(),
+  email: {
+    id: 'test_email_123',
+    messageId: '<test@example.com>',
+    from: {
+      text: 'Test User <test@example.com>',
+      addresses: [{
+        name: 'Test User',
+        address: 'test@example.com'
+      }]
+    },
+    to: {
+      text: 'webhook@yourdomain.com',
+      addresses: [{
+        name: null,
+        address: 'webhook@yourdomain.com'
+      }]
+    },
+    recipient: 'webhook@yourdomain.com',
+    subject: 'Test Email',
+    receivedAt: new Date().toISOString(),
+    parsedData: {
+      messageId: '<test@example.com>',
+      date: new Date(),
+      subject: 'Test Email',
+      from: null,
+      to: null,
+      cc: null,
+      bcc: null,
+      replyTo: null,
+      inReplyTo: undefined,
+      references: undefined,
+      textBody: 'This is a test email.',
+      htmlBody: '<p>This is a test email.</p>',
+      attachments: [],
+      headers: {},
+      priority: undefined
+    },
+    cleanedContent: {
+      html: '<p>This is a test email.</p>',
+      text: 'This is a test email.',
+      hasHtml: true,
+      hasText: true,
+      attachments: [],
+      headers: {}
+    }
+  },
+  endpoint: {
+    id: 'test_endpoint_123',
+    name: 'Test Webhook',
+    type: 'webhook'
+  }
+}
+
+// Send test webhook
+fetch('http://localhost:3000/api/webhook', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'x-webhook-event': 'email.received'
+  },
+  body: JSON.stringify(testPayload)
+})
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+<Card title="Mail Management" icon="envelope" href="/sdk/mail-management">
+  Learn to manage your email inbox
+</Card>
+
+<Card title="Examples" icon="code" href="/sdk/examples">
+  See complete webhook implementations
+</Card>
+</CardGroup> 

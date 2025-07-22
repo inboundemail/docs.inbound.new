@@ -1,0 +1,335 @@
+---
+title: "TypeScript Types"
+description: "Complete type reference for the Inbound SDK"
+---
+
+## Overview
+
+The Inbound SDK is fully typed with TypeScript. All types are exported from the main package.
+
+```typescript
+import type {
+  // Webhook types
+  InboundWebhookPayload,
+  InboundWebhookEmail,
+  InboundEmailAddress,
+  InboundEmailAttachment,
+  
+  // Request/Response types
+  EmailItem,
+  EndpointWithStats,
+  DomainWithStats,
+  EmailAddressWithDomain,
+  
+  // Configuration
+  InboundEmailConfig
+} from '@inboundemail/sdk'
+```
+
+## Webhook Types
+
+### InboundWebhookPayload
+
+The main webhook payload structure sent to your endpoint:
+
+```typescript
+interface InboundWebhookPayload {
+  event: 'email.received'
+  timestamp: string
+  email: InboundWebhookEmail
+  endpoint: InboundWebhookEndpoint
+}
+```
+
+### InboundWebhookEmail
+
+Complete email data in the webhook:
+
+```typescript
+interface InboundWebhookEmail {
+  id: string
+  messageId: string | null
+  from: InboundEmailAddress | null
+  to: InboundEmailAddress | null
+  recipient: string
+  subject: string | null
+  receivedAt: Date | string
+  parsedData: InboundParsedEmailData
+  cleanedContent: {
+    html: string | null
+    text: string | null
+    hasHtml: boolean
+    hasText: boolean
+    attachments: InboundEmailAttachment[]
+    headers: InboundEmailHeaders
+  }
+}
+```
+
+### InboundEmailAddress
+
+Email address structure with parsed components:
+
+```typescript
+interface InboundEmailAddress {
+  text: string
+  addresses: Array<{
+    name: string | null
+    address: string | null
+  }>
+}
+```
+
+### InboundEmailAttachment
+
+Attachment metadata:
+
+```typescript
+interface InboundEmailAttachment {
+  filename: string | undefined
+  contentType: string | undefined
+  size: number | undefined
+  contentId: string | undefined
+  contentDisposition: string | undefined
+}
+```
+
+## API Response Types
+
+### EmailItem
+
+Email in the mail list response:
+
+```typescript
+interface EmailItem {
+  id: string
+  emailId: string
+  messageId: string | null
+  subject: string
+  from: string
+  fromName: string | null
+  recipient: string
+  preview: string
+  receivedAt: Date
+  isRead: boolean
+  readAt: Date | null
+  isArchived: boolean
+  archivedAt: Date | null
+  hasAttachments: boolean
+  attachmentCount: number
+  parseSuccess: boolean | null
+  parseError: string | null
+  createdAt: Date
+}
+```
+
+### EndpointWithStats
+
+Endpoint with delivery statistics:
+
+```typescript
+interface EndpointWithStats {
+  id: string
+  name: string
+  type: 'webhook' | 'email' | 'email_group'
+  config: EndpointConfig
+  isActive: boolean
+  description: string | null
+  userId: string
+  createdAt: Date
+  updatedAt: Date
+  groupEmails: string[] | null
+  deliveryStats: {
+    total: number
+    successful: number
+    failed: number
+    lastDelivery: string | null
+  }
+}
+```
+
+### DomainWithStats
+
+Domain with verification status:
+
+```typescript
+interface DomainWithStats {
+  id: string
+  domain: string
+  status: string
+  canReceiveEmails: boolean
+  hasMxRecords: boolean
+  domainProvider: string | null
+  providerConfidence: string | null
+  lastDnsCheck: Date | null
+  lastSesCheck: Date | null
+  isCatchAllEnabled: boolean
+  catchAllEndpointId: string | null
+  createdAt: Date
+  updatedAt: Date
+  userId: string
+  stats: {
+    totalEmailAddresses: number
+    activeEmailAddresses: number
+    hasCatchAll: boolean
+  }
+  catchAllEndpoint?: {
+    id: string
+    name: string
+    type: string
+    isActive: boolean
+  } | null
+}
+```
+
+## Request Types
+
+### Pagination Parameters
+
+Common pagination parameters:
+
+```typescript
+interface PaginationParams {
+  limit?: number    // 1-100
+  offset?: number   // >= 0
+}
+```
+
+### Mail Request Types
+
+```typescript
+interface GetMailRequest extends PaginationParams {
+  search?: string
+  status?: 'all' | 'processed' | 'failed'
+  domain?: string
+  timeRange?: '24h' | '7d' | '30d' | '90d'
+  includeArchived?: boolean
+}
+
+interface PostMailRequest {
+  emailId: string
+  to: string
+  subject: string
+  textBody: string
+  htmlBody?: string
+}
+```
+
+### Endpoint Request Types
+
+```typescript
+interface GetEndpointsRequest extends PaginationParams {
+  type?: 'webhook' | 'email' | 'email_group'
+  active?: 'true' | 'false'
+}
+
+interface PostEndpointsRequest {
+  name: string
+  type: 'webhook' | 'email' | 'email_group'
+  description?: string
+  config: EndpointConfig
+}
+
+type EndpointConfig = 
+  | WebhookConfig 
+  | EmailConfig 
+  | EmailGroupConfig
+
+interface WebhookConfig {
+  url: string
+  timeout: number
+  retryAttempts: number
+  headers?: Record<string, string>
+}
+```
+
+### Email Sending Types
+
+```typescript
+interface PostEmailsRequest {
+  from: string
+  to: string | string[]
+  subject: string
+  bcc?: string | string[]
+  cc?: string | string[]
+  reply_to?: string | string[]
+  html?: string
+  text?: string
+  headers?: Record<string, string>
+  attachments?: Array<{
+    content: string
+    filename: string
+    path?: string
+    content_type?: string
+  }>
+}
+
+interface PostEmailReplyRequest {
+  from: string
+  to?: string | string[]
+  cc?: string | string[]
+  bcc?: string | string[]
+  subject?: string
+  text?: string
+  html?: string
+  headers?: Record<string, string>
+  attachments?: Array<{
+    content: string
+    filename: string
+    path?: string
+    content_type?: string
+  }>
+  include_original?: boolean
+}
+```
+
+## Type Guards
+
+The SDK includes type guards for runtime type checking:
+
+```typescript
+import { isInboundWebhook } from '@inboundemail/sdk'
+
+// In your webhook handler
+export async function POST(request: Request) {
+  const payload = await request.json()
+  
+  if (!isInboundWebhook(payload)) {
+    return new Response('Invalid webhook payload', { status: 400 })
+  }
+  
+  // payload is now typed as InboundWebhookPayload
+  console.log(payload.email.subject)
+}
+```
+
+## Utility Types
+
+### Email Content Types
+
+```typescript
+// Extract just email content
+type InboundEmailContent = Pick<
+  InboundWebhookEmail, 
+  'subject' | 'parsedData' | 'cleanedContent'
+>
+
+// Attachment with metadata
+type InboundAttachmentInfo = InboundEmailAttachment & {
+  hasContent: boolean
+  isImage: boolean
+  isDocument: boolean
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+<Card title="Webhook Handling" icon="webhook" href="/sdk/webhook-handling">
+  Implement webhook handlers with proper types
+</Card>
+
+<Card title="Examples" icon="code" href="/sdk/examples">
+  See complete TypeScript examples
+</Card>
+</CardGroup> 

@@ -1,0 +1,299 @@
+---
+title: "Mail Management"
+description: "List, retrieve, and reply to emails in your inbox"
+---
+
+## Overview
+
+The Mail API allows you to manage emails received at your configured addresses.
+
+## List Emails
+
+Retrieve emails from your inbox with filtering and pagination:
+
+```typescript
+import { Inbound } from '@inboundemail/sdk'
+
+const inbound = new Inbound({ apiKey: process.env.INBOUND_API_KEY! })
+
+// List all emails
+const emails = await inbound.mail.list()
+
+// With filters
+const filteredEmails = await inbound.mail.list({
+  limit: 20,
+  offset: 0,
+  search: 'invoice',
+  domain: 'example.com',
+  timeRange: '7d',
+  includeArchived: false
+})
+
+console.log(`Found ${emails.emails.length} emails`)
+console.log(`Total: ${emails.pagination.total}`)
+```
+
+### List Parameters
+
+<ParamField query="limit" type="number" default="50">
+  Maximum number of results (1-100)
+</ParamField>
+
+<ParamField query="offset" type="number" default="0">
+  Number of results to skip for pagination
+</ParamField>
+
+<ParamField query="search" type="string">
+  Search emails by subject, sender, or content
+</ParamField>
+
+<ParamField query="status" type="string">
+  Filter by processing status: `all`, `processed`, `failed`
+</ParamField>
+
+<ParamField query="domain" type="string">
+  Filter emails by recipient domain
+</ParamField>
+
+<ParamField query="timeRange" type="string">
+  Time range filter: `24h`, `7d`, `30d`, `90d`
+</ParamField>
+
+<ParamField query="includeArchived" type="boolean" default="false">
+  Include archived emails in results
+</ParamField>
+
+### Response Structure
+
+```typescript
+interface GetMailResponse {
+  emails: EmailItem[]
+  pagination: {
+    limit: number
+    offset: number
+    total: number
+    hasMore?: boolean
+  }
+}
+
+interface EmailItem {
+  id: string
+  emailId: string
+  messageId: string | null
+  subject: string
+  from: string
+  fromName: string | null
+  recipient: string
+  preview: string
+  receivedAt: Date
+  isRead: boolean
+  readAt: Date | null
+  isArchived: boolean
+  archivedAt: Date | null
+  hasAttachments: boolean
+  attachmentCount: number
+  parseSuccess: boolean | null
+  parseError: string | null
+  createdAt: Date
+}
+```
+
+## Get Email Details
+
+Retrieve complete details for a specific email:
+
+```typescript
+const emailDetails = await inbound.mail.get('email_abc123')
+
+console.log('Subject:', emailDetails.subject)
+console.log('From:', emailDetails.from)
+console.log('Text:', emailDetails.textBody)
+console.log('HTML:', emailDetails.htmlBody)
+console.log('Attachments:', emailDetails.attachments.length)
+```
+
+### Response Structure
+
+```typescript
+interface GetMailByIdResponse {
+  id: string
+  emailId: string
+  subject: string
+  from: string
+  to: string
+  textBody: string
+  htmlBody: string
+  receivedAt: Date
+  attachments: Array<{
+    filename: string
+    contentType: string
+    size: number
+    contentId?: string
+  }>
+}
+```
+
+## Reply to Emails
+
+Reply to received emails directly through the mail API:
+
+```typescript
+// Reply to an email
+await inbound.mail.reply({
+  emailId: 'email_abc123',
+  to: 'customer@example.com',
+  subject: 'Re: Your inquiry',
+  textBody: 'Thank you for your message. We will get back to you soon.',
+  htmlBody: '<p>Thank you for your message. We will get back to you soon.</p>'
+})
+```
+
+### Reply Parameters
+
+<ParamField body="emailId" type="string" required>
+  ID of the email to reply to
+</ParamField>
+
+<ParamField body="to" type="string" required>
+  Recipient email address
+</ParamField>
+
+<ParamField body="subject" type="string" required>
+  Email subject line
+</ParamField>
+
+<ParamField body="textBody" type="string" required>
+  Plain text version of the email
+</ParamField>
+
+<ParamField body="htmlBody" type="string">
+  HTML version of the email
+</ParamField>
+
+## Practical Examples
+
+### Search and Process Emails
+
+```typescript
+// Search for unprocessed orders
+const orderEmails = await inbound.mail.list({
+  search: 'order',
+  timeRange: '24h',
+  status: 'processed'
+})
+
+for (const email of orderEmails.emails) {
+  // Get full email details
+  const details = await inbound.mail.get(email.id)
+  
+  // Process order
+  const orderNumber = extractOrderNumber(details.textBody)
+  await processOrder(orderNumber)
+  
+  // Reply to confirm
+  await inbound.mail.reply({
+    emailId: email.id,
+    to: email.from,
+    subject: `Order ${orderNumber} Confirmed`,
+    textBody: `Your order ${orderNumber} has been received and is being processed.`
+  })
+}
+```
+
+### Pagination Example
+
+```typescript
+async function getAllEmails() {
+  const allEmails: EmailItem[] = []
+  let offset = 0
+  const limit = 100
+  
+  while (true) {
+    const response = await inbound.mail.list({
+      limit,
+      offset,
+      timeRange: '30d'
+    })
+    
+    allEmails.push(...response.emails)
+    
+    if (!response.pagination.hasMore) break
+    offset += limit
+  }
+  
+  return allEmails
+}
+```
+
+### Archive Old Emails
+
+```typescript
+// Get emails older than 30 days
+const oldEmails = await inbound.mail.list({
+  timeRange: '90d',
+  includeArchived: false
+})
+
+// Filter emails older than 30 days
+const thirtyDaysAgo = new Date()
+thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+const toArchive = oldEmails.emails.filter(
+  email => new Date(email.receivedAt) < thirtyDaysAgo
+)
+
+// Archive them (using your own archive logic)
+for (const email of toArchive) {
+  await archiveEmail(email.id)
+}
+```
+
+### Email Analytics
+
+```typescript
+// Get email statistics
+const emails = await inbound.mail.list({
+  timeRange: '7d',
+  limit: 100
+})
+
+const stats = {
+  total: emails.pagination.total,
+  withAttachments: emails.emails.filter(e => e.hasAttachments).length,
+  failed: emails.emails.filter(e => !e.parseSuccess).length,
+  domains: [...new Set(emails.emails.map(e => 
+    e.recipient.split('@')[1]
+  ))],
+  avgResponseTime: calculateAvgResponseTime(emails.emails)
+}
+
+console.log('Weekly email stats:', stats)
+```
+
+## Error Handling
+
+```typescript
+try {
+  const emails = await inbound.mail.list()
+} catch (error) {
+  if (error.message.includes('401')) {
+    console.error('Invalid API key')
+  } else if (error.message.includes('429')) {
+    console.error('Rate limit exceeded')
+  } else {
+    console.error('API error:', error.message)
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+<Card title="Email Sending" icon="paper-plane" href="/sdk/email-sending">
+  Send emails using the SDK
+</Card>
+
+<Card title="Endpoints Management" icon="webhook" href="/sdk/endpoints-management">
+  Configure email routing endpoints
+</Card>
+</CardGroup> 

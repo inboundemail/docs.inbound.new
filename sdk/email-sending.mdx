@@ -1,0 +1,395 @@
+---
+title: "Email Sending"
+description: "Send emails and reply to conversations using the SDK"
+---
+
+## Overview
+
+The Emails API provides Resend-compatible email sending with additional features for replying to email threads.
+
+## Send Email
+
+Send emails with full support for HTML, attachments, and headers:
+
+```typescript
+import { Inbound } from '@inboundemail/sdk'
+
+const inbound = new Inbound({ apiKey: process.env.INBOUND_API_KEY! })
+
+// Simple email
+const { id } = await inbound.emails.send({
+  from: 'you@yourdomain.com',
+  to: 'customer@example.com',
+  subject: 'Welcome to our service',
+  text: 'Thanks for signing up!',
+  html: '<p>Thanks for signing up!</p>'
+})
+
+console.log('Email sent:', id)
+```
+
+### Send Parameters
+
+<ParamField body="from" type="string" required>
+  Sender email address. Must be from a verified domain.
+</ParamField>
+
+<ParamField body="to" type="string | string[]" required>
+  Recipient email address(es)
+</ParamField>
+
+<ParamField body="subject" type="string" required>
+  Email subject line
+</ParamField>
+
+<ParamField body="text" type="string">
+  Plain text version of the email
+</ParamField>
+
+<ParamField body="html" type="string">
+  HTML version of the email
+</ParamField>
+
+<ParamField body="cc" type="string | string[]">
+  Carbon copy recipients
+</ParamField>
+
+<ParamField body="bcc" type="string | string[]">
+  Blind carbon copy recipients
+</ParamField>
+
+<ParamField body="reply_to" type="string | string[]">
+  Reply-to email address(es)
+</ParamField>
+
+<ParamField body="headers" type="object">
+  Custom email headers
+</ParamField>
+
+<ParamField body="attachments" type="array">
+  File attachments (see structure below)
+</ParamField>
+
+### Attachment Structure
+
+```typescript
+interface Attachment {
+  content: string      // Base64 encoded content
+  filename: string     // File name
+  path?: string       // Alternative to content
+  content_type?: string // MIME type
+}
+```
+
+## Reply to Email
+
+Reply to emails with context preservation:
+
+### Using the Simplified Reply Method
+
+```typescript
+// Configure default reply address
+const inbound = new Inbound({
+  apiKey: process.env.INBOUND_API_KEY!,
+  defaultReplyFrom: 'support@yourdomain.com'
+})
+
+// Simple text reply
+await inbound.reply(email, "Thanks for your message!")
+
+// Reply with options
+await inbound.reply(email, {
+  text: 'Thanks for your message!',
+  html: '<p>Thanks for your message!</p>',
+  attachments: [{
+    filename: 'invoice.pdf',
+    content: base64Content
+  }]
+})
+```
+
+### Using the Full Reply API
+
+```typescript
+// Reply via email ID
+await inbound.emails.reply('email_abc123', {
+  from: 'support@yourdomain.com',
+  text: 'Thank you for contacting us.',
+  html: '<p>Thank you for contacting us.</p>',
+  include_original: true
+})
+
+// Reply with all options
+await inbound.emails.reply(emailId, {
+  from: 'support@yourdomain.com',
+  to: ['customer@example.com'],
+  cc: ['manager@yourdomain.com'],
+  subject: 'Re: Your inquiry',
+  text: 'Here is our response...',
+  html: '<p>Here is our response...</p>',
+  headers: {
+    'X-Priority': '1'
+  },
+  attachments: [{
+    filename: 'document.pdf',
+    content: base64EncodedPDF
+  }],
+  include_original: false
+})
+```
+
+### Reply Parameters
+
+<ParamField body="from" type="string" required>
+  Sender email address
+</ParamField>
+
+<ParamField body="to" type="string | string[]">
+  Override recipient addresses
+</ParamField>
+
+<ParamField body="cc" type="string | string[]">
+  Carbon copy recipients
+</ParamField>
+
+<ParamField body="bcc" type="string | string[]">
+  Blind carbon copy recipients
+</ParamField>
+
+<ParamField body="subject" type="string">
+  Override subject line
+</ParamField>
+
+<ParamField body="text" type="string">
+  Plain text reply content
+</ParamField>
+
+<ParamField body="html" type="string">
+  HTML reply content
+</ParamField>
+
+<ParamField body="headers" type="object">
+  Custom email headers
+</ParamField>
+
+<ParamField body="attachments" type="array">
+  File attachments
+</ParamField>
+
+<ParamField body="include_original" type="boolean" default="false">
+  Include original email in reply
+</ParamField>
+
+## Practical Examples
+
+### Send Welcome Email
+
+```typescript
+async function sendWelcomeEmail(userEmail: string, userName: string) {
+  const { id } = await inbound.emails.send({
+    from: 'welcome@yourdomain.com',
+    to: userEmail,
+    subject: 'Welcome to Our Service!',
+    html: `
+      <h1>Welcome ${userName}!</h1>
+      <p>We're excited to have you on board.</p>
+      <a href="https://yourdomain.com/get-started">Get Started</a>
+    `,
+    text: `Welcome ${userName}! We're excited to have you on board.`
+  })
+  
+  return id
+}
+```
+
+### Send Email with Attachments
+
+```typescript
+import fs from 'fs'
+
+async function sendInvoice(customerEmail: string, invoicePath: string) {
+  // Read and encode file
+  const invoiceContent = fs.readFileSync(invoicePath)
+  const base64Content = invoiceContent.toString('base64')
+  
+  const { id } = await inbound.emails.send({
+    from: 'billing@yourdomain.com',
+    to: customerEmail,
+    subject: 'Your Invoice',
+    html: '<p>Please find your invoice attached.</p>',
+    attachments: [{
+      filename: 'invoice.pdf',
+      content: base64Content,
+      content_type: 'application/pdf'
+    }]
+  })
+  
+  return id
+}
+```
+
+### Auto-Reply System
+
+```typescript
+// In your webhook handler
+export async function handleWebhook(payload: InboundWebhookPayload) {
+  const { email } = payload
+  
+  // Check business hours
+  const now = new Date()
+  const hour = now.getHours()
+  const isBusinessHours = hour >= 9 && hour < 17
+  
+  if (!isBusinessHours) {
+    // Send auto-reply
+    await inbound.reply(email, {
+      from: 'support@yourdomain.com',
+      html: `
+        <p>Thank you for contacting us!</p>
+        <p>We received your message outside of business hours. 
+           Our team will respond within 24 hours.</p>
+        <p>Business hours: Mon-Fri 9AM-5PM EST</p>
+      `,
+      text: 'Thank you for contacting us! We received your message...'
+    })
+  }
+}
+```
+
+### Bulk Email Sending
+
+```typescript
+async function sendNewsletter(subscribers: string[], content: string) {
+  const results = []
+  
+  // Send in batches to respect rate limits
+  const batchSize = 10
+  for (let i = 0; i < subscribers.length; i += batchSize) {
+    const batch = subscribers.slice(i, i + batchSize)
+    
+    const promises = batch.map(email => 
+      inbound.emails.send({
+        from: 'newsletter@yourdomain.com',
+        to: email,
+        subject: 'Monthly Newsletter',
+        html: content,
+        headers: {
+          'List-Unsubscribe': '<https://yourdomain.com/unsubscribe>'
+        }
+      })
+    )
+    
+    const batchResults = await Promise.allSettled(promises)
+    results.push(...batchResults)
+    
+    // Rate limit delay
+    await new Promise(resolve => setTimeout(resolve, 1000))
+  }
+  
+  return results
+}
+```
+
+### Email Templates
+
+```typescript
+interface EmailTemplate {
+  subject: string
+  html: string
+  text: string
+}
+
+const templates: Record<string, EmailTemplate> = {
+  orderConfirmation: {
+    subject: 'Order Confirmation - #{orderNumber}',
+    html: `
+      <h1>Order Confirmed!</h1>
+      <p>Hi {customerName},</p>
+      <p>Your order #{orderNumber} has been confirmed.</p>
+      <p>Total: ${amount}</p>
+    `,
+    text: 'Order Confirmed! Hi {customerName}...'
+  }
+}
+
+async function sendTemplatedEmail(
+  template: string,
+  to: string,
+  variables: Record<string, string>
+) {
+  const emailTemplate = templates[template]
+  
+  // Replace variables
+  let html = emailTemplate.html
+  let text = emailTemplate.text
+  let subject = emailTemplate.subject
+  
+  Object.entries(variables).forEach(([key, value]) => {
+    const regex = new RegExp(`{${key}}|#\{${key}\}`, 'g')
+    html = html.replace(regex, value)
+    text = text.replace(regex, value)
+    subject = subject.replace(regex, value)
+  })
+  
+  return inbound.emails.send({
+    from: 'noreply@yourdomain.com',
+    to,
+    subject,
+    html,
+    text
+  })
+}
+```
+
+## Error Handling
+
+```typescript
+try {
+  await inbound.emails.send({
+    from: 'sender@yourdomain.com',
+    to: 'recipient@example.com',
+    subject: 'Test',
+    text: 'Test email'
+  })
+} catch (error) {
+  if (error.message.includes('401')) {
+    console.error('Invalid API key')
+  } else if (error.message.includes('422')) {
+    console.error('Invalid email parameters')
+  } else if (error.message.includes('429')) {
+    console.error('Rate limit exceeded')
+  } else {
+    console.error('Failed to send email:', error.message)
+  }
+}
+```
+
+## Resend Compatibility
+
+The SDK is designed to be compatible with Resend's API:
+
+```typescript
+// Works like Resend
+const { id } = await inbound.send({
+  from: 'you@yourdomain.com',
+  to: 'them@example.com',
+  subject: 'Hello',
+  html: '<p>Hello World</p>'
+})
+
+// Get sent email details
+const email = await inbound.emails.get(id)
+console.log('Email status:', email.last_event)
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+<Card title="Endpoints Management" icon="webhook" href="/sdk/endpoints-management">
+  Configure email routing endpoints
+</Card>
+
+<Card title="Examples" icon="code" href="/sdk/examples">
+  See complete implementation examples
+</Card>
+</CardGroup> 

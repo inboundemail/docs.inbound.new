@@ -1,0 +1,419 @@
+---
+title: "Domains Management"
+description: "Add, verify, and configure domains for receiving emails"
+---
+
+## Overview
+
+Domains must be added and verified before you can receive emails. Inbound handles DNS verification and AWS SES configuration automatically.
+
+## List Domains
+
+Retrieve all domains in your account:
+
+```typescript
+import { Inbound } from '@inboundemail/sdk'
+
+const inbound = new Inbound({ apiKey: process.env.INBOUND_API_KEY! })
+
+// List all domains
+const domains = await inbound.domains.list()
+
+// Filter by status
+const verifiedDomains = await inbound.domains.list({
+  status: 'verified',
+  canReceive: 'true'
+})
+
+// Check DNS records
+const domainsWithCheck = await inbound.domains.list({
+  check: 'true' // Performs real-time DNS verification
+})
+```
+
+### List Parameters
+
+<ParamField query="limit" type="number" default="50">
+  Maximum number of results (1-100)
+</ParamField>
+
+<ParamField query="offset" type="number" default="0">
+  Number of results to skip
+</ParamField>
+
+<ParamField query="status" type="string">
+  Filter by verification status: `pending`, `verified`, `failed`
+</ParamField>
+
+<ParamField query="canReceive" type="string">
+  Filter by email capability: `true` or `false`
+</ParamField>
+
+<ParamField query="check" type="string">
+  Perform real-time DNS verification: `true` or `false`
+</ParamField>
+
+### Response Structure
+
+```typescript
+interface DomainWithStats {
+  id: string
+  domain: string
+  status: string
+  canReceiveEmails: boolean
+  hasMxRecords: boolean
+  domainProvider: string | null
+  providerConfidence: string | null
+  lastDnsCheck: Date | null
+  lastSesCheck: Date | null
+  isCatchAllEnabled: boolean
+  catchAllEndpointId: string | null
+  createdAt: Date
+  updatedAt: Date
+  stats: {
+    totalEmailAddresses: number
+    activeEmailAddresses: number
+    hasCatchAll: boolean
+  }
+  catchAllEndpoint?: {
+    id: string
+    name: string
+    type: string
+    isActive: boolean
+  } | null
+}
+```
+
+## Add Domain
+
+Add a new domain to receive emails:
+
+```typescript
+const domain = await inbound.domains.create({
+  domain: 'yourdomain.com'
+})
+
+console.log('Domain added:', domain.domain)
+console.log('Status:', domain.status)
+console.log('DNS Records to add:')
+
+domain.dnsRecords.forEach(record => {
+  console.log(`${record.type} ${record.name} ${record.value}`)
+})
+```
+
+### DNS Records
+
+After adding a domain, you'll receive DNS records to add:
+
+```typescript
+interface DnsRecord {
+  type: 'MX' | 'TXT' | 'CNAME'
+  name: string
+  value: string
+}
+```
+
+Example DNS records:
+- **MX Record**: Routes emails to AWS SES
+- **TXT Records**: Domain verification and DKIM authentication
+- **CNAME Records**: DKIM signing keys
+
+## Get Domain Details
+
+```typescript
+const domain = await inbound.domains.get('domain_abc123')
+
+console.log('Domain:', domain.domain)
+console.log('Status:', domain.status)
+console.log('Can receive emails:', domain.canReceiveEmails)
+console.log('Email addresses:', domain.stats.totalEmailAddresses)
+
+if (domain.catchAllEndpoint) {
+  console.log('Catch-all routes to:', domain.catchAllEndpoint.name)
+}
+```
+
+## Configure Catch-All
+
+Route all emails to a domain (except specific addresses) to a single endpoint:
+
+```typescript
+// Enable catch-all
+const updated = await inbound.domains.update('domain_abc123', {
+  isCatchAllEnabled: true,
+  catchAllEndpointId: 'endp_xyz789'
+})
+
+// Disable catch-all
+const disabled = await inbound.domains.update('domain_abc123', {
+  isCatchAllEnabled: false,
+  catchAllEndpointId: null
+})
+```
+
+### Update Parameters
+
+<ParamField body="isCatchAllEnabled" type="boolean" required>
+  Enable or disable catch-all routing
+</ParamField>
+
+<ParamField body="catchAllEndpointId" type="string | null" required>
+  Endpoint ID for catch-all emails (null to disable)
+</ParamField>
+
+<Note>
+Catch-all receives emails sent to any address at your domain that doesn't have a specific email address configured.
+</Note>
+
+## Domain Verification
+
+### Check Verification Status
+
+```typescript
+async function checkDomainStatus(domainId: string) {
+  const domain = await inbound.domains.get(domainId)
+  
+  if (domain.status === 'verified' && domain.canReceiveEmails) {
+    console.log('✅ Domain is ready to receive emails')
+  } else {
+    console.log('⏳ Domain verification pending')
+    console.log('Status:', domain.status)
+    console.log('Has MX records:', domain.hasMxRecords)
+    
+    // Get detailed DNS check
+    const domainsWithCheck = await inbound.domains.list({
+      check: 'true'
+    })
+    
+    const domainCheck = domainsWithCheck.data.find(d => d.id === domainId)
+    if (domainCheck?.verificationCheck) {
+      console.log('DNS Records Status:')
+      domainCheck.verificationCheck.dnsRecords?.forEach(record => {
+        console.log(`${record.type}: ${record.status}`)
+      })
+    }
+  }
+}
+```
+
+### DNS Provider Detection
+
+Inbound automatically detects your DNS provider:
+
+```typescript
+const domain = await inbound.domains.get('domain_abc123')
+
+if (domain.domainProvider) {
+  console.log('DNS Provider:', domain.domainProvider)
+  console.log('Confidence:', domain.providerConfidence)
+  
+  // Show provider-specific instructions
+  const instructions = getDnsInstructions(domain.domainProvider)
+  console.log(instructions)
+}
+```
+
+## Practical Examples
+
+### Multi-Domain Setup
+
+```typescript
+async function setupCompanyDomains() {
+  const domains = [
+    'company.com',
+    'company.co.uk',
+    'company-support.com'
+  ]
+  
+  // Add all domains
+  const addedDomains = await Promise.all(
+    domains.map(domain => inbound.domains.create({ domain }))
+  )
+  
+  // Display DNS records for each
+  addedDomains.forEach(domain => {
+    console.log(`\nDNS Records for ${domain.domain}:`)
+    domain.dnsRecords.forEach(record => {
+      console.log(`${record.type} ${record.name} ${record.value}`)
+    })
+  })
+  
+  return addedDomains
+}
+```
+
+### Automated Verification Check
+
+```typescript
+async function waitForVerification(domainId: string, maxAttempts = 30) {
+  let attempts = 0
+  
+  while (attempts < maxAttempts) {
+    const domain = await inbound.domains.get(domainId)
+    
+    if (domain.status === 'verified' && domain.canReceiveEmails) {
+      console.log('✅ Domain verified and ready!')
+      return domain
+    }
+    
+    console.log(`Attempt ${attempts + 1}: Status = ${domain.status}`)
+    
+    // Wait 2 minutes between checks
+    await new Promise(resolve => setTimeout(resolve, 120000))
+    attempts++
+  }
+  
+  throw new Error('Domain verification timeout')
+}
+```
+
+### Catch-All Configuration
+
+```typescript
+async function setupCatchAll(domainId: string) {
+  // Create catch-all endpoint
+  const catchAllEndpoint = await inbound.endpoints.create({
+    name: 'Domain Catch-All',
+    type: 'webhook',
+    description: 'Handles all unmatched emails',
+    config: {
+      url: 'https://api.yourdomain.com/catch-all',
+      timeout: 30,
+      retryAttempts: 3
+    }
+  })
+  
+  // Enable catch-all on domain
+  const domain = await inbound.domains.update(domainId, {
+    isCatchAllEnabled: true,
+    catchAllEndpointId: catchAllEndpoint.id
+  })
+  
+  console.log('Catch-all configured for:', domain.domain)
+  
+  // Create specific addresses that override catch-all
+  const specificAddresses = ['support', 'sales', 'billing']
+  
+  for (const address of specificAddresses) {
+    await inbound.emailAddresses.create({
+      address: `${address}@${domain.domain}`,
+      domainId: domainId,
+      endpointId: 'endp_specific_handler'
+    })
+  }
+}
+```
+
+### Domain Analytics
+
+```typescript
+async function getDomainAnalytics() {
+  const domains = await inbound.domains.list({
+    check: 'true'
+  })
+  
+  const analytics = domains.data.map(domain => ({
+    domain: domain.domain,
+    status: domain.status,
+    emailAddresses: domain.stats.totalEmailAddresses,
+    activeAddresses: domain.stats.activeEmailAddresses,
+    hasCatchAll: domain.stats.hasCatchAll,
+    provider: domain.domainProvider || 'Unknown',
+    lastChecked: domain.lastDnsCheck,
+    health: domain.canReceiveEmails ? 'Healthy' : 'Issues'
+  }))
+  
+  // Summary stats
+  const summary = {
+    total: analytics.length,
+    verified: analytics.filter(d => d.status === 'verified').length,
+    withCatchAll: analytics.filter(d => d.hasCatchAll).length,
+    healthy: analytics.filter(d => d.health === 'Healthy').length
+  }
+  
+  return { analytics, summary }
+}
+```
+
+### DNS Record Helper
+
+```typescript
+function formatDnsRecords(dnsRecords: DnsRecord[]) {
+  const grouped = {
+    mx: [] as DnsRecord[],
+    txt: [] as DnsRecord[],
+    cname: [] as DnsRecord[]
+  }
+  
+  dnsRecords.forEach(record => {
+    grouped[record.type.toLowerCase()]?.push(record)
+  })
+  
+  return `
+## MX Record (Email Routing)
+${grouped.mx.map(r => `${r.name} → ${r.value}`).join('\n')}
+
+## TXT Records (Verification)
+${grouped.txt.map(r => `${r.name}\n"${r.value}"`).join('\n\n')}
+
+## CNAME Records (DKIM)
+${grouped.cname.map(r => `${r.name} → ${r.value}`).join('\n')}
+  `.trim()
+}
+```
+
+## Best Practices
+
+<Tip>
+- Verify domains immediately after adding DNS records
+- Use catch-all for domains to avoid missing emails
+- Monitor domain status regularly
+- Keep DNS records even after verification
+- Set up both specific addresses and catch-all for flexibility
+- Use subdomains for different environments (staging.domain.com)
+</Tip>
+
+## Troubleshooting
+
+### Domain Not Verifying
+
+```typescript
+async function troubleshootDomain(domainId: string) {
+  const domains = await inbound.domains.list({ check: 'true' })
+  const domain = domains.data.find(d => d.id === domainId)
+  
+  if (!domain) {
+    console.error('Domain not found')
+    return
+  }
+  
+  console.log('Domain Status:', domain.status)
+  console.log('Has MX Records:', domain.hasMxRecords)
+  console.log('Can Receive:', domain.canReceiveEmails)
+  
+  if (domain.verificationCheck?.dnsRecords) {
+    console.log('\nDNS Record Status:')
+    domain.verificationCheck.dnsRecords.forEach(record => {
+      const icon = record.status === 'verified' ? '✅' : '❌'
+      console.log(`${icon} ${record.type} ${record.name}: ${record.status}`)
+    })
+  }
+  
+  if (!domain.hasMxRecords) {
+    console.log('\n⚠️  MX record not found. Emails cannot be received.')
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+<Card title="Email Addresses" icon="at" href="/sdk/email-addresses-management">
+  Create email addresses for your domains
+</Card>
+
+<Card title="Examples" icon="code" href="/sdk/examples">
+  See complete implementation examples
+</Card>
+</CardGroup> 

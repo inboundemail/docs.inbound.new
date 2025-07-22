@@ -1,0 +1,389 @@
+---
+title: "Email Addresses Management"
+description: "Create and manage individual email addresses for receiving emails"
+---
+
+## Overview
+
+Email addresses are specific addresses (like support@yourdomain.com) that can receive emails and route them to your configured endpoints.
+
+## List Email Addresses
+
+Retrieve all configured email addresses:
+
+```typescript
+import { Inbound } from '@inboundemail/sdk'
+
+const inbound = new Inbound({ apiKey: process.env.INBOUND_API_KEY! })
+
+// List all email addresses
+const addresses = await inbound.emailAddresses.list()
+
+// Filter by domain
+const domainAddresses = await inbound.emailAddresses.list({
+  domainId: 'domain_abc123'
+})
+
+// Filter by status
+const activeAddresses = await inbound.emailAddresses.list({
+  isActive: 'true',
+  isReceiptRuleConfigured: 'true'
+})
+```
+
+### List Parameters
+
+<ParamField query="limit" type="number" default="50">
+  Maximum number of results (1-100)
+</ParamField>
+
+<ParamField query="offset" type="number" default="0">
+  Number of results to skip
+</ParamField>
+
+<ParamField query="domainId" type="string">
+  Filter by domain ID
+</ParamField>
+
+<ParamField query="isActive" type="string">
+  Filter by active status: `true` or `false`
+</ParamField>
+
+<ParamField query="isReceiptRuleConfigured" type="string">
+  Filter by AWS SES configuration status
+</ParamField>
+
+### Response Structure
+
+```typescript
+interface EmailAddressWithDomain {
+  id: string
+  address: string
+  domainId: string
+  endpointId: string | null
+  isActive: boolean
+  isReceiptRuleConfigured: boolean
+  receiptRuleName: string | null
+  createdAt: Date
+  updatedAt: Date
+  domain: {
+    id: string
+    name: string
+    status: string
+  }
+  routing: {
+    type: 'webhook' | 'endpoint' | 'none'
+    id: string | null
+    name: string | null
+    config?: any
+    isActive: boolean
+  }
+}
+```
+
+## Create Email Address
+
+Create a new email address to receive emails:
+
+```typescript
+// Create with webhook endpoint
+const emailAddress = await inbound.emailAddresses.create({
+  address: 'support@yourdomain.com',
+  domainId: 'domain_abc123',
+  endpointId: 'endp_xyz789',
+  isActive: true
+})
+
+console.log('Email address created:', emailAddress.address)
+console.log('Routing to:', emailAddress.routing.type)
+```
+
+### Create Parameters
+
+<ParamField body="address" type="string" required>
+  Full email address (e.g., support@yourdomain.com)
+</ParamField>
+
+<ParamField body="domainId" type="string" required>
+  ID of the verified domain
+</ParamField>
+
+<ParamField body="endpointId" type="string">
+  ID of the endpoint to route emails to
+</ParamField>
+
+<ParamField body="isActive" type="boolean" default="true">
+  Whether the email address is active
+</ParamField>
+
+<Note>
+The domain must be verified before you can create email addresses for it.
+</Note>
+
+## Get Email Address Details
+
+```typescript
+const emailAddress = await inbound.emailAddresses.get('addr_abc123')
+
+console.log('Address:', emailAddress.address)
+console.log('Domain:', emailAddress.domain.name)
+console.log('Active:', emailAddress.isActive)
+console.log('Configured:', emailAddress.isReceiptRuleConfigured)
+
+if (emailAddress.routing.type !== 'none') {
+  console.log('Routes to:', emailAddress.routing.name)
+  console.log('Endpoint active:', emailAddress.routing.isActive)
+}
+```
+
+## Update Email Address
+
+```typescript
+// Change endpoint
+const updated = await inbound.emailAddresses.update('addr_abc123', {
+  endpointId: 'endp_new789'
+})
+
+// Disable email address
+const disabled = await inbound.emailAddresses.update('addr_abc123', {
+  isActive: false
+})
+
+// Remove endpoint (emails will bounce)
+const unrouted = await inbound.emailAddresses.update('addr_abc123', {
+  endpointId: null
+})
+```
+
+### Update Parameters
+
+<ParamField body="isActive" type="boolean">
+  Enable or disable the email address
+</ParamField>
+
+<ParamField body="endpointId" type="string | null">
+  Change or remove the endpoint routing
+</ParamField>
+
+## Delete Email Address
+
+```typescript
+const result = await inbound.emailAddresses.delete('addr_abc123')
+
+console.log('Deleted:', result.cleanup.emailAddress)
+console.log('Domain:', result.cleanup.domain)
+console.log('SES rule updated:', result.cleanup.sesRuleUpdated)
+```
+
+<Warning>
+Deleting an email address will update AWS SES rules. Emails sent to deleted addresses will bounce.
+</Warning>
+
+## Practical Examples
+
+### Department Email Setup
+
+```typescript
+async function setupDepartmentEmails(domainId: string) {
+  const departments = [
+    { name: 'support', endpoint: 'Support Team' },
+    { name: 'sales', endpoint: 'Sales Team' },
+    { name: 'billing', endpoint: 'Billing Team' },
+    { name: 'info', endpoint: 'General Inquiries' }
+  ]
+  
+  // First, create endpoints for each department
+  const endpoints = await Promise.all(
+    departments.map(dept => 
+      inbound.endpoints.create({
+        name: dept.endpoint,
+        type: 'email_group',
+        config: {
+          emails: getTeamEmails(dept.name)
+        }
+      })
+    )
+  )
+  
+  // Then create email addresses
+  const addresses = await Promise.all(
+    departments.map((dept, index) => 
+      inbound.emailAddresses.create({
+        address: `${dept.name}@yourdomain.com`,
+        domainId: domainId,
+        endpointId: endpoints[index].id
+      })
+    )
+  )
+  
+  return addresses
+}
+```
+
+### Role-Based Email Addresses
+
+```typescript
+// Standard role-based addresses
+const roleAddresses = [
+  'admin', 'webmaster', 'postmaster', 
+  'abuse', 'security', 'noreply'
+]
+
+async function createRoleAddresses(domain: string, domainId: string) {
+  // Create a catch-all endpoint for role addresses
+  const roleEndpoint = await inbound.endpoints.create({
+    name: 'Role-Based Addresses',
+    type: 'email',
+    config: {
+      email: 'admin@company.com'
+    }
+  })
+  
+  // Create all role addresses
+  const addresses = await Promise.all(
+    roleAddresses.map(role => 
+      inbound.emailAddresses.create({
+        address: `${role}@${domain}`,
+        domainId: domainId,
+        endpointId: roleEndpoint.id
+      })
+    )
+  )
+  
+  return addresses
+}
+```
+
+### Email Address Analytics
+
+```typescript
+async function getEmailAddressStats() {
+  const addresses = await inbound.emailAddresses.list({
+    isActive: 'true'
+  })
+  
+  const stats = {
+    total: addresses.data.length,
+    configured: addresses.data.filter(a => a.isReceiptRuleConfigured).length,
+    byDomain: {},
+    byRoutingType: {
+      webhook: 0,
+      endpoint: 0,
+      none: 0
+    }
+  }
+  
+  addresses.data.forEach(address => {
+    // Count by domain
+    const domain = address.domain.name
+    stats.byDomain[domain] = (stats.byDomain[domain] || 0) + 1
+    
+    // Count by routing type
+    stats.byRoutingType[address.routing.type]++
+  })
+  
+  return stats
+}
+```
+
+### Temporary Email Addresses
+
+```typescript
+async function createTempAddress(
+  purpose: string,
+  expiresInDays: number
+) {
+  // Create email address
+  const tempAddress = await inbound.emailAddresses.create({
+    address: `temp-${Date.now()}@yourdomain.com`,
+    domainId: 'domain_abc123',
+    endpointId: 'endp_temp123'
+  })
+  
+  // Schedule deletion
+  setTimeout(async () => {
+    await inbound.emailAddresses.delete(tempAddress.id)
+    console.log(`Deleted temporary address: ${tempAddress.address}`)
+  }, expiresInDays * 24 * 60 * 60 * 1000)
+  
+  return {
+    address: tempAddress.address,
+    expiresAt: new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000)
+  }
+}
+```
+
+### Migration Helper
+
+```typescript
+async function migrateEmailAddresses(
+  fromEndpointId: string,
+  toEndpointId: string
+) {
+  // Get all addresses using the old endpoint
+  const allAddresses = await inbound.emailAddresses.list()
+  const addressesToMigrate = allAddresses.data.filter(
+    addr => addr.endpointId === fromEndpointId
+  )
+  
+  console.log(`Migrating ${addressesToMigrate.length} addresses...`)
+  
+  // Update each address
+  const results = await Promise.allSettled(
+    addressesToMigrate.map(addr =>
+      inbound.emailAddresses.update(addr.id, {
+        endpointId: toEndpointId
+      })
+    )
+  )
+  
+  const successful = results.filter(r => r.status === 'fulfilled').length
+  const failed = results.filter(r => r.status === 'rejected').length
+  
+  console.log(`Migration complete: ${successful} successful, ${failed} failed`)
+  
+  return { successful, failed, results }
+}
+```
+
+## Best Practices
+
+<Tip>
+- Use descriptive email addresses that indicate their purpose
+- Always configure an endpoint before emails arrive
+- Monitor isReceiptRuleConfigured to ensure AWS SES is properly set up
+- Consider using catch-all addresses for domains instead of many individual addresses
+- Implement proper access control for sensitive addresses like admin@
+- Regularly audit unused email addresses and remove them
+</Tip>
+
+## Error Handling
+
+```typescript
+try {
+  await inbound.emailAddresses.create({
+    address: 'test@unverified-domain.com',
+    domainId: 'domain_invalid'
+  })
+} catch (error) {
+  if (error.message.includes('domain not found')) {
+    console.error('Domain must be verified first')
+  } else if (error.message.includes('already exists')) {
+    console.error('Email address already exists')
+  } else {
+    console.error('Failed to create address:', error.message)
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+<Card title="Domains Management" icon="globe" href="/sdk/domains-management">
+  Set up and verify domains
+</Card>
+
+<Card title="Examples" icon="code" href="/sdk/examples">
+  See complete implementation examples
+</Card>
+</CardGroup> 

@@ -1,0 +1,1044 @@
+---
+title: "Examples"
+description: "Complete implementation examples using the Inbound SDK"
+---
+
+## Webhook Handler with Type Assignment
+
+Example showing an `InboundWebhookPayload` GET request where the type is assigned to the route request:
+
+```typescript app/api/webhook/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+import { Inbound } from '@inboundemail/sdk'
+import type { InboundWebhookPayload } from '@inboundemail/sdk'
+
+const inbound = new Inbound({
+  apiKey: process.env.INBOUND_API_KEY!
+})
+
+export async function GET(request: NextRequest) {
+  try {
+    // Example: Type assignment for webhook payload structure
+    const webhookExample: InboundWebhookPayload = {
+      event: 'email.received',
+      timestamp: new Date().toISOString(),
+      email: {
+        id: 'email_sample_123',
+        messageId: '<sample@inbound.new>',
+        subject: 'Example Email',
+        recipient: 'demo@yourdomain.com',
+        receivedAt: new Date(),
+        from: {
+          text: 'John Doe <john@example.com>',
+          addresses: [{
+            name: 'John Doe',
+            address: 'john@example.com'
+          }]
+        },
+        to: {
+          text: 'demo@yourdomain.com',
+          addresses: [{
+            name: null,
+            address: 'demo@yourdomain.com'
+          }]
+        },
+        parsedData: {
+          messageId: '<sample@inbound.new>',
+          date: new Date(),
+          subject: 'Example Email',
+          from: null,
+          to: null,
+          cc: null,
+          bcc: null,
+          replyTo: null,
+          inReplyTo: undefined,
+          references: undefined,
+          textBody: 'This is an example email body.',
+          htmlBody: '<p>This is an example email body.</p>',
+          attachments: [],
+          headers: {},
+          priority: undefined
+        },
+        cleanedContent: {
+          html: '<p>This is an example email body.</p>',
+          text: 'This is an example email body.',
+          hasHtml: true,
+          hasText: true,
+          attachments: [],
+          headers: {}
+        }
+      },
+      endpoint: {
+        id: 'endp_sample_123',
+        name: 'Example Webhook',
+        type: 'webhook'
+      }
+    }
+    
+    // Return the typed webhook structure
+    return NextResponse.json({
+      message: 'Webhook payload example',
+      description: 'This demonstrates the InboundWebhookPayload type structure',
+      example: webhookExample,
+      timestamp: new Date().toISOString()
+    })
+    
+  } catch (error) {
+    console.error('Error in webhook example:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const payload: InboundWebhookPayload = await request.json()
+    
+    // Process the webhook payload
+    console.log('Received email:', payload.email.subject)
+    
+    // Example: Auto-reply to emails
+    if (payload.email.subject?.includes('support')) {
+      await inbound.reply(payload.email, {
+        from: 'support@yourdomain.com',
+        text: 'Thanks for contacting support. We\'ll get back to you soon!',
+        html: '<p>Thanks for contacting support. We\'ll get back to you soon!</p>'
+      })
+    }
+    
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Webhook processing error:', error)
+    return NextResponse.json(
+      { error: 'Failed to process webhook' },
+      { status: 500 }
+    )
+  }
+}
+```
+
+## Complete Email Service Setup
+
+Full implementation of an email service with domain setup, endpoints, and addresses:
+
+```typescript services/email-service.ts
+import { Inbound } from '@inboundemail/sdk'
+import type { 
+  DomainWithStats, 
+  EndpointWithStats, 
+  EmailAddressWithDomain 
+} from '@inboundemail/sdk'
+
+export class EmailService {
+  private inbound: Inbound
+  
+  constructor() {
+    this.inbound = new Inbound({
+      apiKey: process.env.INBOUND_API_KEY!,
+      defaultReplyFrom: 'noreply@yourdomain.com'
+    })
+  }
+  
+  /**
+   * Complete setup for a new domain
+   */
+  async setupDomain(domainName: string, webhookUrl: string) {
+    // 1. Add domain
+    console.log('Adding domain...')
+    const domain = await this.inbound.domains.create({
+      domain: domainName
+    })
+    
+    console.log('DNS Records to add:')
+    domain.dnsRecords.forEach(record => {
+      console.log(`${record.type} ${record.name} → ${record.value}`)
+    })
+    
+    // 2. Create webhook endpoint
+    console.log('\nCreating webhook endpoint...')
+    const webhook = await this.inbound.endpoints.create({
+      name: `${domainName} Webhook`,
+      type: 'webhook',
+      description: `Main webhook for ${domainName}`,
+      config: {
+        url: webhookUrl,
+        timeout: 30,
+        retryAttempts: 3,
+        headers: {
+          'X-Domain': domainName,
+          'X-API-Key': process.env.WEBHOOK_SECRET!
+        }
+      }
+    })
+    
+    // 3. Wait for domain verification
+    console.log('\nWaiting for domain verification...')
+    const verifiedDomain = await this.waitForVerification(domain.id)
+    
+    // 4. Enable catch-all
+    console.log('\nEnabling catch-all...')
+    await this.inbound.domains.update(domain.id, {
+      isCatchAllEnabled: true,
+      catchAllEndpointId: webhook.id
+    })
+    
+    // 5. Create specific email addresses
+    console.log('\nCreating email addresses...')
+    const addresses = await this.createStandardAddresses(
+      domainName, 
+      domain.id, 
+      webhook.id
+    )
+    
+    return {
+      domain: verifiedDomain,
+      webhook,
+      addresses
+    }
+  }
+  
+  /**
+   * Wait for domain verification with timeout
+   */
+  private async waitForVerification(
+    domainId: string, 
+    maxAttempts = 30
+  ): Promise<DomainWithStats> {
+    for (let i = 0; i < maxAttempts; i++) {
+      const domain = await this.inbound.domains.get(domainId)
+      
+      if (domain.status === 'verified' && domain.canReceiveEmails) {
+        return domain as DomainWithStats
+      }
+      
+      console.log(`Verification attempt ${i + 1}/${maxAttempts}...`)
+      await new Promise(resolve => setTimeout(resolve, 120000)) // 2 minutes
+    }
+    
+    throw new Error('Domain verification timeout')
+  }
+  
+  /**
+   * Create standard email addresses
+   */
+  private async createStandardAddresses(
+    domain: string,
+    domainId: string,
+    endpointId: string
+  ) {
+    const standardAddresses = [
+      'support', 'info', 'hello', 'contact',
+      'admin', 'noreply', 'notifications'
+    ]
+    
+    const addresses = await Promise.all(
+      standardAddresses.map(prefix =>
+        this.inbound.emailAddresses.create({
+          address: `${prefix}@${domain}`,
+          domainId,
+          endpointId
+        })
+      )
+    )
+    
+    return addresses
+  }
+  
+  /**
+   * Get email analytics
+   */
+  async getAnalytics() {
+    const [domains, endpoints, emails] = await Promise.all([
+      this.inbound.domains.list(),
+      this.inbound.endpoints.list(),
+      this.inbound.mail.list({ limit: 100 })
+    ])
+    
+    return {
+      domains: {
+        total: domains.data.length,
+        verified: domains.data.filter(d => d.status === 'verified').length,
+        withCatchAll: domains.data.filter(d => d.isCatchAllEnabled).length
+      },
+      endpoints: {
+        total: endpoints.data.length,
+        webhooks: endpoints.data.filter(e => e.type === 'webhook').length,
+        active: endpoints.data.filter(e => e.isActive).length,
+        totalDeliveries: endpoints.data.reduce(
+          (sum, e) => sum + e.deliveryStats.total, 0
+        )
+      },
+      emails: {
+        total: emails.pagination.total,
+        recent: emails.emails.length,
+        withAttachments: emails.emails.filter(e => e.hasAttachments).length
+      }
+    }
+  }
+}
+```
+
+## Customer Support System
+
+Complete support ticket system with email integration:
+
+```typescript app/api/support/webhook/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+import { Inbound, isInboundWebhook } from '@inboundemail/sdk'
+import type { InboundWebhookPayload, InboundWebhookEmail } from '@inboundemail/sdk'
+import { createTicket, updateTicket, getTicketByEmail } from '@/lib/tickets'
+
+const inbound = new Inbound({
+  apiKey: process.env.INBOUND_API_KEY!,
+  defaultReplyFrom: 'support@yourdomain.com'
+})
+
+export async function POST(request: NextRequest) {
+  try {
+    const payload: InboundWebhookPayload = await request.json()
+    
+    if (!isInboundWebhook(payload)) {
+      return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
+    }
+    
+    const { email } = payload
+    const senderAddress = email.from?.addresses[0]?.address
+    
+    if (!senderAddress) {
+      console.error('No sender address found')
+      return NextResponse.json({ error: 'Invalid sender' }, { status: 400 })
+    }
+    
+    // Check if this is a reply to existing ticket
+    const existingTicket = await getTicketByEmail(senderAddress, email.subject)
+    
+    if (existingTicket) {
+      // Update existing ticket
+      await updateTicket(existingTicket.id, {
+        status: 'customer_replied',
+        lastReply: new Date(),
+        messages: [
+          ...existingTicket.messages,
+          {
+            from: senderAddress,
+            subject: email.subject,
+            body: email.cleanedContent.text || '',
+            html: email.cleanedContent.html || '',
+            receivedAt: new Date(email.receivedAt),
+            attachments: email.cleanedContent.attachments.length
+          }
+        ]
+      })
+      
+      // Notify support team
+      await notifySupportTeam(existingTicket, email)
+      
+    } else {
+      // Create new ticket
+      const ticket = await createTicket({
+        customerEmail: senderAddress,
+        customerName: email.from?.addresses[0]?.name || 'Customer',
+        subject: email.subject || 'No subject',
+        priority: determinePriority(email),
+        category: categorizeEmail(email),
+        firstMessage: {
+          body: email.cleanedContent.text || '',
+          html: email.cleanedContent.html || '',
+          attachments: email.cleanedContent.attachments.length
+        }
+      })
+      
+      // Send auto-reply
+      await sendAutoReply(email, ticket.id)
+    }
+    
+    return NextResponse.json({ success: true })
+    
+  } catch (error) {
+    console.error('Support webhook error:', error)
+    return NextResponse.json(
+      { error: 'Failed to process support email' },
+      { status: 500 }
+    )
+  }
+}
+
+/**
+ * Determine ticket priority based on email content
+ */
+function determinePriority(email: InboundWebhookEmail): 'low' | 'medium' | 'high' | 'urgent' {
+  const subject = email.subject?.toLowerCase() || ''
+  const body = email.cleanedContent.text?.toLowerCase() || ''
+  
+  if (subject.includes('urgent') || body.includes('urgent')) {
+    return 'urgent'
+  }
+  if (subject.includes('error') || subject.includes('broken')) {
+    return 'high'
+  }
+  if (subject.includes('question') || subject.includes('how to')) {
+    return 'low'
+  }
+  
+  return 'medium'
+}
+
+/**
+ * Categorize email based on content
+ */
+function categorizeEmail(email: InboundWebhookEmail): string {
+  const content = `${email.subject} ${email.cleanedContent.text}`.toLowerCase()
+  
+  if (content.includes('billing') || content.includes('payment')) {
+    return 'billing'
+  }
+  if (content.includes('bug') || content.includes('error')) {
+    return 'technical'
+  }
+  if (content.includes('feature') || content.includes('request')) {
+    return 'feature_request'
+  }
+  
+  return 'general'
+}
+
+/**
+ * Send auto-reply for new tickets
+ */
+async function sendAutoReply(email: InboundWebhookEmail, ticketId: string) {
+  const replyHtml = `
+    <div style="font-family: Arial, sans-serif;">
+      <h2>Thank you for contacting support!</h2>
+      <p>We've received your message and created ticket #${ticketId}.</p>
+      <p>Our support team will respond within 24 hours.</p>
+      <hr>
+      <p style="color: #666; font-size: 12px;">
+        Ticket ID: ${ticketId}<br>
+        Priority: ${determinePriority(email)}<br>
+        Category: ${categorizeEmail(email)}
+      </p>
+    </div>
+  `
+  
+  await inbound.reply(email, {
+    subject: `Support Ticket #${ticketId} - ${email.subject}`,
+    html: replyHtml,
+    text: `Thank you for contacting support! Ticket #${ticketId} created.`,
+    headers: {
+      'X-Ticket-ID': ticketId
+    }
+  })
+}
+
+/**
+ * Notify support team of customer reply
+ */
+async function notifySupportTeam(ticket: any, email: InboundWebhookEmail) {
+  await inbound.emails.send({
+    from: 'system@yourdomain.com',
+    to: ['support-team@yourdomain.com'],
+    subject: `Customer Reply - Ticket #${ticket.id}`,
+    html: `
+      <h3>Customer replied to ticket #${ticket.id}</h3>
+      <p><strong>From:</strong> ${email.from?.text}</p>
+      <p><strong>Subject:</strong> ${email.subject}</p>
+      <hr>
+      <div>${email.cleanedContent.html || email.cleanedContent.text}</div>
+      <hr>
+      <a href="https://support.yourdomain.com/tickets/${ticket.id}">View Ticket</a>
+    `
+  })
+}
+```
+
+## Email Newsletter System
+
+Newsletter subscription and distribution system:
+
+```typescript services/newsletter-service.ts
+import { Inbound } from '@inboundemail/sdk'
+import type { InboundWebhookPayload } from '@inboundemail/sdk'
+
+export class NewsletterService {
+  private inbound: Inbound
+  
+  constructor() {
+    this.inbound = new Inbound({
+      apiKey: process.env.INBOUND_API_KEY!
+    })
+  }
+  
+  /**
+   * Handle newsletter commands via email
+   */
+  async handleNewsletterEmail(payload: InboundWebhookPayload) {
+    const { email } = payload
+    const senderEmail = email.from?.addresses[0]?.address
+    const subject = email.subject?.toLowerCase() || ''
+    const body = email.cleanedContent.text?.toLowerCase() || ''
+    
+    if (!senderEmail) return
+    
+    // Handle subscribe
+    if (subject.includes('subscribe') || body.includes('subscribe')) {
+      await this.handleSubscribe(senderEmail, email.id)
+    }
+    
+    // Handle unsubscribe
+    else if (subject.includes('unsubscribe') || body.includes('unsubscribe')) {
+      await this.handleUnsubscribe(senderEmail, email.id)
+    }
+    
+    // Handle other commands
+    else if (email.recipient === 'newsletter@yourdomain.com') {
+      await this.sendHelpMessage(senderEmail, email.id)
+    }
+  }
+  
+  /**
+   * Subscribe user to newsletter
+   */
+  private async handleSubscribe(email: string, emailId: string) {
+    // Add to database
+    const subscriber = await addSubscriber(email)
+    
+    // Send confirmation
+    await this.inbound.emails.send({
+      from: 'newsletter@yourdomain.com',
+      to: email,
+      subject: 'Welcome to our newsletter!',
+      html: `
+        <h1>You're subscribed!</h1>
+        <p>Welcome to our newsletter. You'll receive updates weekly.</p>
+        <p>To unsubscribe, reply with "unsubscribe" in the subject.</p>
+        <hr>
+        <p style="font-size: 12px; color: #666;">
+          Subscriber ID: ${subscriber.id}<br>
+          <a href="https://yourdomain.com/unsubscribe/${subscriber.unsubscribeToken}">
+            Unsubscribe
+          </a>
+        </p>
+      `,
+      headers: {
+        'List-Unsubscribe': `<mailto:newsletter@yourdomain.com?subject=unsubscribe>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
+      }
+    })
+  }
+  
+  /**
+   * Send newsletter to all subscribers
+   */
+  async sendNewsletter(
+    subject: string,
+    htmlContent: string,
+    textContent: string
+  ) {
+    const subscribers = await getActiveSubscribers()
+    const batchSize = 50
+    
+    console.log(`Sending newsletter to ${subscribers.length} subscribers`)
+    
+    for (let i = 0; i < subscribers.length; i += batchSize) {
+      const batch = subscribers.slice(i, i + batchSize)
+      
+      await Promise.all(
+        batch.map(subscriber => 
+          this.inbound.emails.send({
+            from: 'newsletter@yourdomain.com',
+            to: subscriber.email,
+            subject,
+            html: this.personalizeContent(htmlContent, subscriber),
+            text: this.personalizeContent(textContent, subscriber),
+            headers: {
+              'List-Unsubscribe': `<https://yourdomain.com/unsubscribe/${subscriber.unsubscribeToken}>`,
+              'List-ID': '<newsletter.yourdomain.com>',
+              'Precedence': 'bulk'
+            }
+          }).catch(error => {
+            console.error(`Failed to send to ${subscriber.email}:`, error)
+          })
+        )
+      )
+      
+      // Rate limiting
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    }
+    
+    console.log('Newsletter sent successfully')
+  }
+  
+  /**
+   * Personalize content with subscriber data
+   */
+  private personalizeContent(content: string, subscriber: any): string {
+    return content
+      .replace('{name}', subscriber.name || 'Subscriber')
+      .replace('{email}', subscriber.email)
+      .replace('{unsubscribe_link}', 
+        `https://yourdomain.com/unsubscribe/${subscriber.unsubscribeToken}`
+      )
+  }
+}
+
+// Database helper functions (implement according to your database)
+async function addSubscriber(email: string) {
+  // Add to database
+  return { id: 'sub_123', email, unsubscribeToken: 'token_123' }
+}
+
+async function getActiveSubscribers() {
+  // Get from database
+  return []
+}
+```
+
+## Order Processing System
+
+E-commerce order processing via email:
+
+```typescript services/order-email-service.ts
+import { Inbound } from '@inboundemail/sdk'
+import type { InboundWebhookEmail } from '@inboundemail/sdk'
+
+export class OrderEmailService {
+  private inbound: Inbound
+  
+  constructor() {
+    this.inbound = new Inbound({
+      apiKey: process.env.INBOUND_API_KEY!
+    })
+  }
+  
+  /**
+   * Process order confirmation emails
+   */
+  async processOrderEmail(email: InboundWebhookEmail) {
+    // Extract order details
+    const orderDetails = this.extractOrderDetails(email)
+    
+    if (!orderDetails) {
+      console.error('Could not extract order details')
+      return
+    }
+    
+    // Create order in system
+    const order = await createOrder({
+      customerEmail: email.from?.addresses[0]?.address!,
+      ...orderDetails
+    })
+    
+    // Send confirmation
+    await this.sendOrderConfirmation(email, order)
+    
+    // Notify warehouse
+    await this.notifyWarehouse(order)
+  }
+  
+  /**
+   * Extract order details from email
+   */
+  private extractOrderDetails(email: InboundWebhookEmail) {
+    const text = email.cleanedContent.text || ''
+    
+    // Extract order number
+    const orderMatch = text.match(/Order #(\d+)/i)
+    const orderNumber = orderMatch?.[1]
+    
+    // Extract items (simplified example)
+    const itemsMatch = text.match(/Items:([\s\S]*?)Total:/i)
+    const itemsText = itemsMatch?.[1] || ''
+    
+    // Extract total
+    const totalMatch = text.match(/Total: \$?([\d.]+)/i)
+    const total = totalMatch?.[1] ? parseFloat(totalMatch[1]) : 0
+    
+    if (!orderNumber) return null
+    
+    return {
+      orderNumber,
+      items: this.parseItems(itemsText),
+      total
+    }
+  }
+  
+  /**
+   * Send order confirmation
+   */
+  private async sendOrderConfirmation(
+    originalEmail: InboundWebhookEmail,
+    order: any
+  ) {
+    const confirmationHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px;">
+        <h1>Order Confirmed! 🎉</h1>
+        <p>Thank you for your order. We've received it and will process it shortly.</p>
+        
+        <div style="background: #f5f5f5; padding: 20px; margin: 20px 0;">
+          <h2>Order Details</h2>
+          <p><strong>Order Number:</strong> ${order.orderNumber}</p>
+          <p><strong>Total:</strong> $${order.total.toFixed(2)}</p>
+          <p><strong>Status:</strong> Processing</p>
+        </div>
+        
+        <h3>Items Ordered:</h3>
+        <ul>
+          ${order.items.map((item: any) => 
+            `<li>${item.name} - Quantity: ${item.quantity} - $${item.price}</li>`
+          ).join('')}
+        </ul>
+        
+        <p>You'll receive a shipping notification once your order ships.</p>
+        
+        <hr>
+        <p style="font-size: 12px; color: #666;">
+          Track your order: 
+          <a href="https://shop.yourdomain.com/track/${order.trackingId}">
+            Track Order
+          </a>
+        </p>
+      </div>
+    `
+    
+    await this.inbound.reply(originalEmail, {
+      from: 'orders@yourdomain.com',
+      subject: `Order Confirmation - #${order.orderNumber}`,
+      html: confirmationHtml,
+      text: `Order confirmed! Order #${order.orderNumber}. Total: $${order.total}`
+    })
+  }
+  
+  /**
+   * Parse items from text
+   */
+  private parseItems(itemsText: string): any[] {
+    // Simplified parsing - implement according to your format
+    const lines = itemsText.trim().split('\n')
+    return lines.map(line => {
+      const parts = line.split('-').map(p => p.trim())
+      return {
+        name: parts[0] || 'Unknown Item',
+        quantity: parseInt(parts[1]) || 1,
+        price: parseFloat(parts[2]) || 0
+      }
+    }).filter(item => item.name !== 'Unknown Item')
+  }
+  
+  /**
+   * Notify warehouse of new order
+   */
+  private async notifyWarehouse(order: any) {
+    await this.inbound.emails.send({
+      from: 'system@yourdomain.com',
+      to: 'warehouse@yourdomain.com',
+      subject: `New Order for Fulfillment - #${order.orderNumber}`,
+      html: `
+        <h2>New Order for Fulfillment</h2>
+        <p>Order #${order.orderNumber} is ready for processing.</p>
+        <p>Customer: ${order.customerEmail}</p>
+        <p>Items: ${order.items.length}</p>
+        <p>Priority: ${order.priority || 'Standard'}</p>
+        <a href="https://warehouse.yourdomain.com/orders/${order.id}">
+          View Order Details
+        </a>
+      `
+    })
+  }
+}
+
+// Helper function (implement according to your system)
+async function createOrder(orderData: any) {
+  return {
+    id: 'order_123',
+    trackingId: 'track_123',
+    ...orderData
+  }
+}
+```
+
+## Email-to-SMS Bridge
+
+Forward urgent emails as SMS messages:
+
+```typescript services/email-to-sms.ts
+import { Inbound } from '@inboundemail/sdk'
+import type { InboundWebhookPayload } from '@inboundemail/sdk'
+// Assume you have an SMS service like Twilio
+import { sendSMS } from '@/lib/sms'
+
+export class EmailToSMSBridge {
+  private inbound: Inbound
+  private urgentKeywords = ['urgent', 'emergency', 'critical', 'asap', 'immediately']
+  
+  constructor() {
+    this.inbound = new Inbound({
+      apiKey: process.env.INBOUND_API_KEY!
+    })
+  }
+  
+  /**
+   * Process email and send SMS if urgent
+   */
+  async processEmail(payload: InboundWebhookPayload) {
+    const { email } = payload
+    
+    // Check if urgent
+    if (!this.isUrgent(email)) {
+      return
+    }
+    
+    // Get recipient phone number based on email address
+    const phoneNumber = await this.getPhoneNumber(email.recipient)
+    
+    if (!phoneNumber) {
+      console.log(`No phone number found for ${email.recipient}`)
+      return
+    }
+    
+    // Create SMS message
+    const smsMessage = this.createSMSMessage(email)
+    
+    // Send SMS
+    await sendSMS({
+      to: phoneNumber,
+      body: smsMessage
+    })
+    
+    // Send confirmation email
+    await this.sendSMSConfirmation(email, phoneNumber)
+  }
+  
+  /**
+   * Check if email is urgent
+   */
+  private isUrgent(email: any): boolean {
+    const subject = email.subject?.toLowerCase() || ''
+    const body = email.cleanedContent.text?.toLowerCase() || ''
+    
+    return this.urgentKeywords.some(keyword => 
+      subject.includes(keyword) || body.includes(keyword)
+    )
+  }
+  
+  /**
+   * Create SMS message from email
+   */
+  private createSMSMessage(email: any): string {
+    const from = email.from?.addresses[0]?.address || 'Unknown'
+    const subject = email.subject || 'No subject'
+    const preview = email.cleanedContent.text?.substring(0, 100) || ''
+    
+    return `URGENT EMAIL from ${from}: ${subject}. ${preview}...`
+  }
+  
+  /**
+   * Send confirmation that SMS was sent
+   */
+  private async sendSMSConfirmation(email: any, phoneNumber: string) {
+    await this.inbound.reply(email, {
+      from: 'notifications@yourdomain.com',
+      subject: 'Urgent message forwarded to SMS',
+      html: `
+        <p>Your urgent message has been forwarded as an SMS to ${phoneNumber}.</p>
+        <p>Original message:</p>
+        <blockquote style="border-left: 3px solid #ccc; padding-left: 10px;">
+          ${email.cleanedContent.html || email.cleanedContent.text}
+        </blockquote>
+      `
+    })
+  }
+  
+  /**
+   * Get phone number for email recipient
+   */
+  private async getPhoneNumber(email: string): Promise<string | null> {
+    // Implement lookup logic based on your user database
+    const phoneMap: Record<string, string> = {
+      'oncall@yourdomain.com': '+1234567890',
+      'support@yourdomain.com': '+0987654321'
+    }
+    
+    return phoneMap[email] || null
+  }
+}
+```
+
+## Complete Application Example
+
+Full Next.js application with email integration:
+
+```typescript app/layout.tsx
+import { Inbound } from '@inboundemail/sdk'
+import { EmailProvider } from '@/contexts/email-context'
+
+// Initialize SDK globally
+const inbound = new Inbound({
+  apiKey: process.env.INBOUND_API_KEY!,
+  defaultReplyFrom: 'app@yourdomain.com'
+})
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="en">
+      <body>
+        <EmailProvider inbound={inbound}>
+          {children}
+        </EmailProvider>
+      </body>
+    </html>
+  )
+}
+```
+
+```typescript contexts/email-context.tsx
+'use client'
+
+import { createContext, useContext } from 'react'
+import type { InboundEmailClient } from '@inboundemail/sdk'
+
+const EmailContext = createContext<InboundEmailClient | null>(null)
+
+export function EmailProvider({ 
+  children, 
+  inbound 
+}: { 
+  children: React.ReactNode
+  inbound: InboundEmailClient
+}) {
+  return (
+    <EmailContext.Provider value={inbound}>
+      {children}
+    </EmailContext.Provider>
+  )
+}
+
+export function useInbound() {
+  const context = useContext(EmailContext)
+  if (!context) {
+    throw new Error('useInbound must be used within EmailProvider')
+  }
+  return context
+}
+```
+
+```typescript app/dashboard/page.tsx
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useInbound } from '@/contexts/email-context'
+import type { EmailItem, EndpointWithStats, DomainWithStats } from '@inboundemail/sdk'
+
+export default function Dashboard() {
+  const inbound = useInbound()
+  const [emails, setEmails] = useState<EmailItem[]>([])
+  const [endpoints, setEndpoints] = useState<EndpointWithStats[]>([])
+  const [domains, setDomains] = useState<DomainWithStats[]>([])
+  const [loading, setLoading] = useState(true)
+  
+  useEffect(() => {
+    loadDashboardData()
+  }, [])
+  
+  async function loadDashboardData() {
+    try {
+      const [emailsRes, endpointsRes, domainsRes] = await Promise.all([
+        inbound.mail.list({ limit: 10 }),
+        inbound.endpoints.list(),
+        inbound.domains.list()
+      ])
+      
+      setEmails(emailsRes.emails)
+      setEndpoints(endpointsRes.data)
+      setDomains(domainsRes.data)
+    } catch (error) {
+      console.error('Failed to load dashboard:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+  
+  if (loading) {
+    return <div>Loading dashboard...</div>
+  }
+  
+  return (
+    <div className="p-8">
+      <h1 className="text-3xl font-bold mb-8">Email Dashboard</h1>
+      
+      {/* Stats Overview */}
+      <div className="grid grid-cols-3 gap-6 mb-8">
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-lg font-semibold">Domains</h3>
+          <p className="text-3xl font-bold">{domains.length}</p>
+          <p className="text-sm text-gray-500">
+            {domains.filter(d => d.status === 'verified').length} verified
+          </p>
+        </div>
+        
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-lg font-semibold">Endpoints</h3>
+          <p className="text-3xl font-bold">{endpoints.length}</p>
+          <p className="text-sm text-gray-500">
+            {endpoints.filter(e => e.isActive).length} active
+          </p>
+        </div>
+        
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-lg font-semibold">Recent Emails</h3>
+          <p className="text-3xl font-bold">{emails.length}</p>
+          <p className="text-sm text-gray-500">Last 24 hours</p>
+        </div>
+      </div>
+      
+      {/* Recent Emails */}
+      <div className="bg-white rounded-lg shadow">
+        <h2 className="text-xl font-semibold p-6 border-b">Recent Emails</h2>
+        <div className="divide-y">
+          {emails.map(email => (
+            <div key={email.id} className="p-6 hover:bg-gray-50">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="font-semibold">{email.subject}</h3>
+                  <p className="text-sm text-gray-500">
+                    From: {email.from} • To: {email.recipient}
+                  </p>
+                  <p className="text-sm mt-2">{email.preview}</p>
+                </div>
+                <div className="text-sm text-gray-500">
+                  {new Date(email.receivedAt).toLocaleString()}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+<Card title="API Reference" icon="book" href="/api-reference/mail/list-emails">
+  Explore the complete API documentation
+</Card>
+
+<Card title="Webhook Handling" icon="webhook" href="/sdk/webhook-handling">
+  Learn more about webhook implementation
+</Card>
+
+<Card title="Types Reference" icon="code" href="/sdk/types">
+  Review all available TypeScript types
+</Card>
+
+<Card title="Get Support" icon="life-ring" href="mailto:support@inbound.new">
+  Contact our support team
+</Card>
+</CardGroup> 

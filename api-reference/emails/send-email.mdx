@@ -101,7 +101,7 @@ This endpoint requires authentication via either:
 
 <RequestExample>
   ```bash cURL
-  curl -X POST 'https://api.inbound.email/api/v2/emails' \
+  curl -X POST 'https://inbound.new/api/v2/emails' \
        -H 'Authorization: Bearer your_api_key' \
        -H 'Content-Type: application/json' \
        -d '{
@@ -114,7 +114,7 @@ This endpoint requires authentication via either:
   ```
 
   ```javascript Node.js
-  const response = await fetch('https://api.inbound.email/api/v2/emails', {
+  const response = await fetch('https://inbound.new/api/v2/emails', {
     method: 'POST',
     headers: {
       'Authorization': 'Bearer your_api_key',
@@ -137,7 +137,7 @@ This endpoint requires authentication via either:
   import requests
 
   response = requests.post(
-    'https://api.inbound.email/api/v2/emails',
+    'https://inbound.new/api/v2/emails',
     headers={
       'Authorization': 'Bearer your_api_key',
       'Content-Type': 'application/json',
@@ -155,7 +155,7 @@ This endpoint requires authentication via either:
   ```
 
   ```php PHP
-  $ch = curl_init('https://api.inbound.email/api/v2/emails');
+  $ch = curl_init('https://inbound.new/api/v2/emails');
   curl_setopt($ch, CURLOPT_POST, true);
   curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer your_api_key',
@@ -241,7 +241,7 @@ This endpoint requires authentication via either:
 
 This endpoint is designed to be compatible with Resend's email sending API. To migrate:
 
-1. Replace your Resend API endpoint with `https://api.inbound.email/api/v2/emails`
+1. Replace your Resend API endpoint with `https://inbound.new/api/v2/emails`
 2. Replace your Resend API key with your Inbound API key
 3. Ensure your sending domain is verified in Inbound
 
