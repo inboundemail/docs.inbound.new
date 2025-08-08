@@ -18,7 +18,7 @@ const inbound = new Inbound({ apiKey: process.env.INBOUND_API_KEY! })
 
 // Simple email
 const { id } = await inbound.emails.send({
-  from: 'you@yourdomain.com',
+  from: 'you@yourdomain.com', // we also support the "John Doe <john@doe.com>" format
   to: 'customer@example.com',
   subject: 'Welcome to our service',
   text: 'Thanks for signing up!',
@@ -31,7 +31,7 @@ console.log('Email sent:', id)
 ### Send Parameters
 
 <ParamField body="from" type="string" required>
-  Sender email address. Must be from a verified domain.
+  Sender email address. Must be from a verified domain. We also support the "John Doe <john@doe.com>" format.
 </ParamField>
 
 <ParamField body="to" type="string | string[]" required>
