@@ -1,0 +1,360 @@
+---
+title: "Verify Domain Authentication"
+api: "PATCH /api/v2/domains/{id}/auth"
+description: "Verify domain authentication status by checking DNS records and SES configuration"
+---
+
+## Overview
+
+This endpoint verifies the authentication status of a domain by:
+
+- **DNS Record Verification**: Checks if all required DNS records are properly configured
+- **SES Status Check**: Validates domain identity, DKIM, and MAIL FROM status with Amazon SES
+- **Overall Assessment**: Determines if the domain is ready for authenticated email sending
+
+Use this endpoint after adding DNS records from the [Initialize Domain Authentication](/api-reference/domains/init-domain-auth) endpoint.
+
+<Info>
+DNS propagation can take up to 48 hours. If records show as unverified, wait and try again later.
+</Info>
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication. Format: `Bearer YOUR_API_KEY`
+</ParamField>
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the domain to verify authentication for.
+</ParamField>
+
+## Request Body
+
+This endpoint does not require a request body. Verification is performed based on current DNS state and SES configuration.
+
+## Response
+
+<ResponseField name="success" type="boolean" required>
+  Indicates if the verification check was completed successfully.
+</ResponseField>
+
+<ResponseField name="domain" type="string" required>
+  The domain name that was verified.
+</ResponseField>
+
+<ResponseField name="overallStatus" type="string" required>
+  Overall authentication status: "verified", "pending", or "failed".
+</ResponseField>
+
+<ResponseField name="dnsRecords" type="array" required>
+  Array of DNS records with their current verification status.
+  
+  <Expandable title="DNS Verification Result">
+    <ResponseField name="type" type="string" required>
+      DNS record type: "TXT", "CNAME", or "MX".
+    </ResponseField>
+    
+    <ResponseField name="name" type="string" required>
+      DNS record name/hostname.
+    </ResponseField>
+    
+    <ResponseField name="value" type="string" required>
+      Expected DNS record value.
+    </ResponseField>
+    
+    <ResponseField name="isRequired" type="boolean" required>
+      Whether this record is required for domain verification.
+    </ResponseField>
+    
+    <ResponseField name="isVerified" type="boolean" required>
+      Whether this record was found and matches the expected value.
+    </ResponseField>
+    
+    <ResponseField name="description" type="string" required>
+      Human-readable description of what this record does.
+    </ResponseField>
+    
+    <ResponseField name="error" type="string">
+      Error message if verification failed (only present when isVerified is false).
+    </ResponseField>
+    
+    <ResponseField name="lastChecked" type="string" required>
+      ISO timestamp of when this record was last verified.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="sesStatus" type="object" required>
+  Current Amazon SES verification status.
+  
+  <Expandable title="SES Verification Status">
+    <ResponseField name="identityStatus" type="string" required>
+      SES identity verification status: "Pending", "Success", or "Failed".
+    </ResponseField>
+    
+    <ResponseField name="identityVerified" type="boolean" required>
+      Whether the SES identity is fully verified.
+    </ResponseField>
+    
+    <ResponseField name="dkimStatus" type="string" required>
+      DKIM verification status: "Pending", "Success", or "Failed".
+    </ResponseField>
+    
+    <ResponseField name="dkimVerified" type="boolean" required>
+      Whether DKIM is fully verified and enabled.
+    </ResponseField>
+    
+    <ResponseField name="dkimTokens" type="array" required>
+      Array of DKIM tokens currently configured.
+    </ResponseField>
+    
+    <ResponseField name="mailFromDomain" type="string">
+      The configured MAIL FROM domain (if set).
+    </ResponseField>
+    
+    <ResponseField name="mailFromStatus" type="string" required>
+      MAIL FROM domain status: "Pending", "Success", "Failed", or "NotSet".
+    </ResponseField>
+    
+    <ResponseField name="mailFromVerified" type="boolean" required>
+      Whether the MAIL FROM domain is fully verified.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="summary" type="object" required>
+  Summary of verification results.
+  
+  <Expandable title="Verification Summary">
+    <ResponseField name="totalRecords" type="number" required>
+      Total number of DNS records checked.
+    </ResponseField>
+    
+    <ResponseField name="verifiedRecords" type="number" required>
+      Number of DNS records that are verified.
+    </ResponseField>
+    
+    <ResponseField name="requiredRecords" type="number" required>
+      Number of records that are required for verification.
+    </ResponseField>
+    
+    <ResponseField name="verifiedRequiredRecords" type="number" required>
+      Number of required records that are verified.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="message" type="string" required>
+  Human-readable summary of the verification status.
+</ResponseField>
+
+<ResponseField name="nextSteps" type="array">
+  Array of recommended next steps (only present if domain is not fully verified).
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl -X PATCH "https://api.inbound.email/api/v2/domains/dom_abc123/auth" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json"
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.inbound.email/api/v2/domains/dom_abc123/auth', {
+  method: 'PATCH',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  }
+});
+
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.patch(
+    'https://api.inbound.email/api/v2/domains/dom_abc123/auth',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'Content-Type': 'application/json'
+    }
+)
+
+data = response.json()
+```
+
+</CodeGroup>
+
+## Example Response
+
+### Fully Verified Domain
+
+```json
+{
+  "success": true,
+  "domain": "example.com",
+  "overallStatus": "verified",
+  "dnsRecords": [
+    {
+      "type": "TXT",
+      "name": "_amazonses.example.com",
+      "value": "abcd1234efgh5678ijkl9012mnop3456",
+      "isRequired": true,
+      "isVerified": true,
+      "description": "SES domain verification",
+      "lastChecked": "2024-01-15T10:30:00Z"
+    },
+    {
+      "type": "CNAME",
+      "name": "abc123def456._domainkey.example.com",
+      "value": "abc123def456.dkim.amazonses.com",
+      "isRequired": true,
+      "isVerified": true,
+      "description": "DKIM authentication token 1",
+      "lastChecked": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "sesStatus": {
+    "identityStatus": "Success",
+    "identityVerified": true,
+    "dkimStatus": "Success",
+    "dkimVerified": true,
+    "dkimTokens": ["abc123def456", "ghi789jkl012", "mno345pqr678"],
+    "mailFromDomain": "mail.example.com",
+    "mailFromStatus": "Success",
+    "mailFromVerified": true
+  },
+  "summary": {
+    "totalRecords": 5,
+    "verifiedRecords": 5,
+    "requiredRecords": 3,
+    "verifiedRequiredRecords": 3
+  },
+  "message": "Domain authentication fully verified! You can now send emails with enhanced deliverability."
+}
+```
+
+### Partially Verified Domain
+
+```json
+{
+  "success": true,
+  "domain": "example.com",
+  "overallStatus": "pending",
+  "dnsRecords": [
+    {
+      "type": "TXT",
+      "name": "_amazonses.example.com",
+      "value": "abcd1234efgh5678ijkl9012mnop3456",
+      "isRequired": true,
+      "isVerified": true,
+      "description": "SES domain verification",
+      "lastChecked": "2024-01-15T10:30:00Z"
+    },
+    {
+      "type": "CNAME",
+      "name": "abc123def456._domainkey.example.com",
+      "value": "abc123def456.dkim.amazonses.com",
+      "isRequired": true,
+      "isVerified": false,
+      "description": "DKIM authentication token 1",
+      "error": "No CNAME records found for abc123def456._domainkey.example.com. Please add the CNAME record to your DNS.",
+      "lastChecked": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "sesStatus": {
+    "identityStatus": "Success",
+    "identityVerified": true,
+    "dkimStatus": "Pending",
+    "dkimVerified": false,
+    "dkimTokens": ["abc123def456", "ghi789jkl012", "mno345pqr678"],
+    "mailFromDomain": "mail.example.com",
+    "mailFromStatus": "Pending",
+    "mailFromVerified": false
+  },
+  "summary": {
+    "totalRecords": 5,
+    "verifiedRecords": 2,
+    "requiredRecords": 3,
+    "verifiedRequiredRecords": 1
+  },
+  "message": "Domain authentication in progress. 2/5 DNS records verified, 1/3 required records verified.",
+  "nextSteps": [
+    "Add 2 missing required DNS record(s): CNAME abc123def456._domainkey.example.com, MX mail.example.com",
+    "Wait for DKIM verification (requires CNAME records)",
+    "Wait for MAIL FROM domain verification (requires MX record)"
+  ]
+}
+```
+
+## Error Responses
+
+<ResponseField name="400" type="object">
+  Bad Request - No DNS records found (run auth/init first) or invalid domain ID.
+</ResponseField>
+
+<ResponseField name="401" type="object">
+  Unauthorized - Invalid or missing API key.
+</ResponseField>
+
+<ResponseField name="404" type="object">
+  Not Found - Domain not found or not owned by the authenticated user.
+</ResponseField>
+
+<ResponseField name="500" type="object">
+  Internal Server Error - AWS SES not configured or DNS verification failed.
+</ResponseField>
+
+## Understanding Verification Status
+
+### Overall Status Values
+
+- **verified**: All required DNS records are verified and SES authentication is complete
+- **pending**: Some records are missing or SES verification is in progress
+- **failed**: No records are verified or there are critical configuration errors
+
+### Common Issues
+
+<AccordionGroup>
+  <Accordion title="DNS Records Not Found">
+    **Cause**: DNS records haven't been added to your DNS provider or haven't propagated yet.
+    
+    **Solution**: 
+    1. Verify records were added correctly to your DNS provider
+    2. Wait up to 48 hours for DNS propagation
+    3. Check for typos in record names and values
+  </Accordion>
+
+  <Accordion title="DKIM Verification Pending">
+    **Cause**: CNAME records for DKIM tokens are missing or incorrect.
+    
+    **Solution**:
+    1. Add all DKIM CNAME records from the init response
+    2. Ensure CNAME values point to `*.dkim.amazonses.com`
+    3. Wait for DNS propagation
+  </Accordion>
+
+  <Accordion title="MAIL FROM Domain Issues">
+    **Cause**: MX record for the MAIL FROM domain is missing or incorrect.
+    
+    **Solution**:
+    1. Add MX record pointing to `feedback-smtp.{region}.amazonses.com`
+    2. Use priority 10 for the MX record
+    3. Ensure the subdomain matches your configured MAIL FROM domain
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+1. **Check Regularly**: Run verification every few hours during initial setup
+2. **Monitor Required Records**: Focus on required records first before optional ones
+3. **DNS Propagation**: Allow 24-48 hours for full DNS propagation
+4. **Record Accuracy**: Double-check record names and values for exact matches
+5. **SES Limits**: Be aware that SES verification can take up to 72 hours in some cases

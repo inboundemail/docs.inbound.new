@@ -21,7 +21,7 @@ This endpoint retrieves comprehensive information about a specific domain, inclu
 </ParamField>
 
 <ParamField query="check" type="string">
-  Perform real-time DNS and SES verification checks. Set to `true` to include current verification status in response. This may slow down the response but provides live verification results.
+  Perform real-time DNS and SES verification checks. Set to `true` to include current verification status in response (DKIM and MAIL FROM included) and recommendations for SPF/DMARC when missing. This may slow down the response but provides live verification results.
 </ParamField>
 
 ## Response
@@ -163,6 +163,24 @@ This endpoint retrieves comprehensive information about a specific domain, inclu
     <ResponseField name="sesStatus" type="string" required>
       Current AWS SES verification status: `Success`, `Pending`, `Failed`, `NotFound`, or `Error`.
     </ResponseField>
+    <ResponseField name="dkimStatus" type="string">
+      DKIM verification status.
+    </ResponseField>
+    <ResponseField name="dkimVerified" type="boolean">
+      Whether DKIM is fully verified and enabled.
+    </ResponseField>
+    <ResponseField name="dkimTokens" type="array">
+      Array of DKIM tokens configured for the domain.
+    </ResponseField>
+    <ResponseField name="mailFromDomain" type="string">
+      Configured MAIL FROM domain (if set).
+    </ResponseField>
+    <ResponseField name="mailFromStatus" type="string">
+      MAIL FROM domain status: `Pending`, `Success`, `Failed`, or `NotSet`.
+    </ResponseField>
+    <ResponseField name="mailFromVerified" type="boolean">
+      Whether the MAIL FROM domain is fully verified.
+    </ResponseField>
     
     <ResponseField name="isFullyVerified" type="boolean" required>
       Whether both DNS records and SES verification are complete.
@@ -170,6 +188,18 @@ This endpoint retrieves comprehensive information about a specific domain, inclu
     
     <ResponseField name="lastChecked" type="string" required>
       ISO 8601 timestamp when this verification check was performed.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="authRecommendations" type="object" optional>
+  Recommended DNS records to improve deliverability (present when SPF/DMARC are missing).
+  <Expandable title="Recommendations">
+    <ResponseField name="spf" type="object">
+      Suggested SPF record for the root domain.
+    </ResponseField>
+    <ResponseField name="dmarc" type="object">
+      Suggested DMARC record with p=none for monitoring.
     </ResponseField>
   </Expandable>
 </ResponseField>

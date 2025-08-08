@@ -143,6 +143,32 @@ data = response.json()
       "lastChecked": "2024-01-15T10:25:00Z",
       "createdAt": "2024-01-01T00:00:00Z",
       "updatedAt": "2024-01-01T00:00:00Z"
+    },
+    {
+      "id": "dns_rec_003",
+      "domainId": "dom_abc123",
+      "recordType": "TXT",
+      "name": "example.com",
+      "value": "v=spf1 include:amazonses.com ~all",
+      "priority": null,
+      "isRequired": false,
+      "isVerified": false,
+      "lastChecked": "2024-01-15T10:25:00Z",
+      "createdAt": "2024-01-01T00:00:00Z",
+      "updatedAt": "2024-01-01T00:00:00Z"
+    },
+    {
+      "id": "dns_rec_004",
+      "domainId": "dom_abc123",
+      "recordType": "TXT",
+      "name": "_dmarc.example.com",
+      "value": "v=DMARC1; p=none; rua=mailto:dmarc@example.com; ruf=mailto:dmarc@example.com; fo=1; aspf=r; adkim=r",
+      "priority": null,
+      "isRequired": false,
+      "isVerified": false,
+      "lastChecked": "2024-01-15T10:25:00Z",
+      "createdAt": "2024-01-01T00:00:00Z",
+      "updatedAt": "2024-01-01T00:00:00Z"
     }
   ]
 }
@@ -196,6 +222,34 @@ Value: 10 inbound-smtp.us-east-1.amazonaws.com
 Priority: 10
 ```
 </CodeGroup>
+
+### SPF Records (TXT)
+Used for email authentication to specify which servers can send emails on behalf of your domain.
+
+<CodeGroup>
+```dns SPF Record Example
+Name: example.com
+Value: v=spf1 include:amazonses.com ~all
+```
+</CodeGroup>
+
+<Info>
+SPF records help prevent email spoofing by specifying authorized mail servers. The `~all` indicates a "soft fail" for unauthorized servers, while `-all` would be a "hard fail".
+</Info>
+
+### DMARC Records (TXT)
+Used for email authentication policy to specify how receiving servers should handle emails that fail SPF or DKIM checks.
+
+<CodeGroup>
+```dns DMARC Record Example
+Name: _dmarc.example.com
+Value: v=DMARC1; p=none; rua=mailto:dmarc@example.com; ruf=mailto:dmarc@example.com; fo=1; aspf=r; adkim=r
+```
+</CodeGroup>
+
+<Info>
+DMARC records provide reporting and policy instructions. The `p=none` policy is recommended for monitoring, while `p=quarantine` or `p=reject` provide stronger protection once you've verified your email authentication setup.
+</Info>
 
 ### CNAME Records
 Sometimes used for specific subdomain configurations.

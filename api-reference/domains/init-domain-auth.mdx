@@ -1,0 +1,259 @@
+---
+title: "Initialize Domain Authentication"
+api: "POST /api/v2/domains/{id}/auth"
+description: "Initialize comprehensive domain authentication with SES identity, DKIM, MAIL FROM, SPF, and DMARC records"
+---
+
+## Overview
+
+This endpoint initializes complete domain authentication for enhanced email deliverability. It sets up:
+
+- **SES Domain Identity**: Verifies domain ownership with Amazon SES
+- **Easy DKIM**: Generates DKIM tokens and CNAME records for email signing
+- **Custom MAIL FROM**: Configures a subdomain for bounce/complaint handling
+- **SPF Records**: Generates Sender Policy Framework records
+- **DMARC Policy**: Creates Domain-based Message Authentication policy
+
+<Info>
+This endpoint requires AWS SES credentials to be configured. All generated DNS records must be added to your DNS provider before verification.
+</Info>
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication. Format: `Bearer YOUR_API_KEY`
+</ParamField>
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the domain to initialize authentication for.
+</ParamField>
+
+## Request Body
+
+<ParamField body="mailFromDomain" type="string" default="mail">
+  Subdomain to use for MAIL FROM configuration (e.g., "mail" creates "mail.yourdomain.com").
+</ParamField>
+
+<ParamField body="generateSpf" type="boolean" default="true">
+  Whether to generate SPF records for the root domain.
+</ParamField>
+
+<ParamField body="generateDmarc" type="boolean" default="true">
+  Whether to generate DMARC policy records.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean" required>
+  Indicates if the authentication initialization was successful.
+</ResponseField>
+
+<ResponseField name="domain" type="string" required>
+  The domain name that was configured.
+</ResponseField>
+
+<ResponseField name="sesIdentityStatus" type="string" required>
+  Current SES identity verification status: "Pending", "Success", or "Failed".
+</ResponseField>
+
+<ResponseField name="dkimEnabled" type="boolean" required>
+  Whether DKIM was successfully enabled for the domain.
+</ResponseField>
+
+<ResponseField name="dkimTokens" type="array" required>
+  Array of DKIM tokens generated for CNAME record creation.
+</ResponseField>
+
+<ResponseField name="mailFromDomain" type="string" required>
+  The configured MAIL FROM domain (e.g., "mail.yourdomain.com").
+</ResponseField>
+
+<ResponseField name="mailFromStatus" type="string" required>
+  Status of MAIL FROM domain configuration: "Pending", "Success", or "Failed".
+</ResponseField>
+
+<ResponseField name="records" type="array" required>
+  Array of DNS records that need to be added to your DNS provider.
+  
+  <Expandable title="DNS Record Object">
+    <ResponseField name="type" type="string" required>
+      DNS record type: "TXT", "CNAME", or "MX".
+    </ResponseField>
+    
+    <ResponseField name="name" type="string" required>
+      DNS record name/hostname.
+    </ResponseField>
+    
+    <ResponseField name="value" type="string" required>
+      DNS record value/content.
+    </ResponseField>
+    
+    <ResponseField name="priority" type="number">
+      Priority for MX records (typically 10).
+    </ResponseField>
+    
+    <ResponseField name="isRequired" type="boolean" required>
+      Whether this record is required for domain verification.
+    </ResponseField>
+    
+    <ResponseField name="isVerified" type="boolean" required>
+      Whether this record has been verified in DNS (initially false).
+    </ResponseField>
+    
+    <ResponseField name="description" type="string" required>
+      Human-readable description of what this record does.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="message" type="string" required>
+  Summary message with next steps.
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST "https://api.inbound.email/api/v2/domains/dom_abc123/auth" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mailFromDomain": "mail",
+    "generateSpf": true,
+    "generateDmarc": true
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.inbound.email/api/v2/domains/dom_abc123/auth', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    mailFromDomain: 'mail',
+    generateSpf: true,
+    generateDmarc: true
+  })
+});
+
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://api.inbound.email/api/v2/domains/dom_abc123/auth',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'Content-Type': 'application/json'
+    },
+    json={
+        'mailFromDomain': 'mail',
+        'generateSpf': True,
+        'generateDmarc': True
+    }
+)
+
+data = response.json()
+```
+
+</CodeGroup>
+
+## Example Response
+
+```json
+{
+  "success": true,
+  "domain": "example.com",
+  "sesIdentityStatus": "Pending",
+  "dkimEnabled": true,
+  "dkimTokens": [
+    "abc123def456",
+    "ghi789jkl012",
+    "mno345pqr678"
+  ],
+  "mailFromDomain": "mail.example.com",
+  "mailFromStatus": "Pending",
+  "records": [
+    {
+      "type": "TXT",
+      "name": "_amazonses.example.com",
+      "value": "abcd1234efgh5678ijkl9012mnop3456",
+      "isRequired": true,
+      "isVerified": false,
+      "description": "SES domain verification"
+    },
+    {
+      "type": "CNAME",
+      "name": "abc123def456._domainkey.example.com",
+      "value": "abc123def456.dkim.amazonses.com",
+      "isRequired": true,
+      "isVerified": false,
+      "description": "DKIM authentication token 1"
+    },
+    {
+      "type": "MX",
+      "name": "mail.example.com",
+      "value": "10 feedback-smtp.us-east-2.amazonses.com",
+      "priority": 10,
+      "isRequired": true,
+      "isVerified": false,
+      "description": "MAIL FROM domain MX record for bounces and complaints"
+    },
+    {
+      "type": "TXT",
+      "name": "example.com",
+      "value": "v=spf1 include:amazonses.com ~all",
+      "isRequired": false,
+      "isVerified": false,
+      "description": "SPF record for root domain (recommended)"
+    },
+    {
+      "type": "TXT",
+      "name": "_dmarc.example.com",
+      "value": "v=DMARC1; p=none; rua=mailto:dmarc@example.com; ruf=mailto:dmarc@example.com; fo=1; aspf=r; adkim=r",
+      "isRequired": false,
+      "isVerified": false,
+      "description": "DMARC policy record (starts with p=none for monitoring)"
+    }
+  ],
+  "message": "Domain authentication initialized. 5 DNS records generated. Add these records to your DNS provider and use the verify endpoint to check status."
+}
+```
+
+## Error Responses
+
+<ResponseField name="400" type="object">
+  Bad Request - Invalid domain ID or request parameters.
+</ResponseField>
+
+<ResponseField name="401" type="object">
+  Unauthorized - Invalid or missing API key.
+</ResponseField>
+
+<ResponseField name="404" type="object">
+  Not Found - Domain not found or not owned by the authenticated user.
+</ResponseField>
+
+<ResponseField name="500" type="object">
+  Internal Server Error - AWS SES not configured or other server error.
+</ResponseField>
+
+## Next Steps
+
+After initializing domain authentication:
+
+1. **Add DNS Records**: Add all the returned DNS records to your DNS provider
+2. **Wait for Propagation**: DNS changes can take up to 48 hours to propagate
+3. **Verify Authentication**: Use the [Verify Domain Authentication](/api-reference/domains/verify-domain-auth) endpoint to check status
+4. **Monitor Progress**: Required records must be verified before the domain can send emails with enhanced deliverability
+
+<Warning>
+DKIM tokens and verification tokens are unique to each domain and should be kept secure. Do not share these values publicly.
+</Warning>

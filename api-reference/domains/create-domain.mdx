@@ -153,6 +153,18 @@ data = response.json()
       "name": "example.com",
       "value": "10 inbound-smtp.us-east-1.amazonaws.com",
       "isRequired": true
+    },
+    {
+      "type": "TXT",
+      "name": "example.com",
+      "value": "v=spf1 include:amazonses.com ~all",
+      "isRequired": false
+    },
+    {
+      "type": "TXT",
+      "name": "_dmarc.example.com",
+      "value": "v=DMARC1; p=none; rua=mailto:dmarc@example.com; ruf=mailto:dmarc@example.com; fo=1; aspf=r; adkim=r",
+      "isRequired": false
     }
   ],
   "createdAt": "2024-01-15T10:30:00Z",
@@ -208,10 +220,15 @@ After creating a domain, you'll need to complete the verification process:
 
 <Steps>
 <Step title="Add DNS Records">
-  Add the DNS records returned in the `dnsRecords` array to your domain's DNS configuration.
+  Add the DNS records returned in the `dnsRecords` array to your domain's DNS configuration. This includes:
+  
+  - **TXT record** for SES domain verification (required)
+  - **MX record** for email routing (required)  
+  - **SPF record** for email authentication (recommended)
+  - **DMARC record** for email policy (recommended)
   
   <Tip>
-  The exact method depends on your DNS provider. Most providers have a DNS management interface where you can add TXT and MX records.
+  The exact method depends on your DNS provider. Most providers have a DNS management interface where you can add TXT and MX records. While SPF and DMARC records are not required for basic functionality, they significantly improve email deliverability.
   </Tip>
 </Step>
 
@@ -256,7 +273,9 @@ After creating a domain, you might want to:
 ## Notes
 
 - Domain verification is initiated automatically upon creation
-- The `dnsRecords` array contains all records needed for complete verification
+- The `dnsRecords` array contains all 4 records needed for complete verification and optimal deliverability
+- 2 records (TXT and MX) are required for basic functionality
+- 2 additional records (SPF and DMARC) are recommended for enhanced email authentication
 - Domain limits are checked against your current plan before creation
 - Provider detection helps identify the DNS service for better user guidance
-- All domains start in `pending` status until DNS records are verified 
+- All domains start in `pending` status until required DNS records are verified 
