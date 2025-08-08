@@ -179,10 +179,19 @@ This endpoint requires authentication via either:
 
 ## Response
 
+<ResponseField name="id" type="string" required>
+  Unique identifier for the sent email in Inbound's system
+</ResponseField>
+
+<ResponseField name="messageId" type="string" required>
+  AWS SES Message ID for tracking the email through AWS infrastructure
+</ResponseField>
+
 <ResponseExample>
   ```json Success (200)
   {
-    "id": "em_1234567890abcdef"
+    "id": "em_1234567890abcdef",
+    "messageId": "0100018e1234abcd-12345678-1234-1234-1234-123456789012-000000"
   }
   ```
 

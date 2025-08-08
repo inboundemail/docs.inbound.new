@@ -95,7 +95,15 @@ curl -X POST https://inbound.new/api/v2/emails/{id}/reply \
 ## Response
 
 <ResponseField name="id" type="string" required>
-  Unique identifier for the sent reply email
+  Unique identifier for the sent reply email in Inbound's system
+</ResponseField>
+
+<ResponseField name="messageId" type="string" required>
+  The Inbound message ID used for email threading (appears in Message-ID header)
+</ResponseField>
+
+<ResponseField name="awsMessageId" type="string" required>
+  AWS SES Message ID for tracking the email through AWS infrastructure
 </ResponseField>
 
 ## Email Threading
@@ -166,7 +174,9 @@ data = response.json()
 <ResponseExample>
 ```json Success
 {
-  "id": "sent_xyz789"
+  "id": "sent_xyz789",
+  "messageId": "xyz789@yourdomain.com",
+  "awsMessageId": "0100018e1234abcd-12345678-1234-1234-1234-123456789012-000000"
 }
 ```
 </ResponseExample>
