@@ -16,9 +16,229 @@ description: "Simple email processing API for receiving and managing emails prog
   width="200"
 />
 
-# Inbound API v2
+Welcome to Inbound! Get started with sending emails, receiving emails, and building complete email workflows in minutes.
 
-Transform any email address into a powerful API endpoint. Inbound provides a simple yet robust way to receive, process, and manage emails programmatically.
+## Quick Start
+
+<Steps>
+  <Step title="Get Your API Key">
+    Sign up at [inbound.new](https://inbound.new) and generate an API key from your dashboard.
+  </Step>
+  
+  <Step title="Install the SDK (Recommended)">
+    Install our SDK for the best developer experience:
+    
+    ```bash
+    npm install @inboundemail/sdk
+    ```
+  </Step>
+  
+  <Step title="Send Your First Email">
+    Start sending emails immediately:
+    
+    <CodeGroup>
+    ```typescript SDK (Recommended)
+    import { Inbound } from '@inboundemail/sdk'
+    
+    const inbound = new Inbound(process.env.INBOUND_API_KEY!)
+    
+    const email = await inbound.emails.send({
+      from: 'Inbound User <hello@yourdomain.com>',
+      to: 'user@example.com',
+      subject: 'Welcome!',
+      html: '<p>Thanks for signing up!</p>',
+      tags: [{ name: 'campaign', value: 'welcome' }]
+    })
+    
+    console.log(`Email sent: ${email.id}`)
+    ```
+    
+    ```bash cURL
+    curl -X POST https://inbound.new/api/v2/emails \
+      -H "Authorization: Bearer your_api_key_here" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "from": "hello@yourdomain.com",
+        "to": "user@example.com",
+        "subject": "Welcome!",
+        "html": "<p>Thanks for signing up!</p>"
+      }'
+    ```
+    </CodeGroup>
+  </Step>
+</Steps>
+
+## Complete Email Workflow
+
+Here's how to receive emails and automatically reply using Next.js:
+
+### 1. Set Up Webhook Endpoint
+
+Create a webhook endpoint to receive emails:
+
+```typescript app/api/webhooks/inbound/route.ts
+import { Inbound, type InboundWebhookPayload, isInboundWebhook } from '@inboundemail/sdk'
+import { NextRequest, NextResponse } from 'next/server'
+
+const inbound = new Inbound(process.env.INBOUND_API_KEY!)
+
+export async function POST(request: NextRequest) {
+  try {
+    const payload: InboundWebhookPayload = await request.json()
+    
+    // Verify this is a valid Inbound webhook
+    if (!isInboundWebhook(payload)) {
+      return NextResponse.json({ error: 'Invalid webhook' }, { status: 400 })
+    }
+    
+    const { email } = payload
+    console.log(`📧 Received email: ${email.subject} from ${email.from?.addresses?.[0]?.address}`)
+    
+    // Auto-reply to support emails
+    if (email.subject?.toLowerCase().includes('support')) {
+      await inbound.reply(email, {
+        from: 'support@yourdomain.com',
+        text: 'Thanks for contacting support! We\'ll get back to you within 24 hours.',
+        tags: [{ name: 'type', value: 'auto-reply' }]
+      })
+    }
+    
+    // Auto-reply to thank you emails
+    if (email.subject?.toLowerCase().includes('thanks')) {
+      await inbound.reply(email, {
+        from: 'hello@yourdomain.com',
+        html: '<p>You\'re welcome! Let us know if you need anything else.</p>'
+      })
+    }
+    
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Webhook error:', error)
+    return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 })
+  }
+}
+```
+
+### 2. Advanced Reply Logic
+
+Build intelligent auto-responders:
+
+```typescript
+// Check if it's business hours
+const now = new Date()
+const isBusinessHours = now.getHours() >= 9 && now.getHours() < 17
+
+if (email.subject?.toLowerCase().includes('urgent') && !isBusinessHours) {
+  await inbound.reply(email, {
+    from: 'support@yourdomain.com',
+    subject: 'Urgent Request Received - Out of Hours',
+    html: `
+      <p>Thanks for your urgent request!</p>
+      <p>We're currently outside business hours (9 AM - 5 PM EST), 
+         but we'll prioritize your message first thing tomorrow morning.</p>
+      <p>For immediate assistance, please call: +1-555-SUPPORT</p>
+    `,
+    tags: [
+      { name: 'priority', value: 'urgent' },
+      { name: 'time', value: 'after-hours' }
+    ]
+  })
+}
+```
+
+### 3. Process Attachments
+
+Handle email attachments in your webhook:
+
+```typescript
+if (email.cleanedContent.attachments.length > 0) {
+  console.log(`📎 Email has ${email.cleanedContent.attachments.length} attachments`)
+  
+  for (const attachment of email.cleanedContent.attachments) {
+    console.log(`- ${attachment.filename} (${attachment.contentType})`)
+    
+    // Auto-reply for PDF attachments
+    if (attachment.contentType?.includes('pdf')) {
+      await inbound.reply(email, {
+        from: 'documents@yourdomain.com',
+        text: 'Thanks for sending the PDF! We\'ll review it and get back to you soon.',
+        tags: [{ name: 'attachment-type', value: 'pdf' }]
+      })
+    }
+  }
+}
+```
+
+## SDK vs API
+
+<Tabs>
+<Tab title="SDK (Recommended)">
+The SDK provides a better developer experience with TypeScript support, automatic retries, and simplified webhook handling.
+
+```typescript
+import { Inbound } from '@inboundemail/sdk'
+
+const inbound = new Inbound(process.env.INBOUND_API_KEY!)
+
+// Send email
+await inbound.emails.send({
+  from: 'hello@yourdomain.com',
+  to: 'user@example.com',
+  subject: 'Welcome!',
+  html: '<p>Thanks for signing up!</p>',
+  replyTo: 'support@yourdomain.com',
+  tags: [{ name: 'campaign', value: 'welcome' }]
+})
+
+// Reply to webhook email
+await inbound.reply(email, {
+  from: 'support@yourdomain.com',
+  text: 'Thanks for your message!'
+})
+```
+</Tab>
+
+<Tab title="Direct API">
+Use the REST API directly if you prefer or need custom implementations.
+
+```bash
+# Send email
+curl -X POST https://inbound.new/api/v2/emails \
+  -H "Authorization: Bearer your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "hello@yourdomain.com",
+    "to": "user@example.com",
+    "subject": "Welcome!",
+    "html": "<p>Thanks for signing up!</p>",
+    "replyTo": "support@yourdomain.com",
+    "tags": [{"name": "campaign", "value": "welcome"}]
+  }'
+
+# Reply to email
+curl -X POST https://inbound.new/api/v2/emails/{email_id}/reply \
+  -H "Authorization: Bearer your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "support@yourdomain.com",
+    "text": "Thanks for your message!"
+  }'
+```
+</Tab>
+</Tabs>
+
+## What's New in SDK v3.0.0
+
+<Update label="SDK v3.0.0" description="Major update">
+### 🚨 Breaking Changes
+- **Simplified constructor**: `new Inbound(apiKey)` instead of config object
+- **Reply method requires explicit from**: No more default reply addresses
+
+### ✨ New Features
+- **Tags support**: Add metadata to emails like Resend
+- **Better TypeScript types**: Improved IDE support and type safety
+- **Backward compatibility**: API supports both snake_case and camelCase
+</Update>
 
 ## Base URL
 
@@ -28,114 +248,116 @@ All API requests are made to:
 https://inbound.new/api/v2
 ```
 
-## Getting Started
-
-<Steps>
-  <Step title="Get Your API Key">
-    Sign up at [inbound.new](https://inbound.new) and generate an API key from your dashboard.
-  </Step>
-  
-  <Step title="Set Up Authentication">
-    Include your API key in the Authorization header of all requests:
-    
-    ```bash
-    Authorization: Bearer your_api_key_here
-    ```
-  </Step>
-  
-  <Step title="Make Your First Request">
-    List your emails to verify authentication:
-    
-    ```bash
-    curl -X GET https://inbound.new/api/v2/mail \
-      -H "Authorization: Bearer your_api_key_here"
-    ```
-  </Step>
-</Steps>
-
 ## API Features
 
 <CardGroup cols={2}>
-  <Card title="List Emails" icon="envelope" href="/api-reference/mail/list-emails">
-    Retrieve all emails with filtering, pagination, and search capabilities
+  <Card title="Send Emails" icon="paper-plane" href="/api-reference/emails/send-email">
+    Send transactional emails with Resend-compatible API
   </Card>
   
-  <Card title="Get Email Details" icon="eye" href="/api-reference/mail/get-email">
-    Fetch complete email content including headers, attachments, and metadata
+  <Card title="Receive Emails" icon="inbox" href="/sdk/webhook-handling">
+    Process incoming emails via webhooks with TypeScript types
   </Card>
   
-  <Card title="Reply to Emails" icon="reply" href="/api-reference/mail/reply-to-email">
+  <Card title="Reply to Emails" icon="reply" href="/api-reference/emails/reply-to-email">
     Send replies to received emails with full threading support
   </Card>
   
-  <Card title="Authentication" icon="key" href="/authentication">
-    Learn how to authenticate and secure your API requests
+  <Card title="Manage Domains" icon="globe" href="/api-reference/domains/create-domain">
+    Add and verify domains for email receiving
   </Card>
 </CardGroup>
 
-## Quick Example
+## Webhook Payload Structure
 
-Here's a complete example of retrieving and processing emails:
+When you receive emails, here's the payload structure:
 
-<CodeGroup>
-```bash cURL
-curl -X GET https://inbound.new/api/v2/mail \
-  -H "Authorization: Bearer your_api_key_here" \
-  -H "Content-Type: application/json"
-```
-
-```javascript JavaScript
-const response = await fetch('https://inbound.new/api/v2/mail', {
-  headers: {
-    'Authorization': `Bearer ${process.env.INBOUND_API_KEY}`,
-    'Content-Type': 'application/json'
+```typescript
+interface InboundWebhookPayload {
+  event: 'email.received'
+  timestamp: string
+  email: {
+    id: string // Use this ID for replies
+    messageId: string | null
+    from: { addresses: [{ name: string, address: string }] }
+    to: { addresses: [{ name: string, address: string }] }
+    subject: string | null
+    recipient: string
+    receivedAt: string
+    parsedData: {
+      textBody: string | undefined
+      htmlBody: string | undefined
+      attachments: Array<{
+        filename: string
+        contentType: string
+        size: number
+      }>
+      // ... more fields
+    }
+    cleanedContent: {
+      html: string | null
+      text: string | null
+      attachments: Array<...>
+    }
   }
-});
-
-const data = await response.json();
-console.log(data.emails);
-```
-
-```python Python
-import requests
-
-headers = {
-    'Authorization': f'Bearer {api_key}',
-    'Content-Type': 'application/json'
-}
-
-response = requests.get(
-    'https://inbound.new/api/v2/mail',
-    headers=headers
-)
-
-data = response.json()
-print(data['emails'])
-```
-</CodeGroup>
-
-## Response Format
-
-All API responses follow this consistent format:
-
-```json
-{
-  "emails": [...],
-  "pagination": {
-    "total": 150,
-    "limit": 50,
-    "offset": 0,
-    "hasMore": true
-  },
-  "filters": {
-    "uniqueDomains": ["example.com", "test.com"]
+  endpoint: {
+    id: string
+    name: string
+    type: 'webhook' | 'email' | 'email_group'
   }
 }
 ```
+
+## Migration from v2.x to v3.0.0
+
+<AccordionGroup>
+<Accordion title="Update Constructor">
+```typescript
+// v2.x
+const inbound = new Inbound({
+  apiKey: process.env.INBOUND_API_KEY!,
+  defaultReplyFrom: 'support@domain.com'
+})
+
+// v3.x
+const inbound = new Inbound(process.env.INBOUND_API_KEY!)
+```
+</Accordion>
+
+<Accordion title="Update Field Names">
+```typescript
+// v2.x
+await inbound.emails.send({
+  reply_to: 'noreply@domain.com',
+  attachments: [{ content_type: 'application/pdf' }]
+})
+
+// v3.x
+await inbound.emails.send({
+  replyTo: 'noreply@domain.com',
+  attachments: [{ contentType: 'application/pdf' }],
+  tags: [{ name: 'campaign', value: 'welcome' }]
+})
+```
+</Accordion>
+
+<Accordion title="Update Reply Usage">
+```typescript
+// v2.x
+await inbound.reply(email, "Thanks!")
+
+// v3.x
+await inbound.reply(email, {
+  from: 'support@domain.com',
+  text: 'Thanks!'
+})
+```
+</Accordion>
+</AccordionGroup>
 
 ## Error Handling
 
-API errors are returned with appropriate HTTP status codes and descriptive error messages:
+API errors are returned with appropriate HTTP status codes:
 
 ```json
 {
@@ -147,21 +369,21 @@ Common status codes:
 - `200` - Success
 - `400` - Bad Request (invalid parameters)
 - `401` - Unauthorized (invalid API key)
-- `404` - Not Found (email not found)
+- `404` - Not Found (resource not found)
 - `500` - Internal Server Error
 
 ## Need Help?
 
 <CardGroup cols={3}>
-  <Card title="Dashboard" icon="chart-line" href="https://inbound.new/dashboard">
+  <Card title="Dashboard" icon="chart-line" href="https://inbound.new">
     Manage your account and API keys
   </Card>
   
-  <Card title="Support" icon="envelope" href="mailto:support@inbound.run">
-    Get help from our support team
+  <Card title="SDK Documentation" icon="code" href="/sdk/installation">
+    Complete SDK guides and examples
   </Card>
   
-  <Card title="GitHub" icon="github" href="https://github.com/r44vc0rp/inbound">
-    View source code and contribute
+  <Card title="API Reference" icon="book" href="/api-reference/mail/list-emails">
+    Detailed API endpoint documentation
   </Card>
 </CardGroup>

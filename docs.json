@@ -59,8 +59,7 @@
             "group": "Inbound Emails",
             "pages": [
               "api-reference/mail/list-emails",
-              "api-reference/mail/get-email",
-              "api-reference/mail/reply-to-email"
+              "api-reference/mail/get-email"
             ]
           },
           {
@@ -132,8 +131,8 @@
   "navbar": {
     "links": [
       {
-        "label": "Dashboard",
-        "href": "https://inbound.new/dashboard"
+        "label": "Mail Flow",
+        "href": "https://inbound.new/logs"
       }
     ],
     "primary": {
@@ -144,7 +143,7 @@
   },
   "footer": {
     "socials": {
-      "github": "https://github.com/exonlabs/inbound"
+      "github": "https://github.com/r44vc0rp/inbound"
     }
   }
 }

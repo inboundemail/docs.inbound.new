@@ -1,11 +1,11 @@
 ---
 title: "Email Sending"
-description: "Send emails and reply to conversations using the SDK"
+description: "Send emails and reply to conversations using the SDK v3.0.0"
 ---
 
 ## Overview
 
-The Emails API provides Resend-compatible email sending with additional features for replying to email threads.
+The Emails API provides Resend-compatible email sending with additional features for replying to email threads. SDK v3.0.0 introduces camelCase field names and tags support for better compatibility.
 
 ## Send Email
 
@@ -14,15 +14,16 @@ Send emails with full support for HTML, attachments, and headers:
 ```typescript
 import { Inbound } from '@inboundemail/sdk'
 
-const inbound = new Inbound({ apiKey: process.env.INBOUND_API_KEY! })
+const inbound = new Inbound(process.env.INBOUND_API_KEY!)
 
-// Simple email
+// Simple email (v3.0.0 syntax)
 const { id } = await inbound.emails.send({
   from: 'you@yourdomain.com', // we also support the "John Doe <john@doe.com>" format
   to: 'customer@example.com',
   subject: 'Welcome to our service',
   text: 'Thanks for signing up!',
-  html: '<p>Thanks for signing up!</p>'
+  html: '<p>Thanks for signing up!</p>',
+  tags: [{ name: 'campaign', value: 'welcome' }] // New in v3.0.0
 })
 
 console.log('Email sent:', id)
@@ -31,7 +32,7 @@ console.log('Email sent:', id)
 ### Send Parameters
 
 <ParamField body="from" type="string" required>
-  Sender email address. Must be from a verified domain. We also support the "John Doe <john@doe.com>" format.
+  Sender email address. Can also include the sender display name in the format "John Doe &lt;john@doe.com&gt;"
 </ParamField>
 
 <ParamField body="to" type="string | string[]" required>
@@ -58,8 +59,8 @@ console.log('Email sent:', id)
   Blind carbon copy recipients
 </ParamField>
 
-<ParamField body="reply_to" type="string | string[]">
-  Reply-to email address(es)
+<ParamField body="replyTo" type="string | string[]">
+  Reply-to email address(es) - **Changed from `reply_to` in v3.0.0**
 </ParamField>
 
 <ParamField body="headers" type="object">
@@ -70,14 +71,27 @@ console.log('Email sent:', id)
   File attachments (see structure below)
 </ParamField>
 
-### Attachment Structure
+<ParamField body="tags" type="array">
+  **New in v3.0.0**: Email tags for tracking and categorization
+</ParamField>
+
+### Attachment Structure (v3.0.0)
 
 ```typescript
 interface Attachment {
   content: string      // Base64 encoded content
   filename: string     // File name
   path?: string       // Alternative to content
-  content_type?: string // MIME type
+  contentType?: string // MIME type - **Changed from `content_type` in v3.0.0**
+}
+```
+
+### Tags Structure (New in v3.0.0)
+
+```typescript
+interface Tag {
+  name: string   // Tag name (e.g., "campaign", "priority")
+  value: string  // Tag value (e.g., "welcome", "urgent")
 }
 ```
 
@@ -85,41 +99,48 @@ interface Attachment {
 
 Reply to emails with context preservation:
 
-### Using the Simplified Reply Method
+<Warning>
+**Breaking Change in v3.0.0**: The reply method now requires an explicit `from` address. Default reply addresses are no longer supported.
+</Warning>
+
+### Using the Simplified Reply Method (v3.0.0)
 
 ```typescript
-// Configure default reply address
-const inbound = new Inbound({
-  apiKey: process.env.INBOUND_API_KEY!,
-  defaultReplyFrom: 'support@yourdomain.com'
+const inbound = new Inbound(process.env.INBOUND_API_KEY!)
+
+// Reply with explicit from address (required in v3.0.0)
+await inbound.reply(email, {
+  from: 'support@yourdomain.com',
+  text: 'Thanks for your message!'
 })
 
-// Simple text reply
-await inbound.reply(email, "Thanks for your message!")
-
-// Reply with options
+// Reply with full options and tags
 await inbound.reply(email, {
+  from: 'support@yourdomain.com',
   text: 'Thanks for your message!',
   html: '<p>Thanks for your message!</p>',
+  tags: [{ name: 'type', value: 'auto-reply' }],
   attachments: [{
     filename: 'invoice.pdf',
-    content: base64Content
+    content: base64Content,
+    contentType: 'application/pdf' // Changed from content_type
   }]
 })
 ```
 
-### Using the Full Reply API
+### Using the Full Reply API (v3.0.0)
 
 ```typescript
-// Reply via email ID
+// Reply via email ID with new camelCase fields
 await inbound.emails.reply('email_abc123', {
   from: 'support@yourdomain.com',
   text: 'Thank you for contacting us.',
   html: '<p>Thank you for contacting us.</p>',
-  include_original: true
+  includeOriginal: true, // Changed from include_original
+  tags: [{ name: 'department', value: 'support' }]
 })
 
-// Reply with all options
+// Reply with all options (v3.0.0 syntax)
 await inbound.emails.reply(emailId, {
   from: 'support@yourdomain.com',
   to: ['customer@example.com'],
@@ -127,14 +148,20 @@ await inbound.emails.reply(emailId, {
   subject: 'Re: Your inquiry',
   text: 'Here is our response...',
   html: '<p>Here is our response...</p>',
+  replyTo: 'noreply@yourdomain.com', // Changed from reply_to
   headers: {
     'X-Priority': '1'
   },
   attachments: [{
     filename: 'document.pdf',
-    content: base64EncodedPDF
+    content: base64EncodedPDF,
+    contentType: 'application/pdf' // Changed from content_type
   }],
-  include_original: false
+  tags: [
+    { name: 'priority', value: 'high' },
+    { name: 'department', value: 'support' }
+  ],
+  includeOriginal: false // Changed from include_original
 })
 ```
 
@@ -176,13 +203,21 @@ await inbound.emails.reply(emailId, {
   File attachments
 </ParamField>
 
-<ParamField body="include_original" type="boolean" default="false">
-  Include original email in reply
+<ParamField body="includeOriginal" type="boolean" default="false">
+  Include original email in reply - **Changed from `include_original` in v3.0.0**
+</ParamField>
+
+<ParamField body="replyTo" type="string | string[]">
+  Reply-to email address(es) - **Changed from `reply_to` in v3.0.0**
+</ParamField>
+
+<ParamField body="tags" type="array">
+  **New in v3.0.0**: Email tags for tracking and categorization
 </ParamField>
 
 ## Practical Examples
 
-### Send Welcome Email
+### Send Welcome Email (v3.0.0)
 
 ```typescript
 async function sendWelcomeEmail(userEmail: string, userName: string) {
@@ -195,14 +230,18 @@ async function sendWelcomeEmail(userEmail: string, userName: string) {
       <p>We're excited to have you on board.</p>
       <a href="https://yourdomain.com/get-started">Get Started</a>
     `,
-    text: `Welcome ${userName}! We're excited to have you on board.`
+    text: `Welcome ${userName}! We're excited to have you on board.`,
+    tags: [
+      { name: 'campaign', value: 'welcome' },
+      { name: 'user-type', value: 'new' }
+    ]
   })
   
   return id
 }
 ```
 
-### Send Email with Attachments
+### Send Email with Attachments (v3.0.0)
 
 ```typescript
 import fs from 'fs'
@@ -220,15 +259,19 @@ async function sendInvoice(customerEmail: string, invoicePath: string) {
     attachments: [{
       filename: 'invoice.pdf',
       content: base64Content,
-      content_type: 'application/pdf'
-    }]
+      contentType: 'application/pdf' // Changed from content_type
+    }],
+    tags: [
+      { name: 'type', value: 'invoice' },
+      { name: 'department', value: 'billing' }
+    ]
   })
   
   return id
 }
 ```
 
-### Auto-Reply System
+### Auto-Reply System (v3.0.0)
 
 ```typescript
 // In your webhook handler
@@ -241,16 +284,20 @@ export async function handleWebhook(payload: InboundWebhookPayload) {
   const isBusinessHours = hour >= 9 && hour < 17
   
   if (!isBusinessHours) {
-    // Send auto-reply
+    // Send auto-reply with v3.0.0 syntax
     await inbound.reply(email, {
-      from: 'support@yourdomain.com',
+      from: 'support@yourdomain.com', // Required in v3.0.0
       html: `
         <p>Thank you for contacting us!</p>
         <p>We received your message outside of business hours. 
            Our team will respond within 24 hours.</p>
         <p>Business hours: Mon-Fri 9AM-5PM EST</p>
       `,
-      text: 'Thank you for contacting us! We received your message...'
+      text: 'Thank you for contacting us! We received your message...',
+      tags: [
+        { name: 'type', value: 'auto-reply' },
+        { name: 'time', value: 'after-hours' }
+      ]
     })
   }
 }
@@ -275,7 +322,11 @@ async function sendNewsletter(subscribers: string[], content: string) {
         html: content,
         headers: {
           'List-Unsubscribe': '<https://yourdomain.com/unsubscribe>'
-        }
+        },
+        tags: [
+          { name: 'type', value: 'newsletter' },
+          { name: 'campaign', value: 'monthly' }
+        ]
       })
     )
     

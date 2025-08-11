@@ -1,11 +1,11 @@
 ---
 title: "Webhook Handling"
-description: "Handle incoming email webhooks with type safety"
+description: "Handle incoming email webhooks with type safety using SDK v3.0.0"
 ---
 
 ## Overview
 
-When emails arrive at your configured addresses, Inbound sends a webhook to your endpoint with the complete email data.
+When emails arrive at your configured addresses, Inbound sends a webhook to your endpoint with the complete email data. SDK v3.0.0 provides improved TypeScript types and streamlined reply handling.
 
 ## Webhook Payload Structure
 
@@ -56,15 +56,12 @@ const payload: InboundWebhookPayload = {
 ## Next.js App Router
 
 <CodeGroup>
-```typescript app/api/webhook/route.ts
+```typescript app/api/webhook/route.ts (v3.0.0)
 import { NextRequest, NextResponse } from 'next/server'
 import { Inbound, isInboundWebhook } from '@inboundemail/sdk'
 import type { InboundWebhookPayload } from '@inboundemail/sdk'
 
-const inbound = new Inbound({
-  apiKey: process.env.INBOUND_API_KEY!,
-  defaultReplyFrom: 'support@yourdomain.com'
-})
+const inbound = new Inbound(process.env.INBOUND_API_KEY!)
 
 export async function POST(request: NextRequest) {
   try {
@@ -85,11 +82,16 @@ export async function POST(request: NextRequest) {
     console.log(`Subject: ${email.subject}`)
     console.log(`Body: ${email.cleanedContent.text}`)
     
-    // Auto-reply example
+    // Auto-reply example (v3.0.0 syntax - explicit from required)
     if (email.subject?.toLowerCase().includes('urgent')) {
-      await inbound.reply(email, 
-        "We received your urgent request and will respond within 1 hour."
-      )
+      await inbound.reply(email, {
+        from: 'support@yourdomain.com',
+        text: 'We received your urgent request and will respond within 1 hour.',
+        tags: [
+          { name: 'priority', value: 'urgent' },
+          { name: 'type', value: 'auto-reply' }
+        ]
+      })
     }
     
     return NextResponse.json({ success: true })
@@ -103,14 +105,12 @@ export async function POST(request: NextRequest) {
 }
 ```
 
-```typescript app/api/webhook/route.ts (with database)
+```typescript app/api/webhook/route.ts (with database - v3.0.0)
 import { NextRequest, NextResponse } from 'next/server'
 import { Inbound, isInboundWebhook } from '@inboundemail/sdk'
 import { db } from '@/lib/db'
 
-const inbound = new Inbound({
-  apiKey: process.env.INBOUND_API_KEY!
-})
+const inbound = new Inbound(process.env.INBOUND_API_KEY!)
 
 export async function POST(request: NextRequest) {
   const payload = await request.json()
@@ -154,10 +154,7 @@ import type { InboundWebhookPayload } from '@inboundemail/sdk'
 const app = express()
 app.use(express.json())
 
-const inbound = new Inbound({
-  apiKey: process.env.INBOUND_API_KEY!,
-  defaultReplyFrom: 'noreply@yourdomain.com'
-})
+const inbound = new Inbound(process.env.INBOUND_API_KEY!)
 
 app.post('/webhook', async (req, res) => {
   const payload: InboundWebhookPayload = req.body
@@ -175,11 +172,12 @@ app.post('/webhook', async (req, res) => {
     hasAttachments: email.cleanedContent.attachments.length > 0
   })
   
-  // Reply to the email
+  // Reply to the email (v3.0.0 syntax)
   await inbound.reply(email, {
     from: 'support@yourdomain.com',
     html: '<p>Thanks for your email! We\'ll get back to you soon.</p>',
-    text: 'Thanks for your email! We\'ll get back to you soon.'
+    text: 'Thanks for your email! We\'ll get back to you soon.',
+    tags: [{ name: 'type', value: 'auto-reply' }]
   })
   
   res.json({ success: true })

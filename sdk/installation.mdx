@@ -1,27 +1,27 @@
 ---
 title: "Installation"
-description: "Install and set up the Inbound SDK in your project"
+description: "Install and set up the Inbound SDK v3.0.0 in your project"
 ---
 
 ## Installation
 
-Install the Inbound SDK using your preferred package manager:
+Install the latest Inbound SDK using your preferred package manager:
 
 <CodeGroup>
 ```bash npm
-npm install @inboundemail/sdk
+npm install @inboundemail/sdk@latest
 ```
 
 ```bash yarn
-yarn add @inboundemail/sdk
+yarn add @inboundemail/sdk@latest
 ```
 
 ```bash pnpm
-pnpm add @inboundemail/sdk
+pnpm add @inboundemail/sdk@latest
 ```
 
 ```bash bun
-bun add @inboundemail/sdk
+bun add @inboundemail/sdk@latest
 ```
 </CodeGroup>
 
@@ -39,21 +39,95 @@ import { Inbound } from '@inboundemail/sdk'
 ```
 </Step>
 
-<Step title="Initialize with your API key">
+<Step title="Initialize with your API key (v3.0.0 syntax)">
 ```typescript
-const inbound = new Inbound({
-  apiKey: process.env.INBOUND_API_KEY
-})
+const inbound = new Inbound(process.env.INBOUND_API_KEY!)
+
+// Optional: specify custom base URL
+const inbound = new Inbound(
+  process.env.INBOUND_API_KEY!,
+  'https://custom.inbound.url/api/v2'
+)
 ```
+
+<Warning>
+**Breaking Change from v2.x**: The constructor now takes the API key as a string parameter instead of a configuration object.
+</Warning>
 </Step>
 
-<Step title="Make your first API call">
+<Step title="Send your first email">
 ```typescript
-const domains = await inbound.domains.list()
-console.log(`You have ${domains.data.length} domains`)
+const email = await inbound.emails.send({
+  from: 'hello@yourdomain.com',
+  to: 'user@example.com',
+  subject: 'Welcome!',
+  html: '<p>Thanks for signing up!</p>',
+  tags: [{ name: 'campaign', value: 'welcome' }]
+})
+
+console.log(`Email sent: ${email.id}`)
 ```
 </Step>
 </Steps>
+
+## Migration from v2.x
+
+If you're upgrading from v2.x, here are the key changes:
+
+<Tabs>
+<Tab title="Constructor">
+```typescript
+// v2.x (OLD)
+const inbound = new Inbound({
+  apiKey: process.env.INBOUND_API_KEY!,
+  baseUrl: 'https://custom.url',
+  defaultReplyFrom: 'support@domain.com'
+})
+
+// v3.x (NEW)
+const inbound = new Inbound(
+  process.env.INBOUND_API_KEY!,
+  'https://custom.url'  // optional
+)
+```
+</Tab>
+
+<Tab title="Field Names">
+```typescript
+// v2.x (OLD) - snake_case
+await inbound.emails.send({
+  reply_to: 'noreply@domain.com',
+  attachments: [{
+    filename: 'doc.pdf',
+    content_type: 'application/pdf'
+  }]
+})
+
+// v3.x (NEW) - camelCase (Resend-compatible)
+await inbound.emails.send({
+  replyTo: 'noreply@domain.com',
+  attachments: [{
+    filename: 'doc.pdf',
+    contentType: 'application/pdf'
+  }],
+  tags: [{ name: 'type', value: 'welcome' }]
+})
+```
+</Tab>
+
+<Tab title="Reply Method">
+```typescript
+// v2.x (OLD) - simple string replies
+await inbound.reply(email, "Thanks!")
+
+// v3.x (NEW) - explicit from address required
+await inbound.reply(email, {
+  from: 'support@domain.com',
+  text: 'Thanks!'
+})
+```
+</Tab>
+</Tabs>
 
 ## TypeScript Support
 
