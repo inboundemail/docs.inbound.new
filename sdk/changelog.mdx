@@ -1,0 +1,75 @@
+---
+title: "Changelog"
+description: "New updates and improvements to Inbound Email"
+---
+
+# Changelog for Inbound Email SDK
+
+<Update label="January 23, 2025" tags={["SDK", "Breaking Changes"]} rss={{ title: "SDK v3.0.0 Release", description: "Major SDK update with Resend compatibility and improved developer experience" }}>
+  ## SDK v3.0.0 - Major Release
+
+  We've released a major update to the `@inboundemail/sdk` that aligns with modern JavaScript SDK patterns and improves developer experience.
+
+  ### 🚨 Breaking Changes
+
+  **Simplified Constructor**
+  * Constructor now matches Resend SDK pattern for consistency
+  * Removed configuration object in favor of direct parameters
+  * Removed `defaultReplyFrom` - explicit `from` now required for all replies
+
+  **Resend-Compatible Field Names**
+  * Changed `reply_to` → `replyTo` 
+  * Changed `content_type` → `contentType`
+  * Changed `include_original` → `includeOriginal`
+
+  **Enhanced Reply Method**
+  * No longer accepts simple string messages
+  * Requires explicit `from` parameter for better control
+  * Improved type safety and validation
+
+  ### ✨ New Features
+
+  * **Tags Support**: Added Resend-compatible email tagging
+  * **Enhanced TypeScript**: Improved type definitions and IDE support
+  * **Better Error Handling**: More descriptive error messages
+
+  ### 🔧 Improvements
+
+  * **Backward Compatibility**: API endpoints support both snake_case and camelCase
+  * **Documentation**: Comprehensive migration guide included
+  * **Examples**: Updated all code examples to new patterns
+
+  ### Migration Guide
+
+  ```typescript
+  // Before (v2.x)
+  const inbound = new Inbound({
+    apiKey: process.env.INBOUND_API_KEY!,
+    defaultReplyFrom: 'support@domain.com'
+  })
+
+  // After (v3.x)
+  const inbound = new Inbound(process.env.INBOUND_API_KEY!)
+  ```
+
+  [View full migration guide](https://github.com/inboundemail/sdk/blob/main/CHANGELOG.md) | [Install SDK](https://www.npmjs.com/package/@inboundemail/sdk)
+</Update>
+
+<Update label="January 2025" tags={["Platform", "Improvements"]}>
+  ## Platform Improvements
+
+  ### Email Processing
+  * Enhanced email parsing reliability
+  * Improved webhook delivery performance
+  * Better handling of complex email structures
+
+  ### API Enhancements
+  * Added support for both snake_case and camelCase field names
+  * Improved error responses with actionable messages
+  * Enhanced rate limiting for better stability
+
+  ### Documentation
+  * Updated API reference with latest examples
+  * Improved webhook integration guides
+  * Added more SDK usage patterns
+</Update>
