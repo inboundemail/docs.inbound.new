@@ -46,6 +46,14 @@ GET https://inbound.new/api/v2/mail
   Whether to include archived emails in the results. By default, archived emails are excluded.
 </ParamField>
 
+<ParamField query="emailAddress" type="string">
+  Filter emails by a specific email address. Searches across to, from, cc, and bcc fields. Cannot be used with `emailId`.
+</ParamField>
+
+<ParamField query="emailId" type="string">
+  Filter emails by a specific email ID to get all emails in a thread. Cannot be used with `emailAddress`.
+</ParamField>
+
 ## Request Examples
 
 <CodeGroup>
@@ -61,6 +69,16 @@ curl -X GET "https://inbound.new/api/v2/mail?limit=20&status=processed&domain=ex
 
 ```bash With Search
 curl -X GET "https://inbound.new/api/v2/mail?search=urgent&timeRange=7d" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+
+```bash Filter by Email Address
+curl -X GET "https://inbound.new/api/v2/mail?emailAddress=customer@example.com&limit=50" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+
+```bash Filter by Email ID (Thread)
+curl -X GET "https://inbound.new/api/v2/mail?emailId=ses_abc123&includeArchived=true" \
   -H "Authorization: Bearer your_api_key_here"
 ```
 
@@ -256,6 +274,14 @@ data = response.json()
     ```
   </Accordion>
   
+  <Accordion title="400 Bad Request - Conflicting Filters">
+    ```json
+    {
+      "error": "Cannot filter by both emailAddress and emailId at the same time"
+    }
+    ```
+  </Accordion>
+  
   <Accordion title="401 Unauthorized">
     ```json
     {
@@ -314,6 +340,60 @@ const searchEmails = async (query, domain, timeRange) => {
 };
 ```
 
+### Filter by Email Address
+
+```javascript
+const getEmailsForAddress = async (emailAddress) => {
+  const params = new URLSearchParams({
+    emailAddress: emailAddress,
+    includeArchived: 'true',
+    limit: '100'
+  });
+  
+  const response = await fetch(`https://inbound.new/api/v2/mail?${params}`, {
+    headers: { 'Authorization': `Bearer ${apiKey}` }
+  });
+  
+  return await response.json();
+};
+
+// Get all emails for a customer
+const customerEmails = await getEmailsForAddress('customer@example.com');
+console.log(`Found ${customerEmails.emails.length} emails for customer`);
+```
+
+### Get Email Thread
+
+```javascript
+const getEmailThread = async (emailId) => {
+  const params = new URLSearchParams({
+    emailId: emailId,
+    includeArchived: 'true'
+  });
+  
+  const response = await fetch(`https://inbound.new/api/v2/mail?${params}`, {
+    headers: { 'Authorization': `Bearer ${apiKey}` }
+  });
+  
+  const data = await response.json();
+  
+  // Sort by date to see conversation flow
+  const sortedEmails = data.emails.sort(
+    (a, b) => new Date(a.receivedAt) - new Date(b.receivedAt)
+  );
+  
+  return sortedEmails;
+};
+
+// Get all emails in a thread
+const threadEmails = await getEmailThread('ses_abc123');
+console.log(`Thread contains ${threadEmails.length} emails`);
+```
+
 <Tip>
 Use the `uniqueDomains` array from the response to populate domain filter dropdowns in your application.
-</Tip> 
+</Tip>
+
+<Warning>
+The `emailAddress` and `emailId` parameters cannot be used together in the same request. Use `emailAddress` to find all emails involving a specific address, or use `emailId` to find all emails in a specific thread.
+</Warning> 

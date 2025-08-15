@@ -29,6 +29,18 @@ const filteredEmails = await inbound.mail.list({
   includeArchived: false
 })
 
+// Filter by specific email address
+const userEmails = await inbound.mail.list({
+  emailAddress: 'support@example.com',
+  limit: 50
+})
+
+// Filter by email ID (useful for email threads)
+const threadEmails = await inbound.mail.list({
+  emailId: 'email_abc123',
+  includeArchived: true
+})
+
 console.log(`Found ${emails.emails.length} emails`)
 console.log(`Total: ${emails.pagination.total}`)
 ```
@@ -61,6 +73,14 @@ console.log(`Total: ${emails.pagination.total}`)
 
 <ParamField query="includeArchived" type="boolean" default="false">
   Include archived emails in results
+</ParamField>
+
+<ParamField query="emailAddress" type="string">
+  Filter emails by a specific email address (searches in to, from, cc, bcc fields)
+</ParamField>
+
+<ParamField query="emailId" type="string">
+  Filter emails by a specific email ID (useful for getting all emails in a thread)
 </ParamField>
 
 ### Response Structure
@@ -172,6 +192,86 @@ await inbound.mail.reply({
 
 ## Practical Examples
 
+### Email Address Filtering
+
+```typescript
+// Get all emails for a specific customer
+const customerEmails = await inbound.mail.list({
+  emailAddress: 'customer@example.com',
+  timeRange: '30d',
+  includeArchived: true
+})
+
+console.log(`Found ${customerEmails.emails.length} emails for customer@example.com`)
+
+// Process customer support emails
+const supportEmails = await inbound.mail.list({
+  emailAddress: 'support@yourcompany.com',
+  status: 'processed',
+  limit: 100
+})
+
+// Auto-reply to support emails
+for (const email of supportEmails.emails) {
+  if (!email.isRead) {
+    await inbound.mail.reply({
+      emailId: email.id,
+      to: email.from,
+      subject: `Re: ${email.subject}`,
+      textBody: 'Thank you for contacting support. We have received your message and will respond within 24 hours.'
+    })
+  }
+}
+```
+
+### Email Thread Management
+
+```typescript
+// Get all emails in a specific thread using emailId
+const threadEmails = await inbound.mail.list({
+  emailId: 'original_email_123',
+  includeArchived: true
+})
+
+console.log(`Thread contains ${threadEmails.emails.length} emails`)
+
+// Sort by date to see conversation flow
+const sortedThread = threadEmails.emails.sort(
+  (a, b) => new Date(a.receivedAt).getTime() - new Date(b.receivedAt).getTime()
+)
+
+// Display conversation history
+sortedThread.forEach((email, index) => {
+  console.log(`${index + 1}. ${email.subject} - ${email.from} (${email.receivedAt})`)
+})
+
+// Reply to the latest email in thread
+const latestEmail = sortedThread[sortedThread.length - 1]
+await inbound.mail.reply({
+  emailId: latestEmail.id,
+  to: latestEmail.from,
+  subject: `Re: ${latestEmail.subject}`,
+  textBody: 'Thank you for your follow-up message.'
+})
+```
+
+### Advanced Filtering Combinations
+
+```typescript
+// Combine email address filter with other filters
+const recentCustomerEmails = await inbound.mail.list({
+  emailAddress: 'vip-customer@example.com',
+  timeRange: '7d',
+  status: 'processed',
+  includeArchived: false
+})
+
+// Get unread emails from a specific address
+const unreadEmails = recentCustomerEmails.emails.filter(email => !email.isRead)
+
+console.log(`VIP customer has ${unreadEmails.length} unread emails`)
+```
+
 ### Search and Process Emails
 
 ```typescript
@@ -280,9 +380,39 @@ try {
     console.error('Invalid API key')
   } else if (error.message.includes('429')) {
     console.error('Rate limit exceeded')
+  } else if (error.message.includes('Cannot filter by both emailAddress and emailId')) {
+    console.error('Use either emailAddress OR emailId, not both')
   } else {
     console.error('API error:', error.message)
   }
+}
+```
+
+### Filter Validation
+
+<Note>
+  The `emailAddress` and `emailId` parameters cannot be used together in the same request. Use `emailAddress` to find all emails involving a specific address, or use `emailId` to find all emails in a specific thread.
+</Note>
+
+```typescript
+// ✅ Correct - Filter by email address
+const addressEmails = await inbound.mail.list({
+  emailAddress: 'user@example.com'
+})
+
+// ✅ Correct - Filter by email ID
+const threadEmails = await inbound.mail.list({
+  emailId: 'email_abc123'
+})
+
+// ❌ Incorrect - Both filters together will return an error
+try {
+  await inbound.mail.list({
+    emailAddress: 'user@example.com',
+    emailId: 'email_abc123'  // This will cause a 400 error
+  })
+} catch (error) {
+  console.error('Cannot use both emailAddress and emailId filters')
 }
 ```
 
