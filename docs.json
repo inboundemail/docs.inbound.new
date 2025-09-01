@@ -11,51 +11,15 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "📦 SDK Documentation",
-        "groups": [
-          {
-            "group": "Getting Started",
-            "pages": [
-              "index",
-              "authentication",
-              "sdk/installation",
-              "sdk/configuration",
-              "sdk/changelog"
-            ]
-          },
-          {
-            "group": "Core Concepts",
-            "pages": [
-              "sdk/types",
-              "sdk/webhook-handling"
-            ]
-          },
-          {
-            "group": "Email Operations",
-            "pages": [
-              "sdk/mail-management",
-              "sdk/email-sending"
-            ]
-          },
-          {
-            "group": "Configuration",
-            "pages": [
-              "sdk/endpoints-management",
-              "sdk/email-addresses-management",
-              "sdk/domains-management"
-            ]
-          },
-          {
-            "group": "Resources",
-            "pages": [
-              "sdk/examples"
-            ]
-          }
-        ]
-      },
-      {
         "tab": "📚 API Reference",
         "groups": [
+          {
+            "group": "Getting Started + Overview",
+            "pages": [
+              "index",
+              "authentication"
+            ]
+          },
           {
             "group": "Inbound Emails",
             "pages": [
@@ -103,13 +67,57 @@
             ]
           }
         ]
+      },
+      {
+        "tab": "📦 SDK Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "index",
+              "authentication",
+              "sdk/installation",
+              "sdk/configuration",
+              "sdk/changelog"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "sdk/types",
+              "sdk/webhook-handling"
+            ]
+          },
+          {
+            "group": "Email Operations",
+            "pages": [
+              "sdk/mail-management",
+              "sdk/email-sending"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "sdk/endpoints-management",
+              "sdk/email-addresses-management",
+              "sdk/domains-management"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "sdk/examples"
+            ]
+          }
+        ]
       }
+      
     ],
     "global": {
       "anchors": [
         {
           "anchor": "Dashboard",
-          "href": "https://inbound.new/mail",
+          "href": "https://inbound.new/logs",
           "icon": "chart-line"
         },
         {

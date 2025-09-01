@@ -3,19 +3,6 @@ title: "Inbound API Documentation"
 description: "Simple email processing API for receiving and managing emails programmatically"
 ---
 
-<img
-  className="block dark:hidden"
-  src="/logo/light.svg"
-  alt="Inbound Logo"
-  width="200"
-/>
-<img
-  className="hidden dark:block"
-  src="/logo/dark.svg"
-  alt="Inbound Logo"
-  width="200"
-/>
-
 Welcome to Inbound! Get started with sending emails, receiving emails, and building complete email workflows in minutes.
 
 ## Quick Start
@@ -36,37 +23,74 @@ Welcome to Inbound! Get started with sending emails, receiving emails, and build
   <Step title="Send Your First Email">
     Start sending emails immediately:
     
-    <CodeGroup>
-    ```typescript SDK (Recommended)
+    
+    ```typescript SDK (typescript)
     import { Inbound } from '@inboundemail/sdk'
     
     const inbound = new Inbound(process.env.INBOUND_API_KEY!)
     
-    const email = await inbound.emails.send({
-      from: 'Inbound User <hello@yourdomain.com>',
-      to: 'user@example.com',
+    const { data, error } = await inbound.emails.send({
+      from: 'Inbound User <agent@inbnd.dev>',
+      to: 'youremail@inbound.new',
       subject: 'Welcome!',
       html: '<p>Thanks for signing up!</p>',
       tags: [{ name: 'campaign', value: 'welcome' }]
     })
     
-    console.log(`Email sent: ${email.id}`)
+    console.log(`Email sent: ${data?.id}`)
     ```
-    
-    ```bash cURL
-    curl -X POST https://inbound.new/api/v2/emails \
-      -H "Authorization: Bearer your_api_key_here" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "from": "hello@yourdomain.com",
-        "to": "user@example.com",
-        "subject": "Welcome!",
-        "html": "<p>Thanks for signing up!</p>"
-      }'
-    ```
-    </CodeGroup>
   </Step>
 </Steps>
+
+## How Inbound Works
+
+Inbound enables you to be able to send & receive emails programmatically.
+
+#### Sending Emails
+
+You can send emails using the SDK or the API. Our SDK is *very* similar to the [Resend SDK](https://resend.com/docs/api-reference). So if you are
+migrating from Resend, you shouldn't have any trouble.
+
+Example:
+
+```typescript Node.js
+const { data, error } = await inbound.emails.send({
+  from: 'Inbound User <agent@inbnd.dev>',
+  to: 'youremail@inbound.new',
+  subject: 'Welcome!',
+  html: '<p>Thanks for signing up!</p>',
+  tags: [{ name: 'campaign', value: 'welcome' }]
+})
+
+console.log(`Email sent: ${data?.id}`)
+
+// Response:
+{
+   "id":"nOvWqzU2Geh2q6AfeH1pk", // inbound email id
+   "messageId":"010f01990252a2b8-0dcc8a27-a7b4-45be-a290-822f7e509049-000000" // AWS SES Message ID
+}
+```
+
+#### Receiving Emails
+
+In inbound you can receive emails using endpoints. You can attach endpoints to individual email 
+addresses or you can setup catch-all for a domain, where all any incoming email that doesn't match
+any of the specific email addresses will be routed to the catch-all endpoint.
+
+Example:
+
+```typescript
+switch (email) {
+  case 'support@yourdomain.com':
+    endpoint1  // Specific endpoint for support
+  case 'sales@yourdomain.com':
+    endpoint2  // Specific endpoint for sales
+  default:    // catch-all
+    endpoint3  // Fallback endpoint for all other emails
+}
+```
+
+
 
 ## Complete Email Workflow
 
@@ -227,19 +251,6 @@ curl -X POST https://inbound.new/api/v2/emails/{email_id}/reply \
 </Tab>
 </Tabs>
 
-## What's New in SDK v3.0.0
-
-<Update label="SDK v3.0.0" description="Major update">
-### 🚨 Breaking Changes
-- **Simplified constructor**: `new Inbound(apiKey)` instead of config object
-- **Reply method requires explicit from**: No more default reply addresses
-
-### ✨ New Features
-- **Tags support**: Add metadata to emails like Resend
-- **Better TypeScript types**: Improved IDE support and type safety
-- **Backward compatibility**: API supports both snake_case and camelCase
-</Update>
-
 ## Base URL
 
 All API requests are made to:
@@ -307,53 +318,6 @@ interface InboundWebhookPayload {
   }
 }
 ```
-
-## Migration from v2.x to v3.0.0
-
-<AccordionGroup>
-<Accordion title="Update Constructor">
-```typescript
-// v2.x
-const inbound = new Inbound({
-  apiKey: process.env.INBOUND_API_KEY!,
-  defaultReplyFrom: 'support@domain.com'
-})
-
-// v3.x
-const inbound = new Inbound(process.env.INBOUND_API_KEY!)
-```
-</Accordion>
-
-<Accordion title="Update Field Names">
-```typescript
-// v2.x
-await inbound.emails.send({
-  reply_to: 'noreply@domain.com',
-  attachments: [{ content_type: 'application/pdf' }]
-})
-
-// v3.x
-await inbound.emails.send({
-  replyTo: 'noreply@domain.com',
-  attachments: [{ contentType: 'application/pdf' }],
-  tags: [{ name: 'campaign', value: 'welcome' }]
-})
-```
-</Accordion>
-
-<Accordion title="Update Reply Usage">
-```typescript
-// v2.x
-await inbound.reply(email, "Thanks!")
-
-// v3.x
-await inbound.reply(email, {
-  from: 'support@domain.com',
-  text: 'Thanks!'
-})
-```
-</Accordion>
-</AccordionGroup>
 
 ## Error Handling
 
