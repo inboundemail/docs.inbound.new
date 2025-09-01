@@ -1,0 +1,368 @@
+---
+title: "List Scheduled Emails"
+api: "GET /api/v2/emails/schedule"
+description: "Retrieve a paginated list of scheduled emails with optional filtering"
+---
+
+<Note>
+This endpoint allows you to view all your scheduled emails, filter by status, and paginate through results.
+</Note>
+
+## Authentication
+
+This endpoint requires authentication via:
+- **API key auth**: Bearer token in Authorization header
+
+## Query Parameters
+
+<ParamField query="limit" type="integer" default="50">
+  Maximum number of results to return per page. Range: 1-100.
+</ParamField>
+
+<ParamField query="offset" type="integer" default="0">
+  Number of results to skip for pagination. Must be non-negative.
+</ParamField>
+
+<ParamField query="status" type="string">
+  Filter scheduled emails by status. Available values:
+  - `scheduled` - Emails waiting to be sent
+  - `sent` - Successfully sent emails
+  - `failed` - Failed delivery attempts
+  - `cancelled` - Cancelled scheduled emails
+  
+  <Note>
+  If not provided, returns emails with all statuses.
+  </Note>
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication.
+</ParamField>
+
+## Request Example
+
+<RequestExample>
+  ```javascript Inbound SDK
+  import { Inbound } from '@inboundemail/sdk';
+
+  const inbound = new Inbound('your_api_key');
+
+  // List all scheduled emails
+  const { data, error } = await inbound.email.listScheduled();
+
+  if (error) {
+    console.error('Error:', error);
+  } else {
+    console.log('Scheduled emails:', data.data.length);
+    console.log('Total:', data.pagination.total);
+  }
+
+  // List only pending scheduled emails
+  const { data: pending } = await inbound.email.listScheduled({ 
+    status: 'scheduled', 
+    limit: 10 
+  });
+  ```
+
+  ```bash cURL
+  curl -X GET 'https://inbound.new/api/v2/emails/schedule?limit=10&status=scheduled' \
+       -H 'Authorization: Bearer your_api_key'
+  ```
+
+  ```python Python
+  import requests
+
+  response = requests.get(
+    'https://inbound.new/api/v2/emails/schedule',
+    headers={
+      'Authorization': 'Bearer your_api_key'
+    },
+    params={
+      'limit': 10,
+      'status': 'scheduled'
+    }
+  )
+
+  print(response.json())
+  ```
+
+  ```php PHP
+  $ch = curl_init('https://inbound.new/api/v2/emails/schedule?limit=10&status=scheduled');
+  curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key'
+  ]);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+  $response = curl_exec($ch);
+  curl_close($ch);
+
+  echo $response;
+  ```
+</RequestExample>
+
+## Response
+
+<ResponseField name="data" type="array" required>
+  Array of scheduled email objects.
+  
+  <Expandable title="Scheduled Email Object">
+    <ResponseField name="id" type="string" required>
+      Unique identifier for the scheduled email.
+    </ResponseField>
+    
+    <ResponseField name="from" type="string" required>
+      Sender email address.
+    </ResponseField>
+    
+    <ResponseField name="to" type="array" required>
+      Array of recipient email addresses.
+    </ResponseField>
+    
+    <ResponseField name="subject" type="string" required>
+      Email subject line.
+    </ResponseField>
+    
+    <ResponseField name="scheduled_at" type="string" required>
+      ISO 8601 timestamp of when the email is/was scheduled to be sent.
+    </ResponseField>
+    
+    <ResponseField name="status" type="string" required>
+      Current status of the scheduled email (scheduled, sent, failed, cancelled).
+    </ResponseField>
+    
+    <ResponseField name="timezone" type="string" required>
+      Timezone used for scheduling the email.
+    </ResponseField>
+    
+    <ResponseField name="created_at" type="string" required>
+      ISO 8601 timestamp of when the email was scheduled.
+    </ResponseField>
+    
+    <ResponseField name="attempts" type="integer" required>
+      Number of delivery attempts made.
+    </ResponseField>
+    
+    <ResponseField name="last_error" type="string">
+      Error message from the last failed delivery attempt (only present if status is 'failed').
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="pagination" type="object" required>
+  Pagination information for the current request.
+  
+  <Expandable title="Pagination Object">
+    <ResponseField name="limit" type="integer" required>
+      Maximum number of results requested.
+    </ResponseField>
+    
+    <ResponseField name="offset" type="integer" required>
+      Number of results skipped.
+    </ResponseField>
+    
+    <ResponseField name="total" type="integer" required>
+      Total number of scheduled emails matching the filter criteria.
+    </ResponseField>
+    
+    <ResponseField name="hasMore" type="boolean" required>
+      Whether there are more results available for pagination.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseExample>
+  ```json Success (200)
+  {
+    "data": [
+      {
+        "id": "sch_1234567890abcdef",
+        "from": "Acme <noreply@yourdomain.com>",
+        "to": ["customer@example.com"],
+        "subject": "Scheduled Reminder",
+        "scheduled_at": "2024-12-25T14:00:00.000Z",
+        "status": "scheduled",
+        "timezone": "America/New_York",
+        "created_at": "2024-12-24T10:30:00.000Z",
+        "attempts": 0
+      },
+      {
+        "id": "sch_0987654321fedcba",
+        "from": "Acme <noreply@yourdomain.com>",
+        "to": ["user@example.com"],
+        "subject": "Weekly Newsletter",
+        "scheduled_at": "2024-12-23T09:00:00.000Z",
+        "status": "sent",
+        "timezone": "UTC",
+        "created_at": "2024-12-22T15:45:00.000Z",
+        "attempts": 1
+      },
+      {
+        "id": "sch_abcdef1234567890",
+        "from": "Acme <noreply@yourdomain.com>",
+        "to": ["admin@example.com"],
+        "subject": "System Maintenance Alert",
+        "scheduled_at": "2024-12-20T02:00:00.000Z",
+        "status": "failed",
+        "timezone": "UTC",
+        "created_at": "2024-12-19T18:20:00.000Z",
+        "attempts": 3,
+        "last_error": "Recipient email address rejected by server"
+      }
+    ],
+    "pagination": {
+      "limit": 50,
+      "offset": 0,
+      "total": 3,
+      "hasMore": false
+    }
+  }
+  ```
+
+  ```json Empty Results (200)
+  {
+    "data": [],
+    "pagination": {
+      "limit": 50,
+      "offset": 0,
+      "total": 0,
+      "hasMore": false
+    }
+  }
+  ```
+
+  ```json Invalid Parameters (400)
+  {
+    "error": "Limit must be between 1 and 100"
+  }
+  ```
+
+  ```json Invalid Offset (400)
+  {
+    "error": "Offset must be non-negative"
+  }
+  ```
+
+  ```json Unauthorized (401)
+  {
+    "error": "Unauthorized"
+  }
+  ```
+
+  ```json Server Error (500)
+  {
+    "error": "Failed to fetch scheduled emails",
+    "details": "Internal server error"
+  }
+  ```
+</ResponseExample>
+
+## Usage Examples
+
+<AccordionGroup>
+  <Accordion title="Pagination Through Results">
+    ```javascript
+    const inbound = new Inbound('your_api_key');
+    
+    // Get first page
+    let offset = 0;
+    const limit = 20;
+    
+    do {
+      const { data, error } = await inbound.email.listScheduled({ 
+        limit, 
+        offset 
+      });
+      
+      if (error) {
+        console.error('Error:', error);
+        break;
+      }
+      
+      console.log(`Page ${Math.floor(offset / limit) + 1}:`, data.data.length, 'emails');
+      
+      // Process emails
+      data.data.forEach(email => {
+        console.log(`${email.subject} - ${email.status} - ${email.scheduled_at}`);
+      });
+      
+      offset += limit;
+      
+      // Continue if there are more results
+    } while (data.pagination.hasMore);
+    ```
+  </Accordion>
+  
+  <Accordion title="Filter by Status">
+    ```javascript
+    const inbound = new Inbound('your_api_key');
+    
+    // Get only failed scheduled emails
+    const { data: failed } = await inbound.email.listScheduled({ 
+      status: 'failed' 
+    });
+    
+    console.log('Failed emails:', failed.data.length);
+    failed.data.forEach(email => {
+      console.log(`Failed: ${email.subject} - ${email.last_error}`);
+    });
+    
+    // Get only pending scheduled emails
+    const { data: pending } = await inbound.email.listScheduled({ 
+      status: 'scheduled' 
+    });
+    
+    console.log('Pending emails:', pending.data.length);
+    ```
+  </Accordion>
+  
+  <Accordion title="Monitor Scheduled Email Status">
+    ```javascript
+    const inbound = new Inbound('your_api_key');
+    
+    async function checkScheduledEmails() {
+      const { data, error } = await inbound.email.listScheduled({ 
+        status: 'scheduled' 
+      });
+      
+      if (error) {
+        console.error('Error checking scheduled emails:', error);
+        return;
+      }
+      
+      console.log(`${data.data.length} emails scheduled`);
+      
+      // Show upcoming emails (next 24 hours)
+      const now = new Date();
+      const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      
+      const upcoming = data.data.filter(email => {
+        const scheduledTime = new Date(email.scheduled_at);
+        return scheduledTime <= tomorrow;
+      });
+      
+      console.log(`${upcoming.length} emails scheduled for next 24 hours`);
+    }
+    
+    // Check every hour
+    setInterval(checkScheduledEmails, 60 * 60 * 1000);
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Important Notes
+
+<Info>
+**Real-time Updates**: The status of scheduled emails is updated in real-time as emails are processed and sent.
+</Info>
+
+<Note>
+**Status Transitions**: Scheduled emails progress through states: `scheduled` → `sent` (success) or `scheduled` → `failed` (after max retry attempts).
+</Note>
+
+<Tip>
+**Monitoring**: Use this endpoint to build dashboards and monitoring systems for your scheduled email campaigns.
+</Tip>
+
+1.0 - ✅

@@ -24,6 +24,8 @@
             "group": "Sending Emails",
             "pages": [
               "api-reference/emails/send-email",
+              "api-reference/emails/schedule-email",
+              "api-reference/emails/list-scheduled-emails",
               "api-reference/emails/get-email",
               "api-reference/emails/reply-to-email"
             ]

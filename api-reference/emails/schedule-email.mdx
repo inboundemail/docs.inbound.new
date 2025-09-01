@@ -1,0 +1,414 @@
+---
+title: "Schedule Email"
+api: "POST /api/v2/emails/schedule"
+description: "Schedule an email to be sent at a future time with natural language or ISO 8601 dates"
+---
+
+<Note>
+This endpoint supports both natural language scheduling ("in 1 hour", "tomorrow at 9am") and ISO 8601 timestamps, making it easy to schedule emails for any future time.
+</Note>
+
+## Authentication
+
+This endpoint requires authentication via:
+- **API key auth**: Bearer token in Authorization header
+
+## Body Parameters
+
+<ParamField body="from" type="string" required>
+  Sender email address.
+
+  To include a friendly name, use the format `"Your Name <sender@domain.com>"`.
+  
+  <Warning>
+  You must own and have verified the sender's domain in your Inbound account.
+  </Warning>
+  
+  <Tip>
+  You can use `agent@inbnd.dev` as a sender without domain verification for testing purposes.
+  </Tip>
+</ParamField>
+
+<ParamField body="to" type="string | string[]" required>
+  Recipient email address. For multiple addresses, send as an array of strings.
+  
+  <Note>
+  Combined total of all recipients (to, cc, bcc) should not exceed 50 addresses.
+  </Note>
+</ParamField>
+
+<ParamField body="subject" type="string" required>
+  Email subject.
+</ParamField>
+
+<ParamField body="scheduled_at" type="string" required>
+  When to send the email. Supports two formats:
+  
+  **Natural Language:**
+  - "in 30 minutes"
+  - "in 2 hours"
+  - "tomorrow at 9am"
+  - "next Monday at 2pm"
+  - "December 25 at noon"
+  
+  **ISO 8601 Timestamps:**
+  - "2024-12-25T09:00:00Z"
+  - "2024-12-25T09:00:00-05:00"
+  
+  <Warning>
+  The scheduled time must be at least 1 minute in the future and no more than 1 year from now.
+  </Warning>
+</ParamField>
+
+<ParamField body="timezone" type="string">
+  Timezone for natural language parsing (e.g., "America/New_York", "Europe/London"). 
+  
+  Defaults to UTC if not provided. Only used when `scheduled_at` is in natural language format.
+  
+  <Note>
+  Use IANA timezone identifiers. See [timezone list](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones).
+  </Note>
+</ParamField>
+
+<ParamField body="bcc" type="string | string[]">
+  Bcc recipient email address. For multiple addresses, send as an array of strings.
+</ParamField>
+
+<ParamField body="cc" type="string | string[]">
+  Cc recipient email address. For multiple addresses, send as an array of strings.
+</ParamField>
+
+<ParamField body="reply_to" type="string | string[]">
+  Reply-to email address. For multiple addresses, send as an array of strings.
+  
+  <Note>
+  Also accepts `replyTo` (camelCase) for Resend compatibility.
+  </Note>
+</ParamField>
+
+<ParamField body="replyTo" type="string | string[]">
+  Reply-to email address (Resend-compatible camelCase format). For multiple addresses, send as an array of strings.
+</ParamField>
+
+<ParamField body="html" type="string">
+  The HTML version of the message.
+</ParamField>
+
+<ParamField body="text" type="string">
+  The plain text version of the message.
+</ParamField>
+
+<ParamField body="headers" type="object">
+  Custom headers to add to the email.
+</ParamField>
+
+<ParamField body="tags" type="array">
+  Array of tag objects for email categorization and tracking (Resend-compatible).
+  
+  <Expandable defaultOpen="true" title="properties">
+    <ParamField body="name" type="string" required>
+      Tag name/key.
+    </ParamField>
+
+    <ParamField body="value" type="string" required>
+      Tag value.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="attachments" type="array">
+  Array of file attachments (max 40MB total email size, 25MB per attachment, 20 attachments max).
+
+  <Expandable defaultOpen="true" title="properties">
+    <ParamField body="filename" type="string" required>
+      Name of the attached file.
+    </ParamField>
+
+    <ParamField body="content" type="string">
+      Content of the file as a Base64 encoded string. Required if `path` is not provided.
+    </ParamField>
+
+    <ParamField body="path" type="string">
+      URL to fetch the attachment from. Required if `content` is not provided.
+      
+      <Note>
+      Only HTTP and HTTPS URLs are supported. Cannot be used together with `content`.
+      </Note>
+    </ParamField>
+
+    <ParamField body="content_type" type="string">
+      MIME type for the attachment. If not provided, will be auto-detected from file content or filename.
+    </ParamField>
+
+    <ParamField body="contentType" type="string">
+      MIME type for the attachment (Resend-compatible camelCase format). Alternative to `content_type`.
+    </ParamField>
+
+    <ParamField body="content_id" type="string">
+      Content ID for embedding images in HTML email using `cid:` references (e.g., `<img src="cid:logo">`).
+      Must be unique across all attachments. Max 128 characters.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication. 
+</ParamField>
+
+<ParamField header="Idempotency-Key" type="string">
+  Add an idempotency key to prevent duplicated scheduled emails.
+
+  * Should be **unique per API request**
+  * Idempotency keys expire after **24 hours**
+  * Have a maximum length of **256 characters**
+</ParamField>
+
+## Request Example
+
+<RequestExample>
+  ```javascript Inbound SDK
+  import { Inbound } from '@inboundemail/sdk';
+
+  const inbound = new Inbound('your_api_key');
+
+  // Schedule with natural language
+  const { data, error } = await inbound.email.schedule({
+    from: 'Acme <noreply@yourdomain.com>',
+    to: ['customer@example.com'],
+    subject: 'Scheduled Reminder',
+    html: '<h1>This is your scheduled reminder!</h1>',
+    text: 'This is your scheduled reminder!',
+    scheduled_at: 'tomorrow at 9am',
+    timezone: 'America/New_York'
+  });
+
+  if (error) {
+    console.error('Error:', error);
+  } else {
+    console.log('Email scheduled:', data.id);
+    console.log('Will be sent at:', data.scheduled_at);
+  }
+  ```
+
+  ```bash cURL
+  curl -X POST 'https://inbound.new/api/v2/emails/schedule' \
+       -H 'Authorization: Bearer your_api_key' \
+       -H 'Content-Type: application/json' \
+       -d '{
+    "from": "Acme <noreply@yourdomain.com>",
+    "to": ["customer@example.com"],
+    "subject": "Scheduled Reminder",
+    "html": "<h1>This is your scheduled reminder!</h1>",
+    "text": "This is your scheduled reminder!",
+    "scheduled_at": "tomorrow at 9am",
+    "timezone": "America/New_York"
+  }'
+  ```
+
+  ```python Python
+  import requests
+
+  response = requests.post(
+    'https://inbound.new/api/v2/emails/schedule',
+    headers={
+      'Authorization': 'Bearer your_api_key',
+      'Content-Type': 'application/json',
+    },
+    json={
+      'from': 'Acme <noreply@yourdomain.com>',
+      'to': ['customer@example.com'],
+      'subject': 'Scheduled Reminder',
+      'html': '<h1>This is your scheduled reminder!</h1>',
+      'text': 'This is your scheduled reminder!',
+      'scheduled_at': 'tomorrow at 9am',
+      'timezone': 'America/New_York'
+    }
+  )
+
+  print(response.json())
+  ```
+
+  ```php PHP
+  $ch = curl_init('https://inbound.new/api/v2/emails/schedule');
+  curl_setopt($ch, CURLOPT_POST, true);
+  curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key',
+    'Content-Type: application/json'
+  ]);
+  curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    'from' => 'Acme <noreply@yourdomain.com>',
+    'to' => ['customer@example.com'],
+    'subject' => 'Scheduled Reminder',
+    'html' => '<h1>This is your scheduled reminder!</h1>',
+    'text' => 'This is your scheduled reminder!',
+    'scheduled_at' => 'tomorrow at 9am',
+    'timezone' => 'America/New_York'
+  ]));
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+  $response = curl_exec($ch);
+  curl_close($ch);
+
+  echo $response;
+  ```
+</RequestExample>
+
+## Response
+
+<ResponseField name="id" type="string" required>
+  Unique identifier for the scheduled email in Inbound's system
+</ResponseField>
+
+<ResponseField name="scheduled_at" type="string" required>
+  Normalized ISO 8601 timestamp of when the email will be sent
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Status of the scheduled email (always "scheduled" for successful requests)
+</ResponseField>
+
+<ResponseField name="timezone" type="string" required>
+  Timezone used for scheduling the email
+</ResponseField>
+
+<ResponseExample>
+  ```json Success (201)
+  {
+    "id": "sch_1234567890abcdef",
+    "scheduled_at": "2024-12-25T14:00:00.000Z",
+    "status": "scheduled",
+    "timezone": "America/New_York"
+  }
+  ```
+
+  ```json Success - Idempotent Request (201)
+  {
+    "id": "sch_1234567890abcdef",
+    "scheduled_at": "2024-12-25T14:00:00.000Z",
+    "status": "scheduled",
+    "timezone": "America/New_York"
+  }
+  ```
+
+  ```json Missing Required Fields (400)
+  {
+    "error": "Missing required fields: from, to, subject, scheduled_at"
+  }
+  ```
+
+  ```json Invalid Date Format (400)
+  {
+    "error": "Invalid scheduled_at format. Use ISO 8601 or natural language like 'in 1 hour'"
+  }
+  ```
+
+  ```json Date In Past (400)
+  {
+    "error": "scheduled_at must be at least 1 minute in the future"
+  }
+  ```
+
+  ```json Date Too Far (400)
+  {
+    "error": "scheduled_at cannot be more than 1 year in the future"
+  }
+  ```
+
+  ```json Unauthorized (401)
+  {
+    "error": "Unauthorized"
+  }
+  ```
+
+  ```json Domain Not Owned (403)
+  {
+    "error": "You don't have permission to send from domain: example.com"
+  }
+  ```
+
+  ```json Invalid Email Format (400)
+  {
+    "error": "Invalid email address: invalid-email"
+  }
+  ```
+
+  ```json Attachment Error (400)
+  {
+    "error": "Attachment processing failed: File too large: 26214400 bytes (max: 25165824 bytes)"
+  }
+  ```
+
+  ```json Server Error (500)
+  {
+    "error": "Failed to schedule email",
+    "details": "Internal server error"
+  }
+  ```
+</ResponseExample>
+
+## Natural Language Examples
+
+The `scheduled_at` field supports intuitive natural language expressions:
+
+<AccordionGroup>
+  <Accordion title="Relative Time">
+    - `"in 30 minutes"`
+    - `"in 2 hours"`
+    - `"in 3 days"`
+    - `"in 1 week"`
+  </Accordion>
+  
+  <Accordion title="Specific Times">
+    - `"tomorrow at 9am"`
+    - `"next Monday at 2pm"`
+    - `"Friday at 5:30pm"`
+    - `"December 25 at noon"`
+  </Accordion>
+  
+  <Accordion title="Date Formats">
+    - `"2024-12-25 at 9am"`
+    - `"Dec 25 at 2pm"`
+    - `"Christmas at 10am"`
+    - `"New Year's Day at midnight"`
+  </Accordion>
+</AccordionGroup>
+
+## Managing Scheduled Emails
+
+After scheduling emails, you can manage them using these endpoints:
+
+<CardGroup cols={2}>
+  <Card title="List Scheduled Emails" href="/api-reference/emails/list-scheduled-emails">
+    View all your scheduled emails with filtering and pagination
+  </Card>
+  
+  <Card title="Get Scheduled Email" href="/api-reference/emails/get-scheduled-email">
+    Retrieve details of a specific scheduled email
+  </Card>
+  
+  <Card title="Cancel Scheduled Email" href="/api-reference/emails/cancel-scheduled-email">
+    Cancel a scheduled email before it's sent
+  </Card>
+</CardGroup>
+
+## Important Notes
+
+<Warning>
+**Domain Verification Required**: You can only send emails from domains that you own and have verified in your Inbound account. Attempting to send from an unverified domain will result in a 403 error.
+</Warning>
+
+<Info>
+**Scheduling Limits**: Emails can be scheduled up to 1 year in advance and must be at least 1 minute in the future. The system processes scheduled emails every minute.
+</Info>
+
+<Note>
+**Idempotency**: Use the `Idempotency-Key` header to ensure emails aren't scheduled multiple times in case of network issues or retries.
+</Note>
+
+<Tip>
+**Timezone Handling**: When using natural language scheduling, always specify a timezone to ensure emails are sent at the expected local time.
+</Tip>
+
+1.0 - ✅
