@@ -25,20 +25,26 @@ GET https://inbound.new/api/v2/mail/{id}
 ## Request Examples
 
 <CodeGroup>
+```javascript Node.js SDK
+import { InboundEmailClient } from '@inboundemail/sdk'
+
+const inbound = new InboundEmailClient('your_api_key_here')
+
+// Get email details
+const { data: email, error } = await inbound.mail.get('email_123')
+
+if (error) {
+  console.error('Error:', error)
+} else {
+  console.log('Email subject:', email.subject)
+  console.log('From:', email.from)
+  console.log('Content:', email.content)
+}
+```
+
 ```bash cURL
 curl -X GET https://inbound.new/api/v2/mail/email_123 \
   -H "Authorization: Bearer your_api_key_here"
-```
-
-```javascript JavaScript
-const response = await fetch('https://inbound.new/api/v2/mail/email_123', {
-  headers: {
-    'Authorization': `Bearer ${process.env.INBOUND_API_KEY}`
-  }
-});
-
-const email = await response.json();
-console.log(email);
 ```
 
 ```python Python
@@ -50,6 +56,24 @@ response = requests.get(
 )
 
 email = response.json()
+```
+
+```php PHP
+<?php
+$api_key = 'your_api_key_here';
+$email_id = 'email_123';
+
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, "https://inbound.new/api/v2/mail/{$email_id}");
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Authorization: Bearer {$api_key}"
+]);
+
+$response = curl_exec($ch);
+$email = json_decode($response, true);
+curl_close($ch);
+?>
 ```
 </CodeGroup>
 
@@ -491,6 +515,31 @@ email = response.json()
 
 ### Basic Email Retrieval
 
+<Tabs>
+<Tab title="Node.js SDK">
+```javascript
+import { InboundEmailClient } from '@inboundemail/sdk'
+
+const inbound = new InboundEmailClient('your_api_key_here')
+
+const getEmailDetails = async (emailId) => {
+  const { data: email, error } = await inbound.mail.get(emailId)
+  
+  if (error) {
+    throw new Error(`Failed to get email: ${error}`)
+  }
+  
+  return email
+}
+
+// Usage
+const email = await getEmailDetails('email_123')
+console.log(email.subject)
+console.log(email.content.textBody)
+```
+</Tab>
+
+<Tab title="Direct API">
 ```javascript
 const getEmailDetails = async (emailId) => {
   const response = await fetch(`https://inbound.new/api/v2/mail/${emailId}`, {
@@ -511,9 +560,34 @@ const email = await getEmailDetails('email_123');
 console.log(email.subject);
 console.log(email.content.textBody);
 ```
+</Tab>
+</Tabs>
 
 ### Processing Attachments
 
+<Tabs>
+<Tab title="Node.js SDK">
+```javascript
+const processEmailAttachments = async (emailId) => {
+  const { data: email, error } = await inbound.mail.get(emailId)
+  
+  if (error) {
+    console.error('Error:', error)
+    return
+  }
+  
+  if (email.metadata.hasAttachments) {
+    email.content.attachments.forEach(attachment => {
+      console.log(`Attachment: ${attachment.filename}`)
+      console.log(`Type: ${attachment.contentType}`)
+      console.log(`Size: ${attachment.size} bytes`)
+    })
+  }
+}
+```
+</Tab>
+
+<Tab title="Direct API">
 ```javascript
 const processEmailAttachments = async (emailId) => {
   const email = await getEmailDetails(emailId);
@@ -527,9 +601,38 @@ const processEmailAttachments = async (emailId) => {
   }
 };
 ```
+</Tab>
+</Tabs>
 
 ### Security Verification Check
 
+<Tabs>
+<Tab title="Node.js SDK">
+```javascript
+const checkEmailSecurity = async (emailId) => {
+  const { data: email, error } = await inbound.mail.get(emailId)
+  
+  if (error) {
+    return { emailId, error }
+  }
+  
+  const securityPassed = 
+    email.security.spf === 'PASS' &&
+    email.security.dkim === 'PASS' &&
+    email.security.dmarc === 'PASS' &&
+    email.security.spam === 'PASS' &&
+    email.security.virus === 'PASS'
+  
+  return {
+    emailId,
+    securityPassed,
+    details: email.security
+  }
+}
+```
+</Tab>
+
+<Tab title="Direct API">
 ```javascript
 const checkEmailSecurity = async (emailId) => {
   const email = await getEmailDetails(emailId);
@@ -548,6 +651,8 @@ const checkEmailSecurity = async (emailId) => {
   };
 };
 ```
+</Tab>
+</Tabs>
 
 <Note>
 When you fetch an email using this endpoint, it's automatically marked as read and the `readAt` timestamp is updated.
@@ -559,4 +664,6 @@ Use the `metadata.parseSuccess` field to check if the email was parsed correctly
 
 <Check>
 **Verified**: This endpoint documentation has been verified against the actual API implementation in `/inbound-app/app/api/v2/mail/[id]/route.ts` and `/inbound-app/functions/mail/primary.ts`. All endpoint paths, request/response structures, error codes, and examples are accurate and up-to-date.
-</Check> 
+</Check>
+
+**1.0 - ✅** 

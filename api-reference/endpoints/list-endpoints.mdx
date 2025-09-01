@@ -9,7 +9,14 @@ description: "Retrieve all endpoints for your account with filtering and paginat
 Get a paginated list of all endpoints in your account. Endpoints are the unified routing system for webhooks, email forwarding, and email groups. Results are ordered by creation date (newest first).
 
 <RequestExample>
-```bash
+```javascript Node.js SDK
+import { InboundEmailClient } from '@inboundemail/sdk'
+
+const inbound = new InboundEmailClient('your_api_key')
+const { data, error } = await inbound.endpoint.list()
+```
+
+```bash cURL
 GET https://inbound.new/api/v2/endpoints
 ```
 </RequestExample>
@@ -225,20 +232,22 @@ GET https://inbound.new/api/v2/endpoints
 ### Basic Usage
 
 <CodeGroup>
+```javascript Node.js SDK
+import { InboundEmailClient } from '@inboundemail/sdk'
+
+const inbound = new InboundEmailClient('your_api_key')
+
+const { data, error } = await inbound.endpoint.list()
+if (error) {
+  console.error('Error:', error)
+} else {
+  console.log(`Found ${data.data.length} endpoints`)
+}
+```
+
 ```bash cURL
 curl -X GET "https://inbound.new/api/v2/endpoints" \
   -H "Authorization: Bearer your_api_key"
-```
-
-```javascript JavaScript
-const response = await fetch('https://inbound.new/api/v2/endpoints', {
-  headers: {
-    'Authorization': `Bearer ${process.env.API_KEY}`
-  }
-});
-
-const data = await response.json();
-console.log(`Found ${data.data.length} endpoints`);
 ```
 
 ```python Python
@@ -252,25 +261,47 @@ response = requests.get(
 data = response.json()
 print(f"Found {len(data['data'])} endpoints")
 ```
+
+```php PHP
+<?php
+$api_key = 'your_api_key';
+
+$response = file_get_contents('https://inbound.new/api/v2/endpoints', false, stream_context_create([
+    'http' => [
+        'method' => 'GET',
+        'header' => "Authorization: Bearer $api_key\r\n"
+    ]
+]));
+
+$data = json_decode($response, true);
+echo "Found " . count($data['data']) . " endpoints\n";
+?>
+```
 </CodeGroup>
 
 ### Filtering by Type
 
 <CodeGroup>
+```javascript Node.js SDK
+import { InboundEmailClient } from '@inboundemail/sdk'
+
+const inbound = new InboundEmailClient('your_api_key')
+
+const { data, error } = await inbound.endpoint.list({
+  type: 'webhook',
+  active: 'true'
+})
+
+if (error) {
+  console.error('Error:', error)
+} else {
+  console.log(`Found ${data.data.length} active webhooks`)
+}
+```
+
 ```bash cURL
 curl -X GET "https://inbound.new/api/v2/endpoints?type=webhook&active=true" \
   -H "Authorization: Bearer your_api_key"
-```
-
-```javascript JavaScript
-const response = await fetch('https://inbound.new/api/v2/endpoints?type=webhook&active=true', {
-  headers: {
-    'Authorization': `Bearer ${process.env.API_KEY}`
-  }
-});
-
-const data = await response.json();
-console.log(`Found ${data.data.length} active webhooks`);
 ```
 
 ```python Python
@@ -285,25 +316,48 @@ response = requests.get(
 data = response.json()
 print(f"Found {len(data['data'])} active webhooks")
 ```
+
+```php PHP
+<?php
+$api_key = 'your_api_key';
+$url = 'https://inbound.new/api/v2/endpoints?type=webhook&active=true';
+
+$response = file_get_contents($url, false, stream_context_create([
+    'http' => [
+        'method' => 'GET',
+        'header' => "Authorization: Bearer $api_key\r\n"
+    ]
+]));
+
+$data = json_decode($response, true);
+echo "Found " . count($data['data']) . " active webhooks\n";
+?>
+```
 </CodeGroup>
 
 ### Pagination
 
 <CodeGroup>
+```javascript Node.js SDK
+import { InboundEmailClient } from '@inboundemail/sdk'
+
+const inbound = new InboundEmailClient('your_api_key')
+
+const { data, error } = await inbound.endpoint.list({
+  limit: 10,
+  offset: 20
+})
+
+if (error) {
+  console.error('Error:', error)
+} else {
+  console.log(`Page results: ${data.data.length}, Total: ${data.pagination.total}`)
+}
+```
+
 ```bash cURL
 curl -X GET "https://inbound.new/api/v2/endpoints?limit=10&offset=20" \
   -H "Authorization: Bearer your_api_key"
-```
-
-```javascript JavaScript
-const response = await fetch('https://inbound.new/api/v2/endpoints?limit=10&offset=20', {
-  headers: {
-    'Authorization': `Bearer ${process.env.API_KEY}`
-  }
-});
-
-const data = await response.json();
-console.log(`Page results: ${data.data.length}, Total: ${data.pagination.total}`);
 ```
 
 ```python Python
@@ -317,6 +371,23 @@ response = requests.get(
 
 data = response.json()
 print(f"Page results: {len(data['data'])}, Total: {data['pagination']['total']}")
+```
+
+```php PHP
+<?php
+$api_key = 'your_api_key';
+$url = 'https://inbound.new/api/v2/endpoints?limit=10&offset=20';
+
+$response = file_get_contents($url, false, stream_context_create([
+    'http' => [
+        'method' => 'GET',
+        'header' => "Authorization: Bearer $api_key\r\n"
+    ]
+]));
+
+$data = json_decode($response, true);
+echo "Page results: " . count($data['data']) . ", Total: " . $data['pagination']['total'] . "\n";
+?>
 ```
 </CodeGroup>
 
@@ -372,4 +443,6 @@ print(f"Page results: {len(data['data'])}, Total: {data['pagination']['total']}"
 
 <Check>
 **Documentation Verified** - This endpoint documentation has been verified against the actual API implementation in `/api/v2/endpoints/route.ts`. All parameters, response fields, error codes, and behavior match the implementation.
-</Check> 
+</Check>
+
+**1.0 - ✅** 

@@ -10,8 +10,7 @@ This endpoint is compatible with Resend's email sending API, making it easy to m
 
 ## Authentication
 
-This endpoint requires authentication via either:
-- **Session-based auth**: Valid session cookie from login
+This endpoint requires authentication via:
 - **API key auth**: Bearer token in Authorization header
 
 ## Body Parameters
@@ -142,6 +141,26 @@ This endpoint requires authentication via either:
 ## Request Example
 
 <RequestExample>
+  ```javascript Inbound SDK
+  import { Inbound } from '@inboundemail/sdk';
+
+  const inbound = new Inbound('your_api_key');
+
+  const { data, error } = await inbound.email.send({
+    from: 'Acme <noreply@yourdomain.com>',
+    to: ['customer@example.com'],
+    subject: 'Welcome to Acme!',
+    html: '<h1>Welcome!</h1><p>Thanks for signing up.</p>',
+    text: 'Welcome! Thanks for signing up.'
+  });
+
+  if (error) {
+    console.error('Error:', error);
+  } else {
+    console.log('Email sent:', data.id);
+  }
+  ```
+
   ```bash cURL
   curl -X POST 'https://inbound.new/api/v2/emails' \
        -H 'Authorization: Bearer your_api_key' \
@@ -153,26 +172,6 @@ This endpoint requires authentication via either:
     "html": "<h1>Welcome!</h1><p>Thanks for signing up.</p>",
     "text": "Welcome! Thanks for signing up."
   }'
-  ```
-
-  ```javascript Node.js
-  const response = await fetch('https://inbound.new/api/v2/emails', {
-    method: 'POST',
-    headers: {
-      'Authorization': 'Bearer your_api_key',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: 'Acme <noreply@yourdomain.com>',
-      to: ['customer@example.com'],
-      subject: 'Welcome to Acme!',
-      html: '<h1>Welcome!</h1><p>Thanks for signing up.</p>',
-      text: 'Welcome! Thanks for signing up.'
-    })
-  });
-
-  const data = await response.json();
-  console.log(data);
   ```
 
   ```python Python
@@ -345,4 +344,6 @@ This endpoint is designed to be compatible with Resend's email sending API. To m
 - `scheduled_at` parameter (use `/api/v2/emails/schedule` endpoint instead)
 - React components (use HTML/text instead)
 - Some advanced attachment features may differ
-</Warning> 
+</Warning>
+
+1.0 - ✅ 

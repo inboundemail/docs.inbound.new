@@ -10,21 +10,13 @@ This endpoint allows you to reply to emails received through Inbound, maintainin
 
 ## Authentication
 
-This endpoint requires authentication via API key or session token.
+This endpoint requires authentication via API key.
 
-<CodeGroup>
-```bash API Key
+```bash
 curl -X POST https://inbound.new/api/v2/emails/{id}/reply \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json"
 ```
-
-```bash Session Token
-curl -X POST https://inbound.new/api/v2/emails/{id}/reply \
-  -H "Cookie: session=YOUR_SESSION_TOKEN" \
-  -H "Content-Type: application/json"
-```
-</CodeGroup>
 
 ## Path Parameters
 
@@ -148,6 +140,23 @@ Email clients like Gmail, Outlook, and Apple Mail will recognize these threading
 Reply to an email with minimal configuration:
 
 <RequestExample>
+```javascript Inbound SDK
+import { InboundEmailClient } from '@inboundemail/sdk';
+
+const inbound = new InboundEmailClient('YOUR_API_KEY');
+
+const { data, error } = await inbound.email.reply('email_abc123', {
+  from: 'support@yourdomain.com',
+  text: 'Thank you for your email. We have received your request and will respond shortly.'
+});
+
+if (error) {
+  console.error('Error:', error);
+} else {
+  console.log('Reply sent:', data.id);
+}
+```
+
 ```bash cURL
 curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
   -H "Authorization: Bearer YOUR_API_KEY" \
@@ -156,22 +165,6 @@ curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
     "from": "support@yourdomain.com",
     "text": "Thank you for your email. We have received your request and will respond shortly."
   }'
-```
-
-```javascript Node.js
-const response = await fetch('https://inbound.new/api/v2/emails/email_abc123/reply', {
-  method: 'POST',
-  headers: {
-    'Authorization': 'Bearer YOUR_API_KEY',
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    from: 'support@yourdomain.com',
-    text: 'Thank you for your email. We have received your request and will respond shortly.'
-  })
-});
-
-const data = await response.json();
 ```
 
 ```python Python
@@ -191,6 +184,27 @@ response = requests.post(
 
 data = response.json()
 ```
+
+```php PHP
+<?php
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://inbound.new/api/v2/emails/email_abc123/reply');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer YOUR_API_KEY',
+    'Content-Type: application/json'
+]);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    'from' => 'support@yourdomain.com',
+    'text' => 'Thank you for your email. We have received your request and will respond shortly.'
+]));
+
+$response = curl_exec($ch);
+$data = json_decode($response, true);
+curl_close($ch);
+?>
+```
 </RequestExample>
 
 <ResponseExample>
@@ -208,6 +222,29 @@ data = response.json()
 Reply with custom recipients, subject, HTML content, and tags:
 
 <RequestExample>
+```javascript Inbound SDK
+import { InboundEmailClient } from '@inboundemail/sdk';
+
+const inbound = new InboundEmailClient('YOUR_API_KEY');
+
+const { data, error } = await inbound.email.reply('email_abc123', {
+  from: 'john@yourdomain.com',
+  to: ['customer@example.com'],
+  cc: ['manager@yourdomain.com'],
+  subject: 'Re: Support Request #12345',
+  text: 'Dear Customer,\n\nWe have resolved your issue...',
+  html: '<p>Dear Customer,</p><p>We have resolved your issue...</p>',
+  headers: {
+    'X-Support-Ticket': '12345'
+  },
+  includeOriginal: true,
+  tags: [
+    { name: 'category', value: 'support' },
+    { name: 'priority', value: 'high' }
+  ]
+});
+```
+
 ```bash cURL
 curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
   -H "Authorization: Bearer YOUR_API_KEY" \
@@ -230,6 +267,71 @@ curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
     ]
   }'
 ```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://inbound.new/api/v2/emails/email_abc123/reply',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'Content-Type': 'application/json'
+    },
+    json={
+        'from': 'john@yourdomain.com',
+        'from_name': 'John Doe',
+        'to': ['customer@example.com'],
+        'cc': ['manager@yourdomain.com'],
+        'subject': 'Re: Support Request #12345',
+        'text': 'Dear Customer,\n\nWe have resolved your issue...',
+        'html': '<p>Dear Customer,</p><p>We have resolved your issue...</p>',
+        'headers': {
+            'X-Support-Ticket': '12345'
+        },
+        'includeOriginal': True,
+        'tags': [
+            {'name': 'category', 'value': 'support'},
+            {'name': 'priority', 'value': 'high'}
+        ]
+    }
+)
+
+data = response.json()
+```
+
+```php PHP
+<?php
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://inbound.new/api/v2/emails/email_abc123/reply');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer YOUR_API_KEY',
+    'Content-Type: application/json'
+]);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    'from' => 'john@yourdomain.com',
+    'from_name' => 'John Doe',
+    'to' => ['customer@example.com'],
+    'cc' => ['manager@yourdomain.com'],
+    'subject' => 'Re: Support Request #12345',
+    'text' => 'Dear Customer,\n\nWe have resolved your issue...',
+    'html' => '<p>Dear Customer,</p><p>We have resolved your issue...</p>',
+    'headers' => [
+        'X-Support-Ticket' => '12345'
+    ],
+    'includeOriginal' => true,
+    'tags' => [
+        ['name' => 'category', 'value' => 'support'],
+        ['name' => 'priority', 'value' => 'high']
+    ]
+]));
+
+$response = curl_exec($ch);
+$data = json_decode($response, true);
+curl_close($ch);
+?>
+```
 </RequestExample>
 
 ### Reply Without Quoting Original
@@ -237,6 +339,18 @@ curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
 Send a reply without including the original message:
 
 <RequestExample>
+```javascript Inbound SDK
+import { InboundEmailClient } from '@inboundemail/sdk';
+
+const inbound = new InboundEmailClient('YOUR_API_KEY');
+
+const { data, error } = await inbound.email.reply('email_abc123', {
+  from: 'noreply@yourdomain.com',
+  text: 'This is an automated response.',
+  includeOriginal: false
+});
+```
+
 ```bash cURL
 curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
   -H "Authorization: Bearer YOUR_API_KEY" \
@@ -247,6 +361,47 @@ curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
     "include_original": false
   }'
 ```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://inbound.new/api/v2/emails/email_abc123/reply',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'Content-Type': 'application/json'
+    },
+    json={
+        'from': 'noreply@yourdomain.com',
+        'text': 'This is an automated response.',
+        'include_original': False
+    }
+)
+
+data = response.json()
+```
+
+```php PHP
+<?php
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://inbound.new/api/v2/emails/email_abc123/reply');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer YOUR_API_KEY',
+    'Content-Type: application/json'
+]);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    'from' => 'noreply@yourdomain.com',
+    'text' => 'This is an automated response.',
+    'include_original' => false
+]));
+
+$response = curl_exec($ch);
+$data = json_decode($response, true);
+curl_close($ch);
+?>
+```
 </RequestExample>
 
 ### Reply with Attachments
@@ -254,29 +409,99 @@ curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
 Include attachments in your reply:
 
 <RequestExample>
-```javascript Node.js
-const fs = require('fs');
+```javascript Inbound SDK
+import { InboundEmailClient } from '@inboundemail/sdk';
+import fs from 'fs';
+
+const inbound = new InboundEmailClient('YOUR_API_KEY');
 
 // Read and encode file
 const fileContent = fs.readFileSync('invoice.pdf');
 const base64Content = fileContent.toString('base64');
 
-const response = await fetch('https://inbound.new/api/v2/emails/email_abc123/reply', {
-  method: 'POST',
-  headers: {
-    'Authorization': 'Bearer YOUR_API_KEY',
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    from: 'billing@yourdomain.com',
-    text: 'Please find the invoice attached.',
-    attachments: [{
-      content: base64Content,
-      filename: 'invoice.pdf',
-      content_type: 'application/pdf'
-    }]
-  })
+const { data, error } = await inbound.email.reply('email_abc123', {
+  from: 'billing@yourdomain.com',
+  text: 'Please find the invoice attached.',
+  attachments: [{
+    content: base64Content,
+    filename: 'invoice.pdf',
+    contentType: 'application/pdf'
+  }]
 });
+```
+
+```bash cURL
+curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "billing@yourdomain.com",
+    "text": "Please find the invoice attached.",
+    "attachments": [{
+      "content": "BASE64_ENCODED_CONTENT",
+      "filename": "invoice.pdf",
+      "content_type": "application/pdf"
+    }]
+  }'
+```
+
+```python Python
+import requests
+import base64
+
+# Read and encode file
+with open('invoice.pdf', 'rb') as f:
+    file_content = f.read()
+    base64_content = base64.b64encode(file_content).decode('utf-8')
+
+response = requests.post(
+    'https://inbound.new/api/v2/emails/email_abc123/reply',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'Content-Type': 'application/json'
+    },
+    json={
+        'from': 'billing@yourdomain.com',
+        'text': 'Please find the invoice attached.',
+        'attachments': [{
+            'content': base64_content,
+            'filename': 'invoice.pdf',
+            'content_type': 'application/pdf'
+        }]
+    }
+)
+
+data = response.json()
+```
+
+```php PHP
+<?php
+// Read and encode file
+$fileContent = file_get_contents('invoice.pdf');
+$base64Content = base64_encode($fileContent);
+
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://inbound.new/api/v2/emails/email_abc123/reply');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer YOUR_API_KEY',
+    'Content-Type: application/json'
+]);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    'from' => 'billing@yourdomain.com',
+    'text' => 'Please find the invoice attached.',
+    'attachments' => [[
+        'content' => $base64Content,
+        'filename' => 'invoice.pdf',
+        'content_type' => 'application/pdf'
+    ]]
+]));
+
+$response = curl_exec($ch);
+$data = json_decode($response, true);
+curl_close($ch);
+?>
 ```
 </RequestExample>
 
@@ -315,6 +540,19 @@ const response = await fetch('https://inbound.new/api/v2/emails/email_abc123/rep
 This endpoint supports idempotency to prevent duplicate sends. Include an `Idempotency-Key` header with a unique value:
 
 <CodeGroup>
+```javascript Inbound SDK
+import { InboundEmailClient } from '@inboundemail/sdk';
+
+const inbound = new InboundEmailClient('YOUR_API_KEY');
+
+const { data, error } = await inbound.email.reply('email_abc123', {
+  from: 'support@yourdomain.com',
+  text: 'Your reply message'
+}, {
+  idempotencyKey: 'unique-key-123'
+});
+```
+
 ```bash cURL
 curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
   -H "Authorization: Bearer YOUR_API_KEY" \
@@ -323,16 +561,37 @@ curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
   -d '{...}'
 ```
 
-```javascript Node.js
-const response = await fetch('https://inbound.new/api/v2/emails/email_abc123/reply', {
-  method: 'POST',
-  headers: {
-    'Authorization': 'Bearer YOUR_API_KEY',
-    'Content-Type': 'application/json',
-    'Idempotency-Key': 'unique-key-123'
-  },
-  body: JSON.stringify({...})
-});
+```python Python
+import requests
+
+response = requests.post(
+    'https://inbound.new/api/v2/emails/email_abc123/reply',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'Content-Type': 'application/json',
+        'Idempotency-Key': 'unique-key-123'
+    },
+    json={...}
+)
+```
+
+```php PHP
+<?php
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://inbound.new/api/v2/emails/email_abc123/reply');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer YOUR_API_KEY',
+    'Content-Type: application/json',
+    'Idempotency-Key: unique-key-123'
+]);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([...]));
+
+$response = curl_exec($ch);
+$data = json_decode($response, true);
+curl_close($ch);
+?>
 ```
 </CodeGroup>
 
@@ -370,4 +629,8 @@ Reply sending is subject to the same rate limits as the [Send Email](/api-refere
 
 <Info>
 Check your current usage and limits in your [account dashboard](https://app.inbound.email/settings).
-</Info> 
+</Info>
+
+---
+
+**1.0 - ✅** 

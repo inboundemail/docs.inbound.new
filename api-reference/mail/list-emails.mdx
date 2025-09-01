@@ -57,48 +57,74 @@ GET https://inbound.new/api/v2/mail
 ## Request Examples
 
 <CodeGroup>
-```bash Basic Request
-curl -X GET https://inbound.new/api/v2/mail \
-  -H "Authorization: Bearer your_api_key_here"
-```
+```javascript Inbound SDK
+import { InboundEmailClient } from '@inboundemail/sdk';
 
-```bash With Filters
-curl -X GET "https://inbound.new/api/v2/mail?limit=20&status=processed&domain=example.com" \
-  -H "Authorization: Bearer your_api_key_here"
-```
+const inbound = new InboundEmailClient('your_api_key_here');
 
-```bash With Search
-curl -X GET "https://inbound.new/api/v2/mail?search=urgent&timeRange=7d" \
-  -H "Authorization: Bearer your_api_key_here"
-```
+// Basic request
+const { data, error } = await inbound.mail.list();
 
-```bash Filter by Email Address
-curl -X GET "https://inbound.new/api/v2/mail?emailAddress=customer@example.com&limit=50" \
-  -H "Authorization: Bearer your_api_key_here"
-```
-
-```bash Filter by Email ID (Thread)
-curl -X GET "https://inbound.new/api/v2/mail?emailId=ses_abc123&includeArchived=true" \
-  -H "Authorization: Bearer your_api_key_here"
-```
-
-```javascript JavaScript
-const response = await fetch('https://inbound.new/api/v2/mail?limit=25&status=processed', {
-  headers: {
-    'Authorization': `Bearer ${process.env.INBOUND_API_KEY}`,
-    'Content-Type': 'application/json'
-  }
+// With filters
+const { data, error } = await inbound.mail.list({
+  limit: 20,
+  status: 'processed',
+  domain: 'example.com'
 });
 
-const data = await response.json();
-console.log(data.emails);
+// With search
+const { data, error } = await inbound.mail.list({
+  search: 'urgent',
+  timeRange: '7d'
+});
+
+// Filter by email address
+const { data, error } = await inbound.mail.list({
+  emailAddress: 'customer@example.com',
+  limit: 50
+});
+
+// Filter by email ID (thread)
+const { data, error } = await inbound.mail.list({
+  emailId: 'ses_abc123',
+  includeArchived: true
+});
+```
+
+```bash cURL
+# Basic request
+curl -X GET https://inbound.new/api/v2/mail \
+  -H "Authorization: Bearer your_api_key_here"
+
+# With filters
+curl -X GET "https://inbound.new/api/v2/mail?limit=20&status=processed&domain=example.com" \
+  -H "Authorization: Bearer your_api_key_here"
+
+# With search
+curl -X GET "https://inbound.new/api/v2/mail?search=urgent&timeRange=7d" \
+  -H "Authorization: Bearer your_api_key_here"
+
+# Filter by email address
+curl -X GET "https://inbound.new/api/v2/mail?emailAddress=customer@example.com&limit=50" \
+  -H "Authorization: Bearer your_api_key_here"
+
+# Filter by email ID (thread)
+curl -X GET "https://inbound.new/api/v2/mail?emailId=ses_abc123&includeArchived=true" \
+  -H "Authorization: Bearer your_api_key_here"
 ```
 
 ```python Python
 import requests
 
+# Basic request
+response = requests.get(
+    'https://inbound.new/api/v2/mail',
+    headers={'Authorization': f'Bearer {api_key}'}
+)
+
+# With filters
 params = {
-    'limit': 25,
+    'limit': 20,
     'status': 'processed',
     'domain': 'example.com'
 }
@@ -110,6 +136,46 @@ response = requests.get(
 )
 
 data = response.json()
+```
+
+```php PHP
+<?php
+// Basic request
+$curl = curl_init();
+
+curl_setopt_array($curl, [
+    CURLOPT_URL => "https://inbound.new/api/v2/mail",
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HTTPHEADER => [
+        "Authorization: Bearer your_api_key_here",
+        "Content-Type: application/json"
+    ],
+]);
+
+$response = curl_exec($curl);
+$data = json_decode($response, true);
+curl_close($curl);
+
+// With filters
+$params = http_build_query([
+    'limit' => 20,
+    'status' => 'processed',
+    'domain' => 'example.com'
+]);
+
+$curl = curl_init();
+curl_setopt_array($curl, [
+    CURLOPT_URL => "https://inbound.new/api/v2/mail?" . $params,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HTTPHEADER => [
+        "Authorization: Bearer your_api_key_here"
+    ],
+]);
+
+$response = curl_exec($curl);
+$data = json_decode($response, true);
+curl_close($curl);
+?>
 ```
 </CodeGroup>
 
@@ -314,16 +380,22 @@ data = response.json()
 ### Basic Pagination
 
 ```javascript
+import { InboundEmailClient } from '@inboundemail/sdk';
+
+const inbound = new InboundEmailClient('your_api_key_here');
+
 let allEmails = [];
 let offset = 0;
 const limit = 50;
 
 while (true) {
-  const response = await fetch(`https://inbound.new/api/v2/mail?limit=${limit}&offset=${offset}`, {
-    headers: { 'Authorization': `Bearer ${apiKey}` }
-  });
+  const { data, error } = await inbound.mail.list({ limit, offset });
   
-  const data = await response.json();
+  if (error) {
+    console.error('Error fetching emails:', error);
+    break;
+  }
+  
   allEmails.push(...data.emails);
   
   if (!data.pagination.hasMore) break;
@@ -334,37 +406,45 @@ while (true) {
 ### Search with Filters
 
 ```javascript
+import { InboundEmailClient } from '@inboundemail/sdk';
+
+const inbound = new InboundEmailClient('your_api_key_here');
+
 const searchEmails = async (query, domain, timeRange) => {
-  const params = new URLSearchParams({
+  const { data, error } = await inbound.mail.list({
     search: query,
     domain: domain,
     timeRange: timeRange,
     status: 'processed'
   });
   
-  const response = await fetch(`https://inbound.new/api/v2/mail?${params}`, {
-    headers: { 'Authorization': `Bearer ${apiKey}` }
-  });
+  if (error) {
+    throw new Error(error);
+  }
   
-  return await response.json();
+  return data;
 };
 ```
 
 ### Filter by Email Address
 
 ```javascript
+import { InboundEmailClient } from '@inboundemail/sdk';
+
+const inbound = new InboundEmailClient('your_api_key_here');
+
 const getEmailsForAddress = async (emailAddress) => {
-  const params = new URLSearchParams({
+  const { data, error } = await inbound.mail.list({
     emailAddress: emailAddress,
-    includeArchived: 'true',
-    limit: '100'
+    includeArchived: true,
+    limit: 100
   });
   
-  const response = await fetch(`https://inbound.new/api/v2/mail?${params}`, {
-    headers: { 'Authorization': `Bearer ${apiKey}` }
-  });
+  if (error) {
+    throw new Error(error);
+  }
   
-  return await response.json();
+  return data;
 };
 
 // Get all emails for a customer
@@ -375,17 +455,19 @@ console.log(`Found ${customerEmails.emails.length} emails for customer`);
 ### Get Email Thread
 
 ```javascript
+import { InboundEmailClient } from '@inboundemail/sdk';
+
+const inbound = new InboundEmailClient('your_api_key_here');
+
 const getEmailThread = async (emailId) => {
-  const params = new URLSearchParams({
+  const { data, error } = await inbound.mail.list({
     emailId: emailId,
-    includeArchived: 'true'
+    includeArchived: true
   });
   
-  const response = await fetch(`https://inbound.new/api/v2/mail?${params}`, {
-    headers: { 'Authorization': `Bearer ${apiKey}` }
-  });
-  
-  const data = await response.json();
+  if (error) {
+    throw new Error(error);
+  }
   
   // Sort by date to see conversation flow
   const sortedEmails = data.emails.sort(
@@ -410,4 +492,6 @@ The `emailAddress` and `emailId` parameters cannot be used together in the same 
 
 <Check>
 Documentation verified against API implementation `/api/v2/mail` - All parameters, response fields, and error handling match the actual endpoint behavior.
-</Check> 
+</Check>
+
+**1.0 - ✅** 

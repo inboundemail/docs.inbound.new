@@ -10,9 +10,7 @@ This endpoint retrieves details about a previously sent email using the Inbound 
 
 ## Authentication
 
-This endpoint requires authentication via either:
-- **Session-based auth**: Valid session cookie from login
-- **API key auth**: Bearer token in Authorization header
+This endpoint requires authentication via Bearer token in Authorization header.
 
 ## Path Parameters
 
@@ -29,22 +27,24 @@ This endpoint requires authentication via either:
 ## Request Example
 
 <RequestExample>
+  ```javascript Inbound SDK
+  import { Inbound } from '@inboundemail/sdk'
+
+  const inbound = new Inbound(process.env.INBOUND_API_KEY!)
+
+  const { data: email, error } = await inbound.email.get('em_1234567890abcdef')
+
+  if (error) {
+    console.error('Failed to retrieve email:', error)
+  } else {
+    console.log('Email retrieved:', email)
+  }
+  ```
+
   ```bash cURL
   curl -X GET 'https://inbound.new/api/v2/emails/em_1234567890abcdef' \
        -H 'Authorization: Bearer your_api_key' \
        -H 'Content-Type: application/json'
-  ```
-
-  ```javascript Node.js
-  const response = await fetch('https://inbound.new/api/v2/emails/em_1234567890abcdef', {
-    headers: {
-      'Authorization': 'Bearer your_api_key',
-      'Content-Type': 'application/json',
-    }
-  });
-
-  const email = await response.json();
-  console.log(email);
   ```
 
   ```python Python
@@ -191,4 +191,8 @@ This endpoint requires authentication via either:
 
 <Note>
 **Data Retention**: Email data is retained according to your account's data retention policy. Older emails may be archived or deleted based on your subscription plan.
-</Note> 
+</Note>
+
+---
+
+**1.0 - ✅** 
