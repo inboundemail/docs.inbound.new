@@ -91,174 +91,6 @@ switch (email) {
 ```
 
 
-
-## Complete Email Workflow
-
-Here's how to receive emails and automatically reply using Next.js:
-
-### 1. Set Up Webhook Endpoint
-
-Create a webhook endpoint to receive emails:
-
-```typescript app/api/webhooks/inbound/route.ts
-import { Inbound, type InboundWebhookPayload, isInboundWebhook } from '@inboundemail/sdk'
-import { NextRequest, NextResponse } from 'next/server'
-
-const inbound = new Inbound(process.env.INBOUND_API_KEY!)
-
-export async function POST(request: NextRequest) {
-  try {
-    const payload: InboundWebhookPayload = await request.json()
-    
-    // Verify this is a valid Inbound webhook
-    if (!isInboundWebhook(payload)) {
-      return NextResponse.json({ error: 'Invalid webhook' }, { status: 400 })
-    }
-    
-    const { email } = payload
-    console.log(`📧 Received email: ${email.subject} from ${email.from?.addresses?.[0]?.address}`)
-    
-    // Auto-reply to support emails
-    if (email.subject?.toLowerCase().includes('support')) {
-      await inbound.reply(email, {
-        from: 'support@yourdomain.com',
-        text: 'Thanks for contacting support! We\'ll get back to you within 24 hours.',
-        tags: [{ name: 'type', value: 'auto-reply' }]
-      })
-    }
-    
-    // Auto-reply to thank you emails
-    if (email.subject?.toLowerCase().includes('thanks')) {
-      await inbound.reply(email, {
-        from: 'hello@yourdomain.com',
-        html: '<p>You\'re welcome! Let us know if you need anything else.</p>'
-      })
-    }
-    
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error('Webhook error:', error)
-    return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 })
-  }
-}
-```
-
-### 2. Advanced Reply Logic
-
-Build intelligent auto-responders:
-
-```typescript
-// Check if it's business hours
-const now = new Date()
-const isBusinessHours = now.getHours() >= 9 && now.getHours() < 17
-
-if (email.subject?.toLowerCase().includes('urgent') && !isBusinessHours) {
-  await inbound.reply(email, {
-    from: 'support@yourdomain.com',
-    subject: 'Urgent Request Received - Out of Hours',
-    html: `
-      <p>Thanks for your urgent request!</p>
-      <p>We're currently outside business hours (9 AM - 5 PM EST), 
-         but we'll prioritize your message first thing tomorrow morning.</p>
-      <p>For immediate assistance, please call: +1-555-SUPPORT</p>
-    `,
-    tags: [
-      { name: 'priority', value: 'urgent' },
-      { name: 'time', value: 'after-hours' }
-    ]
-  })
-}
-```
-
-### 3. Process Attachments
-
-Handle email attachments in your webhook:
-
-```typescript
-if (email.cleanedContent.attachments.length > 0) {
-  console.log(`📎 Email has ${email.cleanedContent.attachments.length} attachments`)
-  
-  for (const attachment of email.cleanedContent.attachments) {
-    console.log(`- ${attachment.filename} (${attachment.contentType})`)
-    
-    // Auto-reply for PDF attachments
-    if (attachment.contentType?.includes('pdf')) {
-      await inbound.reply(email, {
-        from: 'documents@yourdomain.com',
-        text: 'Thanks for sending the PDF! We\'ll review it and get back to you soon.',
-        tags: [{ name: 'attachment-type', value: 'pdf' }]
-      })
-    }
-  }
-}
-```
-
-## SDK vs API
-
-<Tabs>
-<Tab title="SDK (Recommended)">
-The SDK provides a better developer experience with TypeScript support, automatic retries, and simplified webhook handling.
-
-```typescript
-import { Inbound } from '@inboundemail/sdk'
-
-const inbound = new Inbound(process.env.INBOUND_API_KEY!)
-
-// Send email
-await inbound.emails.send({
-  from: 'hello@yourdomain.com',
-  to: 'user@example.com',
-  subject: 'Welcome!',
-  html: '<p>Thanks for signing up!</p>',
-  replyTo: 'support@yourdomain.com',
-  tags: [{ name: 'campaign', value: 'welcome' }]
-})
-
-// Reply to webhook email
-await inbound.reply(email, {
-  from: 'support@yourdomain.com',
-  text: 'Thanks for your message!'
-})
-```
-</Tab>
-
-<Tab title="Direct API">
-Use the REST API directly if you prefer or need custom implementations.
-
-```bash
-# Send email
-curl -X POST https://inbound.new/api/v2/emails \
-  -H "Authorization: Bearer your_api_key_here" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "from": "hello@yourdomain.com",
-    "to": "user@example.com",
-    "subject": "Welcome!",
-    "html": "<p>Thanks for signing up!</p>",
-    "replyTo": "support@yourdomain.com",
-    "tags": [{"name": "campaign", "value": "welcome"}]
-  }'
-
-# Reply to email
-curl -X POST https://inbound.new/api/v2/emails/{email_id}/reply \
-  -H "Authorization: Bearer your_api_key_here" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "from": "support@yourdomain.com",
-    "text": "Thanks for your message!"
-  }'
-```
-</Tab>
-</Tabs>
-
-## Base URL
-
-All API requests are made to:
-
-```
-https://inbound.new/api/v2
-```
-
 ## API Features
 
 <CardGroup cols={2}>
@@ -281,43 +113,80 @@ https://inbound.new/api/v2
 
 ## Webhook Payload Structure
 
-When you receive emails, here's the payload structure:
+We have fully typed webhook payloads for you to use in your endpoints.
 
 ```typescript
-interface InboundWebhookPayload {
-  event: 'email.received'
-  timestamp: string
+import type { InboundWebhookPayload } from '@inboundemail/sdk'
+
+const payload: InboundWebhookPayload = {
+  event: 'email.received',
+  timestamp: '2024-01-15T10:30:00Z',
   email: {
-    id: string // Use this ID for replies
-    messageId: string | null
-    from: { addresses: [{ name: string, address: string }] }
-    to: { addresses: [{ name: string, address: string }] }
-    subject: string | null
-    recipient: string
-    receivedAt: string
+    id: 'email_abc123',
+    messageId: '<unique@example.com>',
+    from: {
+      text: 'John Doe <john@example.com>',
+      addresses: [{
+        name: 'John Doe',
+        address: 'john@example.com'
+      }]
+    },
+    to: {
+      text: 'support@yourdomain.com',
+      addresses: [{
+        name: null,
+        address: 'support@yourdomain.com'
+      }]
+    },
+    recipient: 'support@yourdomain.com',
+    subject: 'Help with my order',
+    receivedAt: '2024-01-15T10:30:00Z',
     parsedData: {
-      textBody: string | undefined
-      htmlBody: string | undefined
-      attachments: Array<{
-        filename: string
-        contentType: string
-        size: number
-      }>
-      // ... more fields
-    }
+      messageId: '<unique@example.com>',
+      date: new Date('2024-01-15T10:30:00Z'),
+      subject: 'Help with my order',
+      from: {
+        text: 'John Doe <john@example.com>',
+        addresses: [{
+          name: 'John Doe',
+          address: 'john@example.com'
+        }]
+      },
+      to: {
+        text: 'support@yourdomain.com',
+        addresses: [{
+          name: null,
+          address: 'support@yourdomain.com'
+        }]
+      },
+      cc: null,
+      bcc: null,
+      replyTo: null,
+      inReplyTo: undefined,
+      references: undefined,
+      textBody: 'Hello, I need help with my recent order...',
+      htmlBody: '<p>Hello, I need help with my recent order...</p>',
+      attachments: [],
+      headers: {},
+      priority: undefined
+    },
     cleanedContent: {
-      html: string | null
-      text: string | null
-      attachments: Array<...>
+      html: '<p>Hello, I need help with my recent order...</p>',
+      text: 'Hello, I need help with my recent order...',
+      hasHtml: true,
+      hasText: true,
+      attachments: [],
+      headers: {}
     }
-  }
+  },
   endpoint: {
-    id: string
-    name: string
-    type: 'webhook' | 'email' | 'email_group'
+    id: 'endp_xyz789',
+    name: 'Support Webhook',
+    type: 'webhook'
   }
 }
 ```
+
 
 ## Error Handling
 
@@ -336,18 +205,3 @@ Common status codes:
 - `404` - Not Found (resource not found)
 - `500` - Internal Server Error
 
-## Need Help?
-
-<CardGroup cols={3}>
-  <Card title="Dashboard" icon="chart-line" href="https://inbound.new">
-    Manage your account and API keys
-  </Card>
-  
-  <Card title="SDK Documentation" icon="code" href="/sdk/installation">
-    Complete SDK guides and examples
-  </Card>
-  
-  <Card title="API Reference" icon="book" href="/api-reference/mail/list-emails">
-    Detailed API endpoint documentation
-  </Card>
-</CardGroup>

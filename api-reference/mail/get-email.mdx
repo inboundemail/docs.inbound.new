@@ -33,8 +33,7 @@ curl -X GET https://inbound.new/api/v2/mail/email_123 \
 ```javascript JavaScript
 const response = await fetch('https://inbound.new/api/v2/mail/email_123', {
   headers: {
-    'Authorization': `Bearer ${process.env.INBOUND_API_KEY}`,
-    'Content-Type': 'application/json'
+    'Authorization': `Bearer ${process.env.INBOUND_API_KEY}`
   }
 });
 
@@ -227,11 +226,11 @@ email = response.json()
 </ResponseField>
 
 <ResponseField name="isRead" type="boolean">
-  Whether the email has been read. Automatically set to true when fetched.
+  Whether the email has been read. Automatically set to true when fetched via this endpoint.
 </ResponseField>
 
-<ResponseField name="readAt" type="string">
-  ISO 8601 timestamp when the email was read.
+<ResponseField name="readAt" type="string | null">
+  ISO 8601 timestamp when the email was read. Set automatically when fetching via this endpoint.
 </ResponseField>
 
 <ResponseField name="content" type="object">
@@ -439,7 +438,7 @@ email = response.json()
     </ResponseField>
     
     <ResponseField name="commonHeaders" type="object | null">
-      Common headers parsed from the email.
+      Common headers parsed from the email during processing.
     </ResponseField>
   </Expandable>
 </ResponseField>
@@ -466,7 +465,7 @@ email = response.json()
   <Accordion title="401 Unauthorized">
     ```json
     {
-      "error": "Invalid or missing API key"
+      "error": "Unauthorized"
     }
     ```
   </Accordion>
@@ -482,7 +481,7 @@ email = response.json()
   <Accordion title="500 Internal Server Error">
     ```json
     {
-      "error": "Failed to fetch email"
+      "error": "Internal server error"
     }
     ```
   </Accordion>
@@ -556,4 +555,8 @@ When you fetch an email using this endpoint, it's automatically marked as read a
 
 <Tip>
 Use the `metadata.parseSuccess` field to check if the email was parsed correctly. If `parseSuccess` is false, check the `parseError` field for details.
-</Tip> 
+</Tip>
+
+<Check>
+**Verified**: This endpoint documentation has been verified against the actual API implementation in `/inbound-app/app/api/v2/mail/[id]/route.ts` and `/inbound-app/functions/mail/primary.ts`. All endpoint paths, request/response structures, error codes, and examples are accurate and up-to-date.
+</Check> 

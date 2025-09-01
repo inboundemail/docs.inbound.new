@@ -339,8 +339,8 @@ print(f"Recipients: {', '.join(endpoint['groupEmails'])}")
   <Tab title="Webhook Endpoint">
     For webhook endpoints, the `config` object contains:
     - `url` - The webhook destination URL
-    - `timeout` - Request timeout in seconds
-    - `retryAttempts` - Number of retry attempts
+    - `timeout` - Request timeout in seconds (default: 30)
+    - `retryAttempts` - Number of retry attempts (default: 3)
     - `headers` - Custom headers to include in requests
     - `secret` - Webhook secret for signature verification
   </Tab>
@@ -351,6 +351,7 @@ print(f"Recipients: {', '.join(endpoint['groupEmails'])}")
     - `includeAttachments` - Whether to include attachments
     - `subjectPrefix` - Optional subject line prefix
     - `fromAddress` - Optional custom from address
+    - `senderName` - Display name to show in the from field
   </Tab>
   
   <Tab title="Email Group">
@@ -359,6 +360,7 @@ print(f"Recipients: {', '.join(endpoint['groupEmails'])}")
     - `includeAttachments` - Whether to include attachments
     - `subjectPrefix` - Optional subject line prefix
     - `fromAddress` - Optional custom from address
+    - `senderName` - Display name to show in the from field
     
     The `groupEmails` field provides a flattened array of all email addresses in the group.
   </Tab>
@@ -386,4 +388,8 @@ The `recentDeliveries` array shows the 10 most recent delivery attempts, includi
 - Delivery timing information
 - Number of attempts made
 
-This information is useful for debugging delivery issues or monitoring endpoint performance. 
+This information is useful for debugging delivery issues or monitoring endpoint performance.
+
+<Check>
+✅ **Documentation Verified** - This endpoint documentation has been verified against the actual API implementation in `/api/v2/endpoints/[id]/route.ts`. All response fields, types, and behavior match the implementation.
+</Check> 

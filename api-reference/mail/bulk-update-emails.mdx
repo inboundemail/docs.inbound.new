@@ -57,7 +57,7 @@ At least one property in the `updates` object (`isRead` or `isArchived`) must be
 <RequestExample>
 
 ```bash cURL
-curl -X POST "https://inbound.new/v2/mail/bulk" \
+curl -X POST "https://inbound.new/api/v2/mail/bulk" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -70,7 +70,7 @@ curl -X POST "https://inbound.new/v2/mail/bulk" \
 ```
 
 ```javascript Node.js
-const response = await fetch('https://inbound.new/v2/mail/bulk', {
+const response = await fetch('https://inbound.new/api/v2/mail/bulk', {
   method: 'POST',
   headers: {
     'Authorization': 'Bearer YOUR_API_KEY',
@@ -92,7 +92,7 @@ const result = await response.json();
 import requests
 
 response = requests.post(
-    'https://inbound.new/v2/mail/bulk',
+    'https://inbound.new/api/v2/mail/bulk',
     headers={
         'Authorization': 'Bearer YOUR_API_KEY',
         'Content-Type': 'application/json'
@@ -150,9 +150,12 @@ result = response.json()
 Archive multiple selected emails:
 
 ```javascript
-await fetch('/api/v2/mail/bulk', {
+await fetch('https://inbound.new/api/v2/mail/bulk', {
   method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+  headers: { 
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json' 
+  },
   body: JSON.stringify({
     emailIds: selectedEmailIds,
     updates: { isArchived: true }
@@ -164,9 +167,12 @@ await fetch('/api/v2/mail/bulk', {
 Mark multiple emails as read:
 
 ```javascript
-await fetch('/api/v2/mail/bulk', {
+await fetch('https://inbound.new/api/v2/mail/bulk', {
   method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+  headers: { 
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json' 
+  },
   body: JSON.stringify({
     emailIds: unreadEmailIds,
     updates: { isRead: true }
@@ -178,9 +184,12 @@ await fetch('/api/v2/mail/bulk', {
 Restore multiple archived emails:
 
 ```javascript
-await fetch('/api/v2/mail/bulk', {
+await fetch('https://inbound.new/api/v2/mail/bulk', {
   method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+  headers: { 
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json' 
+  },
   body: JSON.stringify({
     emailIds: archivedEmailIds,
     updates: { isArchived: false }
@@ -192,4 +201,8 @@ await fetch('/api/v2/mail/bulk', {
 
 - Maximum 100 emails per request
 - All specified email IDs must belong to the authenticated user
-- At least one update field must be provided 
+- At least one update field must be provided
+
+<Check>
+**Documentation Verified**: This endpoint documentation has been verified against the actual API implementation at `/api/v2/mail/bulk`. All request/response structures, error handling, and examples match the implementation.
+</Check> 

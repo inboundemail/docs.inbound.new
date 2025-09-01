@@ -22,8 +22,8 @@ This endpoint requires authentication via either:
 
 ## Headers
 
-<ParamField header="Authorization" type="string">
-  Bearer token for API authentication. Required if not using session auth.
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication. 
 </ParamField>
 
 ## Request Example
@@ -89,8 +89,8 @@ This endpoint requires authentication via either:
     "subject": "Welcome to Acme!",
     "html": "<h1>Welcome!</h1><p>Thanks for signing up.</p>",
     "text": "Welcome! Thanks for signing up.",
-    "bcc": [null],
     "cc": [null],
+    "bcc": [null],
     "reply_to": [null],
     "last_event": "delivered"
   }
@@ -104,7 +104,13 @@ This endpoint requires authentication via either:
 
   ```json Unauthorized (401)
   {
-    "error": "Unauthorized"
+    "error": "Authentication failed"
+  }
+  ```
+
+  ```json Bad Request (400)
+  {
+    "error": "Valid email ID is required"
   }
   ```
 
@@ -149,12 +155,12 @@ This endpoint requires authentication via either:
   The plain text content of the email, if provided.
 </ResponseField>
 
-<ResponseField name="bcc" type="array">
-  Array of BCC recipient email addresses, or `[null]` if none.
-</ResponseField>
-
 <ResponseField name="cc" type="array">
   Array of CC recipient email addresses, or `[null]` if none.
+</ResponseField>
+
+<ResponseField name="bcc" type="array">
+  Array of BCC recipient email addresses, or `[null]` if none.
 </ResponseField>
 
 <ResponseField name="reply_to" type="array">
@@ -166,6 +172,7 @@ This endpoint requires authentication via either:
   - `pending` - Email is queued for sending
   - `delivered` - Email was successfully sent
   - `failed` - Email sending failed
+  - `created` - Email was created but status is unknown
 </ResponseField>
 
 <Info>
@@ -173,6 +180,7 @@ This endpoint requires authentication via either:
 - `pending` status → `pending` event
 - `sent` status → `delivered` event  
 - `failed` status → `failed` event
+- Any other status → `created` event (default)
 </Info>
 
 ## Important Notes

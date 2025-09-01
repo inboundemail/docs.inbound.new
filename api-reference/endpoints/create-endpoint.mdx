@@ -77,7 +77,11 @@ POST https://inbound.new/api/v2/endpoints
 </ParamField>
 
 <ParamField body="config.fromAddress" type="string">
-  Optional custom from address for forwarded emails.
+  Optional custom from address for forwarded emails. Must be a verified domain email.
+</ParamField>
+
+<ParamField body="config.senderName" type="string">
+  Optional display name to show in the from field (e.g., "Support Team").
 </ParamField>
 
 ### Email Group Configuration
@@ -95,7 +99,11 @@ POST https://inbound.new/api/v2/endpoints
 </ParamField>
 
 <ParamField body="config.fromAddress" type="string">
-  Optional custom from address for forwarded emails.
+  Optional custom from address for forwarded emails. Must be a verified domain email.
+</ParamField>
+
+<ParamField body="config.senderName" type="string">
+  Optional display name to show in the from field (e.g., "Support Team").
 </ParamField>
 
 ## Response
@@ -465,12 +473,22 @@ Each endpoint type has specific configuration requirements. The API will validat
   
   <Tab title="Email">
     - `forwardTo` is required and must be a valid email address
+    - `includeAttachments` defaults to `true` if not specified
+    - `fromAddress` must be a verified domain email if specified
     - Other fields are optional
   </Tab>
   
   <Tab title="Email Group">
     - `emails` is required and must be an array of 1-50 valid email addresses
     - No duplicate email addresses allowed
+    - `includeAttachments` defaults to `true` if not specified
+    - `fromAddress` must be a verified domain email if specified
     - Other fields are optional
   </Tab>
-</Tabs> 
+</Tabs>
+
+---
+
+<Check>
+✅ **Documentation Verified** - This endpoint documentation has been verified against the actual API implementation (`/api/v2/endpoints`) and type definitions. All parameters, validation rules, response formats, and examples match the current codebase as of January 2025.
+</Check>

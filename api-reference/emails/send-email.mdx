@@ -24,11 +24,18 @@ This endpoint requires authentication via either:
   <Warning>
   You must own and have verified the sender's domain in your Inbound account.
   </Warning>
+  
+  <Tip>
+  You can use `agent@inbnd.dev` as a sender without domain verification for testing purposes.
+  </Tip>
 </ParamField>
 
 <ParamField body="to" type="string | string[]" required>
   Recipient email address. For multiple addresses, send as an array of strings.
-  Max 50.
+  
+  <Note>
+  Combined total of all recipients (to, cc, bcc) should not exceed 50 addresses.
+  </Note>
 </ParamField>
 
 <ParamField body="subject" type="string" required>
@@ -47,6 +54,14 @@ This endpoint requires authentication via either:
 
 <ParamField body="reply_to" type="string | string[]">
   Reply-to email address. For multiple addresses, send as an array of strings.
+  
+  <Note>
+  Also accepts `replyTo` (camelCase) for Resend compatibility.
+  </Note>
+</ParamField>
+
+<ParamField body="replyTo" type="string | string[]">
+  Reply-to email address (Resend-compatible camelCase format). For multiple addresses, send as an array of strings.
 </ParamField>
 
 <ParamField body="html" type="string">
@@ -61,32 +76,59 @@ This endpoint requires authentication via either:
   Custom headers to add to the email.
 </ParamField>
 
-<ParamField body="attachments" type="array">
-  Filename and content of attachments (max 40MB per email, after Base64 encoding).
-
+<ParamField body="tags" type="array">
+  Array of tag objects for email categorization and tracking (Resend-compatible).
+  
   <Expandable defaultOpen="true" title="properties">
-    <ParamField body="content" type="string" required>
-      Content of an attached file as a Base64 encoded string.
+    <ParamField body="name" type="string" required>
+      Tag name/key.
     </ParamField>
 
+    <ParamField body="value" type="string" required>
+      Tag value.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="attachments" type="array">
+  Array of file attachments (max 40MB total email size, 25MB per attachment, 20 attachments max).
+
+  <Expandable defaultOpen="true" title="properties">
     <ParamField body="filename" type="string" required>
-      Name of attached file.
+      Name of the attached file.
+    </ParamField>
+
+    <ParamField body="content" type="string">
+      Content of the file as a Base64 encoded string. Required if `path` is not provided.
     </ParamField>
 
     <ParamField body="path" type="string">
-      Path where the attachment file is hosted
+      URL to fetch the attachment from. Required if `content` is not provided.
+      
+      <Note>
+      Only HTTP and HTTPS URLs are supported. Cannot be used together with `content`.
+      </Note>
     </ParamField>
 
     <ParamField body="content_type" type="string">
-      Content type for the attachment, if not set will be derived from the filename property
+      MIME type for the attachment. If not provided, will be auto-detected from file content or filename.
+    </ParamField>
+
+    <ParamField body="contentType" type="string">
+      MIME type for the attachment (Resend-compatible camelCase format). Alternative to `content_type`.
+    </ParamField>
+
+    <ParamField body="content_id" type="string">
+      Content ID for embedding images in HTML email using `cid:` references (e.g., `<img src="cid:logo">`).
+      Must be unique across all attachments. Max 128 characters.
     </ParamField>
   </Expandable>
 </ParamField>
 
 ## Headers
 
-<ParamField header="Authorization" type="string">
-  Bearer token for API authentication. Required if not using session auth.
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication. 
 </ParamField>
 
 <ParamField header="Idempotency-Key" type="string">
@@ -183,8 +225,12 @@ This endpoint requires authentication via either:
   Unique identifier for the sent email in Inbound's system
 </ResponseField>
 
-<ResponseField name="messageId" type="string" required>
-  AWS SES Message ID for tracking the email through AWS infrastructure
+<ResponseField name="messageId" type="string">
+  AWS SES Message ID for tracking the email through AWS infrastructure. 
+  
+  <Note>
+  Not included in idempotent responses (when using `Idempotency-Key` header for duplicate requests).
+  </Note>
 </ResponseField>
 
 <ResponseExample>
@@ -192,6 +238,12 @@ This endpoint requires authentication via either:
   {
     "id": "em_1234567890abcdef",
     "messageId": "0100018e1234abcd-12345678-1234-1234-1234-123456789012-000000"
+  }
+  ```
+
+  ```json Success - Idempotent Request (200)
+  {
+    "id": "em_1234567890abcdef"
   }
   ```
 
@@ -225,6 +277,30 @@ This endpoint requires authentication via either:
   }
   ```
 
+  ```json Invalid Email Format (400)
+  {
+    "error": "Invalid email format: invalid-email"
+  }
+  ```
+
+  ```json Attachment Error (400)
+  {
+    "error": "File too large: 26214400 bytes (max: 25165824 bytes)"
+  }
+  ```
+
+  ```json SES Configuration Error (500)
+  {
+    "error": "Email service not configured. Please contact support."
+  }
+  ```
+
+  ```json SES Send Error (500)
+  {
+    "error": "Failed to send email. Please try again later."
+  }
+  ```
+
   ```json Server Error (500)
   {
     "error": "Internal server error"
@@ -255,8 +331,18 @@ This endpoint is designed to be compatible with Resend's email sending API. To m
 3. Ensure your sending domain is verified in Inbound
 
 <Note>
-The following Resend features are not yet supported:
-- `scheduled_at` parameter for scheduling emails
-- `tags` array for email tagging
+**Supported Resend Features:**
+- All basic email parameters (`from`, `to`, `subject`, `html`, `text`, etc.)
+- Both `reply_to` (snake_case) and `replyTo` (camelCase) formats
+- Both `content_type` and `contentType` for attachments
+- `tags` array for email categorization
+- `content_id` for CID embedding in attachments
+- Remote file fetching via `path` parameter in attachments
+</Note>
+
+<Warning>
+**Unsupported Resend Features:**
+- `scheduled_at` parameter (use `/api/v2/emails/schedule` endpoint instead)
 - React components (use HTML/text instead)
-</Note> 
+- Some advanced attachment features may differ
+</Warning> 

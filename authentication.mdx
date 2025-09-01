@@ -11,7 +11,7 @@ All API requests to Inbound v2 require authentication using an API key. This gui
 
 All authenticated requests are made to:
 
-```
+```bash
 https://inbound.new/api/v2
 ```
 
@@ -21,9 +21,7 @@ https://inbound.new/api/v2
   <Step title="Access Your Dashboard">
     Log in to your Inbound dashboard and navigate to the Settings page.
     
-    <Card title="Dashboard" icon="external-link" href="https://inbound.new/settings">
-      Go to inbound settings
-    </Card>
+    <Link href="https://inbound.new/settings">Dashboard</Link>
   </Step>
   
   <Step title="Generate API Key">
@@ -56,15 +54,19 @@ curl -X GET https://inbound.new/api/v2/mail \
   -H "Content-Type: application/json"
 ```
 
-```javascript JavaScript
-const response = await fetch('https://inbound.new/api/v2/mail', {
-  headers: {
-    'Authorization': `Bearer ${process.env.INBOUND_API_KEY}`,
-    'Content-Type': 'application/json'
-  }
-});
+```javascript JavaScript SDK
+import { InboundEmailClient } from '@inboundemail/sdk'
 
-const data = await response.json();
+const inbound = new InboundEmailClient(process.env.INBOUND_API_KEY)
+
+// List all emails in mailbox
+const { data, error } = await inbound.mail.list()
+
+if (error) {
+  console.error('Error:', error)
+} else {
+  console.log('Emails:', data.emails)
+}
 ```
 
 ```python Python
@@ -82,21 +84,11 @@ response = requests.get(
 ```
 </CodeGroup>
 
-## Authentication Methods
-
-The Inbound API v2 supports both API key authentication and session-based authentication:
-
-### API Key Authentication (Recommended)
-
 Use API keys for server-to-server communication and automated workflows:
 
 ```bash
 Authorization: Bearer your_api_key_here
 ```
-
-### Session Authentication
-
-For browser-based applications, you can use session authentication after logging in through the dashboard.
 
 ## Security Best Practices
 
@@ -126,33 +118,7 @@ For browser-based applications, you can use session authentication after logging
 
 Test your authentication by making a simple request to list emails:
 
-<RequestExample>
-```bash
-curl -X GET https://inbound.new/api/v2/mail \
-  -H "Authorization: Bearer your_api_key_here"
-```
-</RequestExample>
 
-<ResponseExample>
-```json Success
-{
-  "emails": [
-    {
-      "id": "email_123",
-      "subject": "Test Email",
-      "from": "sender@example.com",
-      "receivedAt": "2024-01-15T10:30:00Z"
-    }
-  ],
-  "pagination": {
-    "total": 1,
-    "limit": 50,
-    "offset": 0,
-    "hasMore": false
-  }
-}
-```
-</ResponseExample>
 
 ## Error Responses
 
@@ -175,32 +141,17 @@ Common authentication errors:
 Test your authentication with the list emails endpoint first. This is a quick way to verify your API key is working correctly.
 </Tip>
 
-## Rate Limiting
-
-API requests are rate-limited to ensure fair usage:
-
-- **Standard users**: 100 requests per minute
-- **Pro users**: 500 requests per minute
-- **Enterprise users**: Custom limits
-
-Rate limit headers are included in all responses:
-
-```bash
-X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 99
-X-RateLimit-Reset: 1642252800
-```
 
 ## Next Steps
 
 Once you have authentication set up, you're ready to start using the Inbound API v2:
 
 <CardGroup cols={2}>
-  <Card title="List Emails" icon="envelope" href="/api-reference/mail/list-emails">
+  <Card title="Send Emails" icon="envelope" href="/api-reference/emails/send-email">
     Retrieve all your emails with filtering and pagination
   </Card>
   
-  <Card title="Get Email Details" icon="eye" href="/api-reference/mail/get-email">
+  <Card title="Receive Emails" icon="eye" href="/api-reference/mail/list-emails">
     Fetch complete email content and metadata
   </Card>
 </CardGroup> 

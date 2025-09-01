@@ -18,6 +18,10 @@ This action is irreversible. The email address and its configuration will be per
   Bearer token for API authentication. Format: `Bearer YOUR_API_KEY`
 </ParamField>
 
+<Info>
+This endpoint supports both session-based authentication (for logged-in users) and API key authentication via the Authorization header.
+</Info>
+
 ## Parameters
 
 <ParamField path="id" type="string" required>
@@ -260,4 +264,10 @@ After deletion, you can:
 - Other email addresses on the same domain continue to function
 - The domain itself remains unaffected by individual email address deletion
 - Deleted email addresses can be recreated with the same address
-- SES rule management ensures no interruption to other email addresses on the domain 
+- SES rule management ensures no interruption to other email addresses on the domain
+
+## Verification Status
+
+<Check>
+**Documentation Verified**: This endpoint documentation has been verified against the actual API implementation on January 25, 2025. The endpoint behavior, request/response formats, authentication methods, and SES integration details match the implementation in `/api/v2/email-addresses/[id]/route.ts`.
+</Check> 

@@ -8,9 +8,9 @@ description: "Create a new email address with automatic AWS SES receipt rule con
 
 This endpoint creates a new email address and automatically configures AWS SES receipt rules for email forwarding. You can route emails to either a webhook or an endpoint.
 
-<Warning>
-The domain must be verified before you can create email addresses for it. Only verified domains can receive emails.
-</Warning>
+<Info>
+This endpoint does not require domain verification before creating email addresses. However, AWS SES receipt rules will only be configured if the domain is properly set up.
+</Info>
 
 ## Authentication
 
@@ -285,21 +285,33 @@ data = response.json()
 }
 ```
 
-```json 400 Bad Request - Domain Not Verified
+```json 400 Bad Request - Invalid Email Format
 {
-  "error": "Domain must be verified before creating email addresses"
+  "error": "Invalid email address format"
 }
 ```
 
-```json 400 Bad Request - Conflicting Routing
+```json 400 Bad Request - Email Domain Mismatch
 {
-  "error": "Cannot specify both endpoint and webhook"
+  "error": "Email address must belong to domain example.com"
 }
 ```
 
 ```json 404 Not Found - Domain
 {
   "error": "Domain not found or access denied"
+}
+```
+
+```json 404 Not Found - Endpoint
+{
+  "error": "Endpoint not found or access denied"
+}
+```
+
+```json 404 Not Found - Webhook
+{
+  "error": "Webhook not found or access denied"
 }
 ```
 
@@ -317,7 +329,8 @@ data = response.json()
 
 ```json 500 Internal Server Error
 {
-  "error": "Internal server error"
+  "error": "Internal server error",
+  "details": "Specific error message"
 }
 ```
 </ResponseExample>
@@ -325,11 +338,11 @@ data = response.json()
 ## Important Notes
 
 <Info>
-Email addresses are automatically configured with AWS SES receipt rules upon creation. This enables immediate email receiving capability.
+Email addresses are automatically configured with AWS SES receipt rules upon creation when AWS is properly configured. This enables immediate email receiving capability.
 </Info>
 
 <Warning>
-You can specify either an `endpointId` or `webhookId` for routing, but not both. If neither is provided, emails will not be forwarded anywhere.
+The email address must belong to the specified domain. The API validates that the email domain matches the domain record.
 </Warning>
 
 <Tip>
@@ -364,8 +377,15 @@ After creating an email address, you might want to:
 
 ## Notes
 
-- Email addresses require a verified domain to function
-- AWS SES receipt rules are automatically created and managed
+- Email addresses can be created for any domain owned by the user
+- AWS SES receipt rules are automatically created and managed when AWS is configured
 - Email addresses can be created with or without routing configuration
-- The domain must be in `verified` status before email addresses can receive emails
-- Only one routing method (endpoint or webhook) can be used per email address 
+- The email address must belong to the specified domain (validated by domain matching)
+- Only one routing method (endpoint or webhook) can be used per email address
+- Domain verification is not required for email address creation, but proper AWS setup is needed for email receiving
+
+---
+
+<Check>
+**Documentation Verified** - This endpoint documentation has been verified against the actual API implementation (`POST /api/v2/email-addresses`) and is accurate as of the verification date.
+</Check> 

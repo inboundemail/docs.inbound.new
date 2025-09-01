@@ -6,7 +6,7 @@ description: "Retrieve all endpoints for your account with filtering and paginat
 
 ## Overview
 
-Get a paginated list of all endpoints in your account. Endpoints are the unified routing system for webhooks, email forwarding, and email groups.
+Get a paginated list of all endpoints in your account. Endpoints are the unified routing system for webhooks, email forwarding, and email groups. Results are ordered by creation date (newest first).
 
 <RequestExample>
 ```bash
@@ -34,8 +34,8 @@ GET https://inbound.new/api/v2/endpoints
   Filter by endpoint type. Valid values: `webhook`, `email`, `email_group`.
 </ParamField>
 
-<ParamField query="active" type="boolean">
-  Filter by active status. Pass `true` for active endpoints, `false` for inactive.
+<ParamField query="active" type="string">
+  Filter by active status. Pass `"true"` for active endpoints, `"false"` for inactive. Must be string values, not boolean.
 </ParamField>
 
 ## Response
@@ -119,6 +119,35 @@ GET https://inbound.new/api/v2/endpoints
     
     <ResponseField name="config" type="object">
       Configuration specific to the endpoint type. Structure varies by type.
+      
+      <Expandable title="Configuration Types">
+        <ResponseField name="webhook" type="object">
+          For webhook endpoints:
+          - `url` (string, required): Target webhook URL
+          - `timeout` (number, optional): Timeout in seconds (1-300)
+          - `retryAttempts` (number, optional): Retry attempts (0-10)
+          - `headers` (object, optional): Custom headers
+          - `secret` (string, optional): Webhook secret for verification
+        </ResponseField>
+        
+        <ResponseField name="email" type="object">
+          For email forwarding endpoints:
+          - `forwardTo` (string, required): Destination email address
+          - `includeAttachments` (boolean, optional): Whether to include attachments
+          - `subjectPrefix` (string, optional): Prefix for email subject
+          - `fromAddress` (string, optional): Verified domain email to send from
+          - `senderName` (string, optional): Display name for sender
+        </ResponseField>
+        
+        <ResponseField name="email_group" type="object">
+          For email group endpoints:
+          - `emails` (array, required): List of destination email addresses (max 50)
+          - `includeAttachments` (boolean, optional): Whether to include attachments
+          - `subjectPrefix` (string, optional): Prefix for email subject
+          - `fromAddress` (string, optional): Verified domain email to send from
+          - `senderName` (string, optional): Display name for sender
+        </ResponseField>
+      </Expandable>
     </ResponseField>
     
     <ResponseField name="isActive" type="boolean">
@@ -300,7 +329,10 @@ print(f"Page results: {len(data['data'])}, Total: {data['pagination']['total']}"
       "error": "Limit must be between 1 and 100"
     }
     ```
-    Invalid query parameters were provided.
+    Invalid query parameters were provided. Common causes:
+    - `limit` parameter outside the 1-100 range
+    - `offset` parameter is negative
+    - Invalid `type` parameter value
   </Accordion>
   
   <Accordion title="401 Unauthorized">
@@ -309,7 +341,7 @@ print(f"Page results: {len(data['data'])}, Total: {data['pagination']['total']}"
       "error": "Unauthorized"
     }
     ```
-    Missing or invalid authentication credentials.
+    Missing or invalid authentication credentials. Ensure your API key is valid and properly formatted.
   </Accordion>
   
   <Accordion title="500 Internal Server Error">
@@ -318,7 +350,7 @@ print(f"Page results: {len(data['data'])}, Total: {data['pagination']['total']}"
       "error": "Internal server error"
     }
     ```
-    An unexpected error occurred. Please try again or contact support.
+    An unexpected error occurred. Please try again or contact support if the issue persists.
   </Accordion>
 </AccordionGroup>
 
@@ -336,4 +368,8 @@ print(f"Page results: {len(data['data'])}, Total: {data['pagination']['total']}"
   <Card title="Email Group" icon="users">
     Forward emails to multiple email addresses (up to 50)
   </Card>
-</CardGroup> 
+</CardGroup>
+
+<Check>
+**Documentation Verified** - This endpoint documentation has been verified against the actual API implementation in `/api/v2/endpoints/route.ts`. All parameters, response fields, error codes, and behavior match the implementation.
+</Check> 

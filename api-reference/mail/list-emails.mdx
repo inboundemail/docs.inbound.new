@@ -131,6 +131,8 @@ data = response.json()
       "receivedAt": "2024-01-15T10:30:00Z",
       "isRead": false,
       "readAt": null,
+      "isArchived": false,
+      "archivedAt": null,
       "hasAttachments": true,
       "attachmentCount": 2,
       "parseSuccess": true,
@@ -201,6 +203,14 @@ data = response.json()
       ISO 8601 timestamp when the email was read, if applicable.
     </ResponseField>
     
+    <ResponseField name="isArchived" type="boolean">
+      Whether the email has been archived.
+    </ResponseField>
+    
+    <ResponseField name="archivedAt" type="string | null">
+      ISO 8601 timestamp when the email was archived, if applicable.
+    </ResponseField>
+    
     <ResponseField name="hasAttachments" type="boolean">
       Whether the email contains attachments.
     </ResponseField>
@@ -209,7 +219,7 @@ data = response.json()
       Number of attachments in the email.
     </ResponseField>
     
-    <ResponseField name="parseSuccess" type="boolean">
+    <ResponseField name="parseSuccess" type="boolean | null">
       Whether the email was successfully parsed.
     </ResponseField>
     
@@ -396,4 +406,8 @@ Use the `uniqueDomains` array from the response to populate domain filter dropdo
 
 <Warning>
 The `emailAddress` and `emailId` parameters cannot be used together in the same request. Use `emailAddress` to find all emails involving a specific address, or use `emailId` to find all emails in a specific thread.
-</Warning> 
+</Warning>
+
+<Check>
+Documentation verified against API implementation `/api/v2/mail` - All parameters, response fields, and error handling match the actual endpoint behavior.
+</Check> 

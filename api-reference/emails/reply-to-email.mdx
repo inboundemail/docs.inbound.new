@@ -34,8 +34,16 @@ curl -X POST https://inbound.new/api/v2/emails/{id}/reply \
 
 ## Request Body
 
+<Note>
+This endpoint supports both snake_case (legacy) and camelCase (Resend-compatible) formats for certain fields like `reply_to`/`replyTo` and `include_original`/`includeOriginal`.
+</Note>
+
 <ParamField body="from" type="string" required>
   The sender email address. Must be in the format `"Name <email@domain.com>"` or just `"email@domain.com"`. The domain must be verified in your account.
+</ParamField>
+
+<ParamField body="from_name" type="string" optional>
+  Optional sender name for display. If provided, this will be used as the display name for the sender address.
 </ParamField>
 
 <ParamField body="to" type="string | string[]" optional>
@@ -55,7 +63,7 @@ curl -X POST https://inbound.new/api/v2/emails/{id}/reply \
 </ParamField>
 
 <ParamField body="reply_to" type="string | string[]" optional>
-  Reply-to address(es). Can be a single email string or an array of email strings.
+  Reply-to address(es). Can be a single email string or an array of email strings. Also accepts `replyTo` (camelCase) for Resend compatibility.
 </ParamField>
 
 <ParamField body="text" type="string" optional>
@@ -89,7 +97,21 @@ curl -X POST https://inbound.new/api/v2/emails/{id}/reply \
 </ParamField>
 
 <ParamField body="include_original" type="boolean" optional default="true">
-  Whether to include the original message as a quoted reply. When true, the original message will be appended to your reply with appropriate formatting.
+  Whether to include the original message as a quoted reply. When true, the original message will be appended to your reply with appropriate formatting. Also accepts `includeOriginal` (camelCase) for Resend compatibility.
+</ParamField>
+
+<ParamField body="tags" type="array" optional>
+  Array of tags for email categorization and tracking (Resend-compatible).
+  
+  <Expandable title="Tag object properties">
+    <ParamField body="name" type="string" required>
+      Tag name for categorization
+    </ParamField>
+    
+    <ParamField body="value" type="string" required>
+      Tag value for the given name
+    </ParamField>
+  </Expandable>
 </ParamField>
 
 ## Response
@@ -102,8 +124,8 @@ curl -X POST https://inbound.new/api/v2/emails/{id}/reply \
   The Inbound message ID used for email threading (appears in Message-ID header)
 </ResponseField>
 
-<ResponseField name="awsMessageId" type="string" required>
-  AWS SES Message ID for tracking the email through AWS infrastructure
+<ResponseField name="awsMessageId" type="string" optional>
+  AWS SES Message ID for tracking the email through AWS infrastructure. Only present when the email is successfully sent through AWS SES.
 </ResponseField>
 
 ## Email Threading
@@ -183,7 +205,7 @@ data = response.json()
 
 ### Advanced Reply with Custom Recipients
 
-Reply with custom recipients, subject, and HTML content:
+Reply with custom recipients, subject, HTML content, and tags:
 
 <RequestExample>
 ```bash cURL
@@ -191,7 +213,8 @@ curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "from": "John Doe <john@yourdomain.com>",
+    "from": "john@yourdomain.com",
+    "from_name": "John Doe",
     "to": ["customer@example.com"],
     "cc": ["manager@yourdomain.com"],
     "subject": "Re: Support Request #12345",
@@ -200,7 +223,11 @@ curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
     "headers": {
       "X-Support-Ticket": "12345"
     },
-    "include_original": true
+    "includeOriginal": true,
+    "tags": [
+      {"name": "category", "value": "support"},
+      {"name": "priority", "value": "high"}
+    ]
   }'
 ```
 </RequestExample>
@@ -263,13 +290,16 @@ const response = await fetch('https://inbound.new/api/v2/emails/email_abc123/rep
 
 | Status Code | Error Message | Description |
 |-------------|---------------|-------------|
+| 400 | "Valid email ID is required" | The email ID parameter is missing or invalid |
 | 400 | "From address is required" | The `from` field is missing from the request |
 | 400 | "Either html or text content must be provided" | No email body content was provided |
+| 400 | "Cannot determine recipient email address" | No `to` field provided and cannot extract from original email |
 | 400 | "Invalid email format: {email}" | One of the email addresses is malformed |
 | 401 | "Unauthorized" | Invalid or missing API key |
 | 403 | "You don't have permission to send from domain: {domain}" | The sender domain is not verified in your account |
 | 404 | "Email not found" | The email ID does not exist or belongs to another user |
-| 429 | "Email sending limit reached" | You have exceeded your plan's email sending limit |
+| 429 | "Email sending limit reached. Please upgrade your plan to send more emails." | You have exceeded your plan's email sending limit |
+| 500 | "Failed to send reply. Please try again later." | AWS SES or other service error occurred |
 | 500 | "Internal server error" | An unexpected error occurred |
 
 <ResponseExample>
