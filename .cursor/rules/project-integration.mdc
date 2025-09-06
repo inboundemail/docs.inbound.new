@@ -1,0 +1,187 @@
+---
+description: Integration patterns between docs.inbound.new and the main Inbound project
+globs: **/*.mdx,docs.json
+alwaysApply: false
+---
+
+# Project Integration and Cross-References
+
+## Documentation Ecosystem Overview
+
+The [docs.inbound.new](mdc:.) documentation works in conjunction with several other projects in the Inbound organization:
+
+### Related Projects
+- **[inbound-typescript-sdk](mdc:/Users/ryanvogel/dev/inbound-org/inbound-typescript-sdk)** - The actual SDK implementation
+- **[inbound](mdc:/Users/ryanvogel/dev/inbound-org/inbound)** - Main application backend and API
+- **[inbound-examples](mdc:/Users/ryanvogel/dev/inbound-org/inbound-examples)** - Usage examples and sample implementations
+
+### Documentation Scope
+- **This docs site**: SDK usage guides, API reference, examples
+- **Main project README**: Installation and quick start only  
+- **SDK package README**: Basic overview with links to this documentation
+
+## SDK Version Synchronization
+
+### SDK Changes → Documentation Updates
+When changes are made to the [inbound-typescript-sdk](mdc:/Users/ryanvogel/dev/inbound-org/inbound-typescript-sdk):
+
+1. **New Methods**: Add documentation to appropriate [sdk/](mdc:sdk) files
+2. **Deprecated Methods**: Update with warnings and migration guides  
+3. **Breaking Changes**: Update [sdk/changelog.mdx](mdc:sdk/changelog.mdx)
+4. **New Examples**: Add to [sdk/examples.mdx](mdc:sdk/examples.mdx)
+
+### Version References
+- **Avoid** version numbers in documentation content
+- **Use** feature-based descriptions: "unified API" not "v5.0.0"
+- **Update** [sdk/changelog.mdx](mdc:sdk/changelog.mdx) for major releases
+- **Link** to changelog from other pages when referencing new features
+
+## API Reference Synchronization  
+
+### Backend API → API Reference Docs
+When changes are made to [inbound](mdc:/Users/ryanvogel/dev/inbound-org/inbound) API endpoints:
+
+1. **New Endpoints**: Add to [api-reference/](mdc:api-reference) with examples
+2. **Changed Parameters**: Update [ParamField](mdc:) components
+3. **New Response Fields**: Update [ResponseField](mdc:) components  
+4. **Deprecated Endpoints**: Add warnings and sunset timelines
+
+### Parameter Documentation Sync
+Keep [api-reference/](mdc:api-reference) parameter docs in sync with:
+- Backend route validation schemas
+- SDK TypeScript type definitions
+- Actual API behavior and responses
+
+## Example Code Maintenance
+
+### Real Implementation Examples
+Examples in [sdk/examples.mdx](mdc:sdk/examples.mdx) should reflect:
+- **Working patterns** from [inbound-examples](mdc:/Users/ryanvogel/dev/inbound-org/inbound-examples) repo
+- **Production-ready** code with proper error handling
+- **Current SDK methods** only (no deprecated patterns)
+- **Realistic scenarios** not toy examples
+
+### Testing Example Code
+Before publishing examples:
+1. **Test** with actual SDK to ensure they work
+2. **Verify** all imports and dependencies are correct
+3. **Check** that environment variables and setup are documented
+4. **Validate** error handling patterns are realistic
+
+## Cross-Reference Patterns
+
+### From Documentation to Live Resources
+```markdown
+<!-- Link to dashboard -->
+<Card title="View Email Logs" icon="chart-line" href="https://inbound.new/logs">
+  Monitor your emails in the live dashboard
+</Card>
+
+<!-- Link to GitHub -->
+<Card title="SDK Source Code" icon="github" href="https://github.com/inboundemail/sdk">
+  View the SDK implementation on GitHub  
+</Card>
+```
+
+### From Documentation to Examples Repo
+```markdown
+<!-- Reference complete implementations -->
+<Card title="Complete Examples" icon="code" href="https://github.com/r44vc0rp/inbound-examples">
+  See full working applications using the Inbound SDK
+</Card>
+```
+
+### Internal Documentation Links  
+Use consistent link patterns:
+```markdown
+<!-- Primary guides -->
+[Unified Email Management](/sdk/unified-email-management)
+[Migration Guide](/sdk/migration-guide)  
+[Installation Guide](/sdk/installation)
+
+<!-- API references -->
+[Send Email API](/api-reference/emails/send-email)
+[List Emails API](/api-reference/mail/list-emails)
+```
+
+## Configuration File Integration
+
+### docs.json Navigation
+The [docs.json](mdc:docs.json) file should be updated when:
+- New documentation pages are added
+- Page order needs to change based on user feedback
+- New sections are created for major features
+- Deprecated content needs to be moved/reorganized
+
+### Links to External Resources
+Update these sections in [docs.json](mdc:docs.json) when URLs change:
+```json
+{
+  "navbar": {
+    "links": [
+      {
+        "label": "Mail Flow", 
+        "href": "https://inbound.new/logs"
+      }
+    ]
+  },
+  "global": {
+    "anchors": [
+      {
+        "anchor": "Dashboard",
+        "href": "https://inbound.new/logs" 
+      },
+      {
+        "anchor": "GitHub",
+        "href": "https://github.com/r44vc0rp/inbound"
+      }
+    ]
+  }
+}
+```
+
+## Content Quality Standards
+
+### Accuracy Requirements
+- **Test all code examples** against the actual SDK
+- **Verify API responses** match current backend behavior  
+- **Check all external links** regularly for validity
+- **Validate parameter types** against SDK TypeScript definitions
+
+### Consistency Requirements  
+- **Use same patterns** as established in this documentation
+- **Follow naming conventions** from the actual SDK codebase
+- **Match error messages** with what users actually see
+- **Align terminology** with the application UI and dashboard
+
+### Update Triggers
+Documentation should be updated when:
+
+1. **SDK releases** - Update method documentation and examples
+2. **API changes** - Update parameter docs and response examples  
+3. **Dashboard updates** - Update screenshots and workflow descriptions
+4. **User feedback** - Address common questions and pain points
+5. **Support issues** - Add troubleshooting for frequent problems
+
+## Workflow Integration
+
+### Development Workflow
+1. **SDK changes** are made in [inbound-typescript-sdk](mdc:/Users/ryanvogel/dev/inbound-org/inbound-typescript-sdk)
+2. **API changes** are made in [inbound](mdc:/Users/ryanvogel/dev/inbound-org/inbound) 
+3. **Documentation updates** are made in [docs.inbound.new](mdc:.)
+4. **Examples** are updated in [inbound-examples](mdc:/Users/ryanvogel/dev/inbound-org/inbound-examples)
+
+### Release Coordination
+- **SDK releases** should include documentation updates
+- **Breaking changes** require migration guides
+- **New features** need examples and tutorials
+- **Deprecations** require clear timelines and warnings
+
+### Quality Gates
+Before publishing documentation updates:
+- [ ] Code examples are tested and working
+- [ ] Internal links are functional  
+- [ ] External links are valid
+- [ ] Screenshots reflect current UI
+- [ ] Migration guides are complete for deprecated features
+- [ ] Navigation structure supports user workflows

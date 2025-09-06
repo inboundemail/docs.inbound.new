@@ -1,0 +1,351 @@
+---
+title: "Unified Email Management"
+description: "Manage both received and sent emails with the unified email API"
+---
+
+## Overview
+
+The unified email API consolidates all email operations under `inbound.email.*`, providing a cleaner structure and universal email access.
+
+<Note>
+The `inbound.mail.*` methods are deprecated but still work with console warnings. Use the new `email.received.*` methods instead.
+</Note>
+
+## API Structure
+
+```typescript
+import { Inbound } from '@inboundemail/sdk'
+
+const inbound = new Inbound({ apiKey: process.env.INBOUND_API_KEY! })
+
+// 📧 Received Email Management
+inbound.email.received.list()           // List received emails
+inbound.email.received.get(id)          // Get received email
+inbound.email.received.thread(id)       // Get email thread
+inbound.email.received.markRead(id)     // Mark as read
+inbound.email.received.archive(id)      // Archive email
+inbound.email.received.reply(params)    // Reply to received email
+
+// 📤 Sent Email Management
+inbound.email.send(data)                // Send email (top-level convenience)
+inbound.email.schedule(data)            // Schedule email (top-level convenience)
+inbound.email.sent.get(id)              // Get sent email
+inbound.email.sent.reply(id, data)      // Reply to sent email thread
+inbound.email.sent.listScheduled()      // List scheduled emails
+inbound.email.sent.getScheduled(id)     // Get scheduled email details
+inbound.email.sent.cancel(id)           // Cancel scheduled email
+
+// 🔄 Universal Email Access (NEW!)
+inbound.email.get(id)                   // Get ANY email (received or sent)
+```
+
+## Universal Email Retrieval
+
+The `inbound.email.get(id)` method automatically detects whether an email ID belongs to a received or sent email:
+
+```typescript
+// Works for both received and sent emails
+const email = await inbound.email.get("Pquw-Puw3CCtCutPEuOn2")
+
+if (email) {
+  console.log(`Found email: ${email.subject}`)
+  // The method automatically tried received emails first, then sent emails
+}
+```
+
+<Tip>
+This solves the common issue where you have an email ID but don't know if it's from received or sent emails.
+</Tip>
+
+## Received Email Management
+
+All operations for managing inbound emails are now under `email.received.*`:
+
+### List Received Emails
+
+```typescript
+// List all received emails
+const emails = await inbound.email.received.list()
+
+// With filters (same as before)
+const filteredEmails = await inbound.email.received.list({
+  limit: 20,
+  offset: 0,
+  search: 'invoice',
+  domain: 'example.com',
+  timeRange: '7d',
+  includeArchived: false,
+  emailAddress: 'support@example.com'
+})
+
+console.log(`Found ${emails.emails.length} received emails`)
+```
+
+### Get Received Email Details
+
+```typescript
+const emailDetails = await inbound.email.received.get('email_abc123')
+
+console.log('Subject:', emailDetails.subject)
+console.log('From:', emailDetails.from)
+console.log('Text:', emailDetails.textBody)
+console.log('HTML:', emailDetails.htmlBody)
+console.log('Attachments:', emailDetails.attachments.length)
+```
+
+### Email Actions
+
+```typescript
+// Mark email as read
+await inbound.email.received.markRead('email_abc123')
+
+// Archive email
+await inbound.email.received.archive('email_abc123')
+
+// Get email thread
+const thread = await inbound.email.received.thread('email_abc123')
+
+// Bulk operations
+await inbound.email.received.bulk(
+  ['email_1', 'email_2', 'email_3'], 
+  { isRead: true, isArchived: false }
+)
+```
+
+### Reply to Received Emails
+
+```typescript
+// Reply to a received email
+await inbound.email.received.reply({
+  emailId: 'email_abc123',
+  to: 'customer@example.com',
+  subject: 'Re: Your inquiry',
+  textBody: 'Thank you for your message. We will get back to you soon.',
+  htmlBody: '<p>Thank you for your message. We will get back to you soon.</p>'
+})
+```
+
+## Sent Email Management
+
+Operations for sent emails are organized under `email.sent.*`:
+
+### Get Sent Email
+
+```typescript
+// Get sent email details
+const sentEmail = await inbound.email.sent.get('sent_email_123')
+console.log('Status:', sentEmail.last_event)
+```
+
+### Reply to Sent Email Threads
+
+```typescript
+// Reply to a sent email (continue conversation)
+await inbound.email.sent.reply('sent_email_123', {
+  from: 'support@yourdomain.com',
+  text: 'Following up on our previous email...',
+  html: '<p>Following up on our previous email...</p>'
+})
+```
+
+### Scheduled Email Management
+
+```typescript
+// List scheduled emails
+const scheduled = await inbound.email.sent.listScheduled({
+  status: 'scheduled',
+  limit: 50
+})
+
+// Get specific scheduled email
+const scheduledEmail = await inbound.email.sent.getScheduled('scheduled_123')
+
+// Cancel scheduled email
+await inbound.email.sent.cancel('scheduled_123')
+```
+
+## Migration Guide
+
+### From mail.* to email.received.*
+
+Replace all `mail.*` calls with `email.received.*`:
+
+```typescript
+// ❌ OLD (Deprecated)
+const emails = await inbound.mail.list()
+const email = await inbound.mail.get('email_id')
+await inbound.mail.markRead('email_id')
+await inbound.mail.archive('email_id')
+await inbound.mail.reply({ emailId: 'email_id', ... })
+
+// ✅ NEW (Recommended)
+const emails = await inbound.email.received.list()
+const email = await inbound.email.received.get('email_id')
+await inbound.email.received.markRead('email_id')
+await inbound.email.received.archive('email_id')
+await inbound.email.received.reply({ emailId: 'email_id', ... })
+```
+
+### From email.* to email.sent.*
+
+Organize sent email operations under the new namespace:
+
+```typescript
+// ❌ OLD
+const email = await inbound.email.get('sent_id') // Only worked for sent emails
+await inbound.email.reply('sent_id', { ... })
+const scheduled = await inbound.email.listScheduled()
+await inbound.email.cancel('scheduled_id')
+
+// ✅ NEW
+const email = await inbound.email.sent.get('sent_id')
+await inbound.email.sent.reply('sent_id', { ... })
+const scheduled = await inbound.email.sent.listScheduled()
+await inbound.email.sent.cancel('scheduled_id')
+
+// 🔄 OR use universal get for any email
+const email = await inbound.email.get('any_email_id')
+```
+
+## Practical Examples
+
+### Universal Email Handler
+
+```typescript
+async function handleEmail(emailId: string) {
+  // Universal get works for any email type
+  const email = await inbound.email.get(emailId)
+  
+  if (!email) {
+    console.log('Email not found')
+    return
+  }
+  
+  console.log(`Processing email: ${email.subject}`)
+  
+  // Check if it's a received email (has 'from' field)
+  if ('from' in email) {
+    console.log('This is a received email')
+    await inbound.email.received.markRead(emailId)
+  } else {
+    console.log('This is a sent email')
+    console.log(`Status: ${email.last_event}`)
+  }
+}
+```
+
+### Customer Support Workflow
+
+```typescript
+async function supportWorkflow() {
+  // Get all unread support emails
+  const emails = await inbound.email.received.list({
+    emailAddress: 'support@yourcompany.com',
+    search: 'unread'
+  })
+  
+  for (const email of emails.emails) {
+    if (!email.isRead) {
+      // Get full email details
+      const details = await inbound.email.received.get(email.id)
+      
+      // Auto-reply for common queries
+      if (details.subject.toLowerCase().includes('password')) {
+        await inbound.email.received.reply({
+          emailId: email.id,
+          to: details.from,
+          subject: `Re: ${details.subject}`,
+          textBody: 'Password reset instructions have been sent to your registered email.'
+        })
+        
+        // Mark as read
+        await inbound.email.received.markRead(email.id)
+      }
+    }
+  }
+}
+```
+
+### Email Analytics
+
+```typescript
+async function getEmailStats() {
+  // Get received email stats
+  const receivedEmails = await inbound.email.received.list({
+    timeRange: '7d',
+    limit: 100
+  })
+  
+  // Get scheduled email stats
+  const scheduledEmails = await inbound.email.sent.listScheduled({
+    limit: 100
+  })
+  
+  const stats = {
+    receivedCount: receivedEmails.pagination.total,
+    scheduledCount: scheduledEmails.emails.length,
+    unreadCount: receivedEmails.emails.filter(e => !e.isRead).length,
+    withAttachments: receivedEmails.emails.filter(e => e.hasAttachments).length
+  }
+  
+  console.log('Weekly email stats:', stats)
+  return stats
+}
+```
+
+## Backward Compatibility
+
+All existing code will continue to work:
+
+```typescript
+// ✅ Still works (with console warnings)
+const emails = await inbound.mail.list()
+const email = await inbound.mail.get('email_id')
+
+// Console output:
+// ⚠️ mail.list() is deprecated. Use email.received.list() instead.
+// ⚠️ mail.get() is deprecated. Use email.received.get() instead.
+```
+
+## Type Safety
+
+The new API provides better type safety:
+
+```typescript
+// Specific types for received emails
+const receivedEmail: GetMailByIdResponse = await inbound.email.received.get('id')
+
+// Specific types for sent emails  
+const sentEmail: GetEmailByIdResponse = await inbound.email.sent.get('id')
+
+// Union type for universal get
+const anyEmail: GetMailByIdResponse | GetEmailByIdResponse = await inbound.email.get('id')
+```
+
+## Error Handling
+
+Error handling remains the same:
+
+```typescript
+try {
+  const email = await inbound.email.received.get('invalid_id')
+} catch (error) {
+  if (error.message.includes('404')) {
+    console.error('Email not found')
+  } else if (error.message.includes('401')) {
+    console.error('Invalid API key')
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+<Card title="Email Sending" icon="paper-plane" href="/sdk/email-sending">
+  Send emails using the unified API
+</Card>
+
+<Card title="Migration Examples" icon="arrow-right" href="/sdk/examples">
+  See complete migration examples
+</Card>
+</CardGroup>

@@ -1,0 +1,237 @@
+---
+description: Documentation structure and navigation patterns for docs.inbound.new
+globs: *.mdx,docs.json,**/*.mdx
+alwaysApply: false
+---
+
+# Documentation Structure and Navigation Rules
+
+## Project Structure Overview
+
+The documentation is organized into two main sections via [docs.json](mdc:docs.json):
+
+### API Reference Tab
+- **Purpose**: REST API documentation for direct HTTP calls
+- **Structure**: Organized by resource type (emails, endpoints, domains, etc.)
+- **Files**: Located in [api-reference/](mdc:api-reference) directory
+- **Format**: OpenAPI-style documentation with request/response examples
+
+### SDK Documentation Tab  
+- **Purpose**: SDK usage guides, examples, and tutorials
+- **Structure**: Organized by functionality and user journey
+- **Files**: Located in [sdk/](mdc:sdk) directory  
+- **Format**: Tutorial-style guides with code examples
+
+## Navigation Configuration
+
+The [docs.json](mdc:docs.json) file controls site navigation and must follow this structure:
+
+```json
+{
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "📚 API Reference",
+        "groups": [
+          {
+            "group": "Resource Name",
+            "pages": ["api-reference/resource/method-name"]
+          }
+        ]
+      },
+      {
+        "tab": "📦 SDK Documentation", 
+        "groups": [
+          {
+            "group": "Group Name",
+            "pages": ["sdk/page-name"]
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### Page Ordering Rules
+1. **Getting Started** pages come first in each section
+2. **Core functionality** pages follow logical user journey
+3. **Advanced topics** come after basic concepts
+4. **Deprecated content** appears last with clear labeling
+
+## SDK Documentation Organization
+
+### Current Structure (Recommended Order)
+```
+sdk/
+├── installation.mdx                 # How to install SDK
+├── configuration.mdx                # Basic setup
+├── unified-email-management.mdx     # PRIMARY email guide
+├── email-sending.mdx                # Outbound operations  
+├── migration-guide.mdx              # Deprecated → New API
+├── mail-management.mdx              # DEPRECATED (legacy)
+├── endpoints-management.mdx         # Webhook configuration
+├── email-addresses-management.mdx   # Address setup
+├── domains-management.mdx           # Domain configuration
+├── examples.mdx                     # Complete examples
+└── changelog.mdx                    # Release history
+```
+
+### Navigation Groups in docs.json
+```json
+{
+  "group": "Getting Started",
+  "pages": [
+    "index",
+    "authentication", 
+    "sdk/installation",
+    "sdk/configuration"
+  ]
+},
+{
+  "group": "Email Operations", 
+  "pages": [
+    "sdk/unified-email-management",    // PRIMARY guide
+    "sdk/email-sending",
+    "sdk/migration-guide",             // Migration help  
+    "sdk/mail-management"              // DEPRECATED last
+  ]
+},
+{
+  "group": "Configuration",
+  "pages": [
+    "sdk/endpoints-management",
+    "sdk/email-addresses-management", 
+    "sdk/domains-management"
+  ]
+},
+{
+  "group": "Resources",
+  "pages": [
+    "sdk/examples",
+    "sdk/changelog"
+  ]
+}
+```
+
+## File Naming Conventions
+
+### SDK Files
+- Use kebab-case for file names: `unified-email-management.mdx`
+- Include functional description: `email-sending.mdx` 
+- Mark deprecated content: `mail-management.mdx` (with deprecation in title)
+- Use descriptive names: `migration-guide.mdx` not `migration.mdx`
+
+### API Reference Files
+- Match HTTP method and resource: `send-email.mdx`, `get-email.mdx`
+- Group by resource in directories: `emails/`, `endpoints/`, `domains/`
+- Use action-oriented names: `create-endpoint.mdx`, `list-emails.mdx`
+
+## Content Cross-Linking Strategy
+
+### Primary Content Flow
+1. **Installation** → **Configuration** → **Unified Email Management**
+2. **Unified Email Management** ↔ **Examples** (bidirectional)
+3. **Deprecated pages** → **Migration Guide** → **Current methods**
+
+### Link Patterns
+```markdown
+<!-- Link to primary guide -->
+<Card title="Unified Email Management" icon="arrow-right" href="/sdk/unified-email-management">
+  Complete guide to managing received and sent emails
+</Card>
+
+<!-- Deprecation redirect -->
+<Warning>
+**Deprecated**: Use the [Unified Email Management](/sdk/unified-email-management) guide instead.
+</Warning>
+
+<!-- Migration assistance -->
+<Card title="Migration Guide" icon="arrow-right" href="/sdk/migration-guide">
+  Step-by-step guide for updating your code
+</Card>
+```
+
+### Navigation Cards
+Use consistent CardGroup patterns at the end of articles:
+
+```markdown
+## Next Steps
+
+<CardGroup cols={2}>
+<Card title="Email Sending" icon="paper-plane" href="/sdk/email-sending">
+  Send emails using the unified API
+</Card>
+
+<Card title="Examples" icon="code" href="/sdk/examples">
+  See complete implementation examples
+</Card>
+</CardGroup>
+```
+
+## Frontmatter Standards
+
+### Required Fields
+Every documentation file must include:
+
+```yaml
+---
+title: "Clear, descriptive title"
+description: "Concise description of page purpose and value"
+---
+```
+
+### Title Patterns
+- **Current methods**: "Email Sending", "Unified Email Management"
+- **Deprecated content**: "Mail Management (DEPRECATED)"  
+- **Guides**: "Migration Guide: mail.* to email.*"
+- **Resources**: "Examples", "Changelog"
+
+### Description Patterns
+- Focus on user value: "Send emails and reply to conversations"
+- Avoid version references: ✅ "using the Inbound SDK" ❌ "using SDK v5.0.0"
+- Include deprecation status: "Legacy mail management API - Use email.received.* methods instead"
+
+## Content Maintenance Rules
+
+### When Adding New Content
+1. **Update docs.json** navigation to include new pages
+2. **Add cross-references** from related existing pages
+3. **Follow established patterns** for structure and formatting
+4. **Test all links** and navigation paths
+
+### When Deprecating Content
+1. **Add deprecation warnings** at the top of pages
+2. **Update page titles** to include "(DEPRECATED)"
+3. **Provide migration paths** to current methods
+4. **Move deprecated pages** to end of navigation groups
+5. **Keep content available** for backward compatibility
+
+### When Updating Navigation
+1. **Maintain logical flow** from basic to advanced concepts
+2. **Group related functionality** together
+3. **Put primary guides first** in each group
+4. **Place deprecated content last** with clear labeling
+
+## Quality Assurance
+
+### Navigation Review Checklist
+- [ ] docs.json syntax is valid JSON
+- [ ] All referenced pages exist as files
+- [ ] Navigation groups follow logical progression
+- [ ] Deprecated content is clearly marked and positioned last
+- [ ] Cross-references between pages are working
+
+### Content Structure Review
+- [ ] All pages have required frontmatter
+- [ ] Titles and descriptions follow established patterns
+- [ ] Internal links use correct relative paths
+- [ ] CardGroup navigation is present at article ends
+- [ ] Deprecation warnings are clear and helpful
+
+### User Journey Testing
+- [ ] New users can find getting started information
+- [ ] Current API methods are prominently featured
+- [ ] Migration paths from deprecated methods are clear
+- [ ] Advanced examples are accessible but not overwhelming
+- [ ] Related content is properly cross-referenced

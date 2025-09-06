@@ -1,0 +1,215 @@
+---
+description: Inbound Email SDK documentation standards and patterns
+globs: sdk/*.mdx,api-reference/**/*.mdx
+alwaysApply: false
+---
+
+# Inbound Email SDK Documentation Standards
+
+## Writing Style Guidelines
+
+### Clean and Professional Tone
+- Avoid version references in content unless absolutely necessary (e.g., "(v5.0.0 syntax)")
+- Use clean, formal language without clutter
+- Focus on practical implementation over historical changes
+- Lead with the current, recommended approach
+
+### Code Examples Standards
+- Always provide complete, runnable examples
+- Use realistic data instead of placeholder values
+- Include proper error handling patterns
+- Avoid commenting on version changes within code blocks
+- Use clear variable names that reflect real-world usage
+
+```typescript
+// ✅ GOOD - Clean and focused
+const { data: emails } = await inbound.email.received.list({
+  limit: 50,
+  timeRange: '7d'
+})
+
+// ❌ BAD - Version references and clutter
+const { data: emails } = await inbound.email.received.list({ // New in v5.0.0
+  limit: 50, // Changed from v4.x.x
+  timeRange: '7d' // Updated parameter name
+})
+```
+
+## Unified API Documentation Pattern
+
+### Structure Organization
+- **Primary Methods First**: Lead with current unified API methods
+- **Deprecated Methods Last**: Place deprecated content at the end with clear warnings
+- **Universal Methods**: Highlight `inbound.email.get()` as the universal solution
+
+### API Method Documentation Format
+```markdown
+## Method Name
+
+Brief description of what the method does.
+
+```typescript
+// Clear, concise example
+const result = await inbound.email.methodName(params)
+```
+
+### Parameters
+
+<ParamField body="param" type="string" required>
+  Clear description without version notes
+</ParamField>
+
+### Response
+
+Clear response format and expected data structure.
+```
+
+## Content Hierarchy Standards
+
+### Page Structure
+1. **Overview** - What the API/method does
+2. **Basic Usage** - Simple, common use case
+3. **Parameters/Configuration** - Detailed options
+4. **Advanced Examples** - Complex, real-world scenarios
+5. **Error Handling** - Common issues and solutions
+6. **Next Steps** - Related documentation links
+
+### Heading Hierarchy
+- H1: Page title (in frontmatter)
+- H2: Main sections (Overview, Usage, Examples)
+- H3: Sub-sections (Parameters, Error Handling)
+- H4: Specific topics within sub-sections
+
+## Unified Email API Messaging
+
+### Consistent Terminology
+- **Received emails**: Use `email.received.*` methods
+- **Sent emails**: Use `email.sent.*` methods  
+- **Universal access**: Use `email.get()` for any email type
+- **Deprecated**: `mail.*` methods (show warnings, provide migration path)
+
+### Migration Guidance
+- Always provide clear migration paths from deprecated methods
+- Use Warning callouts for deprecated features
+- Include side-by-side code comparisons
+- Link to comprehensive migration guide
+
+### Universal Email Access Messaging
+Consistently explain that `inbound.email.get(id)` works for any email:
+
+```typescript
+// Works for both received and sent emails
+const email = await inbound.email.get(emailId)
+
+if (!email) {
+  console.log('Email not found')
+  return
+}
+
+// Automatically detects email type
+console.log('Found email:', email.subject)
+```
+
+## Example Patterns
+
+### Webhook Handler Examples
+Always show complete, realistic webhook handlers:
+
+```typescript
+export async function POST(request: NextRequest) {
+  try {
+    const payload: InboundWebhookPayload = await request.json()
+    const { email } = payload
+    
+    // Get full email details
+    const emailDetails = await inbound.email.received.get(email.id)
+    
+    // Process based on content
+    if (emailDetails.subject.includes('support')) {
+      // Handle support request
+    }
+    
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Processing failed' },
+      { status: 500 }
+    )
+  }
+}
+```
+
+### Error Handling Patterns
+Show proper error handling in all examples:
+
+```typescript
+try {
+  const email = await inbound.email.received.get(emailId)
+} catch (error) {
+  if (error.message.includes('404')) {
+    console.error('Email not found')
+  } else if (error.message.includes('401')) {
+    console.error('Invalid API key')
+  } else {
+    console.error('API error:', error.message)
+  }
+}
+```
+
+## Component Usage Guidelines
+
+### Callout Components
+- **Note**: For helpful supplementary information
+- **Tip**: For best practices and optimization advice  
+- **Warning**: For deprecated methods and breaking changes
+- **Info**: For neutral background information
+
+### Code Organization
+- Use **CodeGroup** for multiple language examples
+- Use **RequestExample/ResponseExample** for API endpoints
+- Use **Steps** for sequential procedures
+- Use **Tabs** for different implementation approaches
+
+### Navigation Components
+- Use **Card** components to link to related documentation
+- Use **CardGroup** for organized navigation sections
+- Always provide "Next Steps" at the end of articles
+
+## File Organization Standards
+
+### SDK Documentation Structure
+```
+sdk/
+├── unified-email-management.mdx    # Primary email management guide
+├── email-sending.mdx               # Outbound email operations
+├── migration-guide.mdx             # Complete migration assistance
+├── mail-management.mdx             # Deprecated (legacy reference)
+├── examples.mdx                    # Comprehensive code examples
+├── installation.mdx                # Getting started
+├── configuration.mdx               # Setup and config
+└── changelog.mdx                   # Release notes
+```
+
+### Content Cross-References
+- Link to unified-email-management.mdx as the primary guide
+- Reference migration-guide.mdx for deprecated methods
+- Point to examples.mdx for implementation patterns
+- Use consistent link text and descriptions
+
+## Quality Assurance Checklist
+
+### Before Publishing
+- [ ] Remove all version references from content and code examples
+- [ ] Ensure all code examples are complete and runnable
+- [ ] Verify proper Mintlify component usage
+- [ ] Test all internal links and navigation
+- [ ] Confirm consistent terminology usage
+- [ ] Include appropriate error handling in examples
+- [ ] Provide clear next steps and related links
+
+### Content Review
+- [ ] Lead with current unified API methods
+- [ ] Deprecation warnings are clear and helpful
+- [ ] Migration paths are provided for deprecated methods
+- [ ] Examples demonstrate real-world usage
+- [ ] Technical accuracy is verified through testing

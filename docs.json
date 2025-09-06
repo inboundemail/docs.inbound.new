@@ -93,8 +93,10 @@
           {
             "group": "Email Operations",
             "pages": [
-              "sdk/mail-management",
-              "sdk/email-sending"
+              "sdk/unified-email-management",
+              "sdk/email-sending",
+              "sdk/migration-guide",
+              "sdk/mail-management"
             ]
           },
           {

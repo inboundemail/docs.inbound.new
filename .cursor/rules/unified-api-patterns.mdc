@@ -1,0 +1,303 @@
+---
+description: Unified API patterns and consistency guidelines for Inbound Email documentation
+globs: sdk/*.mdx,api-reference/**/*.mdx
+alwaysApply: false
+---
+
+# Unified API Patterns and Consistency
+
+## API Method Naming Conventions
+
+The Inbound Email SDK uses a consistent unified structure under `inbound.email.*`:
+
+### Received Email Operations
+```typescript
+// Primary namespace for inbound emails
+inbound.email.received.list()           // List received emails
+inbound.email.received.get(id)          // Get specific received email  
+inbound.email.received.markRead(id)     // Mark as read
+inbound.email.received.archive(id)      // Archive email
+inbound.email.received.reply(params)    // Reply to received email
+inbound.email.received.bulk(ids, updates) // Bulk operations
+```
+
+### Sent Email Operations
+```typescript
+// Organized namespace for outbound emails
+inbound.email.sent.get(id)              // Get sent email details
+inbound.email.sent.reply(id, params)    // Reply to sent email thread
+inbound.email.sent.listScheduled()      // List scheduled emails
+inbound.email.sent.getScheduled(id)     // Get scheduled email details
+inbound.email.sent.cancel(id)           // Cancel scheduled email
+```
+
+### Universal Email Access
+```typescript
+// Universal method that works for any email type
+inbound.email.get(id)                   // Get ANY email (received or sent)
+
+// Top-level convenience methods (maintained for ease of use)
+inbound.email.send(data)                // Send email immediately
+inbound.email.schedule(data)            // Schedule email for later
+```
+
+## Documentation Messaging Patterns
+
+### Explaining the Universal Method
+
+Always explain `inbound.email.get()` as the universal solution:
+
+```markdown
+## Universal Email Access
+
+The `inbound.email.get(id)` method automatically detects whether an email ID belongs to a received or sent email:
+
+```typescript
+// Works for both received and sent emails
+const email = await inbound.email.get("any-email-id")
+
+if (!email) {
+  throw new Error('Email not found')
+}
+
+// Method automatically determined the email type
+console.log('Found email:', email.subject)
+\```
+```
+
+### Deprecation Messaging Pattern
+
+Use consistent deprecation warnings across all documentation:
+
+```markdown
+<Warning>
+**Deprecated**: The `mail.*` methods are deprecated. Use `email.received.*` methods instead.
+
+All `mail.*` methods will continue to work but show console warnings.
+</Warning>
+
+## Migration Path
+
+```typescript
+// ❌ OLD (Deprecated - but still works)
+const emails = await inbound.mail.list()
+const email = await inbound.mail.get('email_id')
+
+// ✅ NEW (Recommended)  
+const emails = await inbound.email.received.list()
+const email = await inbound.email.received.get('email_id')
+
+// 🔄 OR use universal method
+const email = await inbound.email.get('email_id')
+\```
+```
+
+### Problem-Solution Messaging
+
+Frame the unified API as solving common problems:
+
+```markdown
+<Tip>
+**Solves "Email Not Found" Issues**: The universal `email.get()` method automatically tries both received and sent emails, eliminating the common issue where you have an email ID but don't know its type.
+</Tip>
+```
+
+## Code Example Patterns
+
+### Complete Webhook Handler Template
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { Inbound } from '@inboundemail/sdk'
+import type { InboundWebhookPayload } from '@inboundemail/sdk'
+
+const inbound = new Inbound(process.env.INBOUND_API_KEY!)
+
+export async function POST(request: NextRequest) {
+  try {
+    const payload: InboundWebhookPayload = await request.json()
+    const { email } = payload
+
+    // Get full email details
+    const emailDetails = await inbound.email.received.get(email.id)
+    
+    // Process based on email content
+    if (emailDetails.subject.toLowerCase().includes('support')) {
+      await handleSupportRequest(emailDetails)
+    }
+    
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Webhook error:', error)
+    return NextResponse.json(
+      { error: 'Processing failed' },
+      { status: 500 }
+    )
+  }
+}
+
+async function handleSupportRequest(email: any) {
+  // Auto-reply to support requests
+  await inbound.email.received.reply({
+    emailId: email.id,
+    to: email.from,
+    subject: `Re: ${email.subject}`,
+    textBody: 'Thank you for contacting support. We will respond within 24 hours.'
+  })
+  
+  // Mark as read  
+  await inbound.email.received.markRead(email.id)
+}
+```
+
+### Error Handling Pattern
+Always show proper error handling:
+
+```typescript
+try {
+  const email = await inbound.email.received.get(emailId)
+  // Process email
+} catch (error) {
+  if (error.message.includes('404')) {
+    console.error('Email not found')
+  } else if (error.message.includes('401')) {
+    console.error('Invalid API key')
+  } else {
+    console.error('API error:', error.message)
+  }
+}
+```
+
+### Migration Example Pattern
+Show side-by-side comparisons for deprecated methods:
+
+```typescript
+// ❌ Before (deprecated but still works)
+async function oldWay() {
+  const emails = await inbound.mail.list({ limit: 50 })
+  
+  for (const email of emails.emails) {
+    const details = await inbound.mail.get(email.id)
+    await inbound.mail.markRead(email.id)
+  }
+}
+
+// ✅ After (recommended)
+async function newWay() {
+  const emails = await inbound.email.received.list({ limit: 50 })
+  
+  for (const email of emails.emails) {
+    const details = await inbound.email.received.get(email.id)
+    await inbound.email.received.markRead(email.id)
+  }
+}
+```
+
+## Terminology Consistency
+
+### Required Terms
+- **"Received emails"** for inbound messages (not "mail" or "inbound emails")
+- **"Sent emails"** for outbound messages (not "emails" alone)
+- **"Universal method"** for `inbound.email.get()` 
+- **"Deprecated"** for `mail.*` methods (not "legacy" or "old")
+- **"Unified API"** for the overall `inbound.email.*` structure
+
+### Avoid These Terms
+- ❌ "v5.0.0 syntax" or other version references
+- ❌ "New API" (focus on current functionality)  
+- ❌ "Old way" vs "new way" (use "deprecated" vs "recommended")
+- ❌ "mail API" when referring to current methods
+
+## Parameter Documentation Standards
+
+### Standard Parameter Blocks
+```markdown
+<ParamField body="emailId" type="string" required>
+  ID of the email to process
+</ParamField>
+
+<ParamField body="to" type="string | string[]" required>
+  Recipient email address(es)
+</ParamField>
+
+<ParamField body="subject" type="string" required>
+  Email subject line
+</ParamField>
+
+<ParamField body="textBody" type="string">
+  Plain text version of the email
+</ParamField>
+
+<ParamField body="htmlBody" type="string">
+  HTML version of the email
+</ParamField>
+```
+
+### Response Documentation Pattern
+```markdown
+### Response Structure
+
+```typescript
+interface EmailResponse {
+  id: string
+  subject: string
+  from: string
+  to: string
+  textBody: string
+  htmlBody: string
+  receivedAt: Date
+  // ... other fields
+}
+\```
+```
+
+## Navigation and Cross-Reference Patterns
+
+### Standard "Next Steps" Section
+```markdown
+## Next Steps
+
+<CardGroup cols={2}>
+<Card title="Unified Email Management" icon="email" href="/sdk/unified-email-management">
+  Complete guide to managing received and sent emails
+</Card>
+
+<Card title="Examples" icon="code" href="/sdk/examples">
+  See working implementation examples
+</Card>
+</CardGroup>
+```
+
+### Deprecation Redirect Pattern
+```markdown
+<Card title="Migration Guide" icon="arrow-right" href="/sdk/migration-guide">
+  Step-by-step guide for migrating from mail.* methods
+</Card>
+```
+
+### Internal Link Patterns
+- Link to [unified-email-management.mdx](mdc:sdk/unified-email-management.mdx) as primary guide
+- Link to [migration-guide.mdx](mdc:sdk/migration-guide.mdx) for deprecated methods
+- Link to [examples.mdx](mdc:sdk/examples.mdx) for implementation patterns
+
+## Quality Standards
+
+### Code Example Requirements
+- [ ] All examples are complete and runnable
+- [ ] Proper error handling is included
+- [ ] Realistic data is used (not placeholders)
+- [ ] Current unified API methods are used
+- [ ] No version references in comments
+
+### Content Requirements  
+- [ ] Universal `email.get()` method is highlighted as the solution
+- [ ] Deprecation warnings are clear and helpful
+- [ ] Migration paths are provided for deprecated methods
+- [ ] Consistent terminology is used throughout
+- [ ] Cross-references to related documentation are included
+
+### Messaging Requirements
+- [ ] Focus on solving user problems, not API history
+- [ ] Lead with current recommended approaches
+- [ ] Provide clear migration guidance for deprecated methods
+- [ ] Explain benefits of unified structure
+- [ ] Use consistent language patterns across all content

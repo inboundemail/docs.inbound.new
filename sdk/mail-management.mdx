@@ -1,9 +1,38 @@
 ---
-title: "Mail Management"
-description: "List, retrieve, and reply to emails in your inbox"
+title: "Mail Management (DEPRECATED)"
+description: "Legacy mail management API - Use email.received.* methods instead"
 ---
 
-## Overview
+<Warning>
+**Deprecated**: The `mail.*` methods are deprecated. Use `email.received.*` methods instead.
+
+All `mail.*` methods will continue to work but show console warnings.
+
+**Migration Guide**: Replace `inbound.mail.*` with `inbound.email.received.*`
+</Warning>
+
+## Migration to Unified Email API
+
+The unified email API provides a cleaner structure:
+
+```typescript
+// ❌ OLD (Deprecated - but still works)
+const emails = await inbound.mail.list()
+const email = await inbound.mail.get('email_id')
+
+// ✅ NEW (Recommended)
+const emails = await inbound.email.received.list()
+const email = await inbound.email.received.get('email_id')
+
+// 🔄 OR use universal email.get() for any email type
+const email = await inbound.email.get('email_id') // Works for received OR sent emails
+```
+
+<Card title="Unified Email Management" icon="arrow-right" href="/sdk/unified-email-management">
+  See the complete guide for the unified email API
+</Card>
+
+## Overview (Legacy Documentation)
 
 The Mail API allows you to manage emails received at your configured addresses.
 

@@ -1,0 +1,448 @@
+---
+title: "Migration Guide: mail.* to email.*"
+description: "Complete guide for migrating from deprecated mail.* methods to the unified email API"
+---
+
+## Overview
+
+The unified email API consolidates all email operations under `inbound.email.*`. This guide helps you migrate from the deprecated `mail.*` methods to the new structure.
+
+<Note>
+**No Rush**: All existing `mail.*` methods continue to work with console warnings. Migration is recommended for cleaner code and future compatibility.
+</Note>
+
+## Quick Migration Reference
+
+### Core Methods
+
+| Old (Deprecated) | New (Recommended) | Universal Alternative |
+|---|---|---|
+| `inbound.mail.list()` | `inbound.email.received.list()` | - |
+| `inbound.mail.get(id)` | `inbound.email.received.get(id)` | `inbound.email.get(id)` |
+| `inbound.mail.thread(id)` | `inbound.email.received.thread(id)` | - |
+| `inbound.mail.markRead(id)` | `inbound.email.received.markRead(id)` | - |
+| `inbound.mail.markUnread(id)` | `inbound.email.received.markUnread(id)` | - |
+| `inbound.mail.archive(id)` | `inbound.email.received.archive(id)` | - |
+| `inbound.mail.unarchive(id)` | `inbound.email.received.unarchive(id)` | - |
+| `inbound.mail.reply(params)` | `inbound.email.received.reply(params)` | - |
+| `inbound.mail.bulk(ids, updates)` | `inbound.email.received.bulk(ids, updates)` | - |
+
+### Sent Email Methods
+
+| Old (Deprecated) | New (Recommended) |
+|---|---|
+| `inbound.email.get(id)` | `inbound.email.sent.get(id)` |
+| `inbound.email.reply(id, params)` | `inbound.email.sent.reply(id, params)` |
+| `inbound.email.listScheduled()` | `inbound.email.sent.listScheduled()` |
+| `inbound.email.getScheduled(id)` | `inbound.email.sent.getScheduled(id)` |
+| `inbound.email.cancel(id)` | `inbound.email.sent.cancel(id)` |
+
+## Step-by-Step Migration
+
+### Step 1: Update Imports (No Change Required)
+
+```typescript
+// ✅ Same import works for all versions
+import { Inbound } from '@inboundemail/sdk'
+
+const inbound = new Inbound({ apiKey: process.env.INBOUND_API_KEY! })
+```
+
+### Step 2: Replace mail.* Methods
+
+```typescript
+// ❌ Before (deprecated but still works)
+async function oldWay() {
+  const emails = await inbound.mail.list({ limit: 50 })
+  
+  for (const email of emails.emails) {
+    const details = await inbound.mail.get(email.id)
+    
+    if (!email.isRead) {
+      await inbound.mail.markRead(email.id)
+    }
+    
+    if (details.subject.includes('urgent')) {
+      await inbound.mail.reply({
+        emailId: email.id,
+        to: details.from,
+        subject: `Re: ${details.subject}`,
+        textBody: 'Thank you for your urgent message.'
+      })
+    }
+  }
+}
+
+// ✅ After (recommended)
+async function newWay() {
+  const emails = await inbound.email.received.list({ limit: 50 })
+  
+  for (const email of emails.emails) {
+    const details = await inbound.email.received.get(email.id)
+    
+    if (!email.isRead) {
+      await inbound.email.received.markRead(email.id)
+    }
+    
+    if (details.subject.includes('urgent')) {
+      await inbound.email.received.reply({
+        emailId: email.id,
+        to: details.from,
+        subject: `Re: ${details.subject}`,
+        textBody: 'Thank you for your urgent message.'
+      })
+    }
+  }
+}
+```
+
+### Step 3: Use Universal Email Access
+
+```typescript
+// 🔄 New universal approach (recommended for flexibility)
+async function universalWay(emailId: string) {
+  // Works for both received and sent emails
+  const email = await inbound.email.get(emailId)
+  
+  if (!email) {
+    console.log('Email not found in received or sent emails')
+    return
+  }
+  
+  console.log(`Found email: ${email.subject}`)
+  
+  // Check if it's a received email (has 'from' field from sender)
+  if ('from' in email && typeof email.from === 'string') {
+    console.log('This is a received email')
+    console.log(`From: ${email.from}`)
+    
+    // Can use received-specific methods
+    await inbound.email.received.markRead(emailId)
+  } else {
+    console.log('This is a sent email')
+    console.log(`Status: ${email.last_event}`)
+  }
+}
+```
+
+## Migration Examples
+
+### Webhook Handler Migration
+
+```typescript
+// ❌ Before (deprecated)
+export async function oldWebhookHandler(payload: InboundWebhookPayload) {
+  const { email } = payload
+  
+  // Get full email details
+  const details = await inbound.mail.get(email.id)
+  
+  // Auto-reply logic
+  if (details.subject.includes('support')) {
+    await inbound.mail.reply({
+      emailId: email.id,
+      to: details.from,
+      subject: `Re: ${details.subject}`,
+      textBody: 'Thank you for contacting support. We will respond within 24 hours.'
+    })
+    
+    // Mark as read
+    await inbound.mail.markRead(email.id)
+  }
+}
+
+// ✅ After (recommended)
+export async function newWebhookHandler(payload: InboundWebhookPayload) {
+  const { email } = payload
+  
+  // Get full email details
+  const details = await inbound.email.received.get(email.id)
+  
+  // Auto-reply logic
+  if (details.subject.includes('support')) {
+    await inbound.email.received.reply({
+      emailId: email.id,
+      to: details.from,
+      subject: `Re: ${details.subject}`,
+      textBody: 'Thank you for contacting support. We will respond within 24 hours.'
+    })
+    
+    // Mark as read
+    await inbound.email.received.markRead(email.id)
+  }
+}
+```
+
+### Email Processing Pipeline
+
+```typescript
+// ❌ Before (deprecated)
+async function oldEmailPipeline() {
+  // Get recent emails
+  const emails = await inbound.mail.list({
+    timeRange: '24h',
+    status: 'processed',
+    limit: 100
+  })
+  
+  for (const email of emails.emails) {
+    // Get full details
+    const details = await inbound.mail.get(email.id)
+    
+    // Process based on content
+    if (details.subject.includes('order')) {
+      await processOrder(details)
+      await inbound.mail.archive(email.id)
+    }
+    
+    // Auto-reply to customer inquiries
+    if (details.from.includes('customer')) {
+      await inbound.mail.reply({
+        emailId: email.id,
+        to: details.from,
+        subject: `Re: ${details.subject}`,
+        textBody: 'We have received your inquiry and will respond shortly.'
+      })
+    }
+  }
+}
+
+// ✅ After (recommended)
+async function newEmailPipeline() {
+  // Get recent emails
+  const emails = await inbound.email.received.list({
+    timeRange: '24h',
+    status: 'processed',
+    limit: 100
+  })
+  
+  for (const email of emails.emails) {
+    // Get full details
+    const details = await inbound.email.received.get(email.id)
+    
+    // Process based on content
+    if (details.subject.includes('order')) {
+      await processOrder(details)
+      await inbound.email.received.archive(email.id)
+    }
+    
+    // Auto-reply to customer inquiries
+    if (details.from.includes('customer')) {
+      await inbound.email.received.reply({
+        emailId: email.id,
+        to: details.from,
+        subject: `Re: ${details.subject}`,
+        textBody: 'We have received your inquiry and will respond shortly.'
+      })
+    }
+  }
+}
+```
+
+### Bulk Operations
+
+```typescript
+// ❌ Before (deprecated)
+async function oldBulkOperations() {
+  const emails = await inbound.mail.list({ limit: 50 })
+  const unreadIds = emails.emails
+    .filter(email => !email.isRead)
+    .map(email => email.id)
+  
+  // Mark all as read
+  await inbound.mail.bulk(unreadIds, { isRead: true })
+  
+  // Archive old emails
+  const oldEmails = emails.emails
+    .filter(email => isOlderThan30Days(email.receivedAt))
+    .map(email => email.id)
+  
+  await inbound.mail.bulk(oldEmails, { isArchived: true })
+}
+
+// ✅ After (recommended)
+async function newBulkOperations() {
+  const emails = await inbound.email.received.list({ limit: 50 })
+  const unreadIds = emails.emails
+    .filter(email => !email.isRead)
+    .map(email => email.id)
+  
+  // Mark all as read
+  await inbound.email.received.bulk(unreadIds, { isRead: true })
+  
+  // Archive old emails
+  const oldEmails = emails.emails
+    .filter(email => isOlderThan30Days(email.receivedAt))
+    .map(email => email.id)
+  
+  await inbound.email.received.bulk(oldEmails, { isArchived: true })
+}
+```
+
+## Gradual Migration Strategy
+
+### Phase 1: No Changes Required
+- All existing code continues to work
+- Console warnings will appear for deprecated methods
+- No immediate action needed
+
+### Phase 2: Update New Code
+- Use new unified API for all new features
+- Get familiar with the new structure
+- Test the universal `email.get()` method
+
+### Phase 3: Migrate Critical Paths
+- Update high-traffic webhook handlers first
+- Migrate core email processing logic
+- Update automated systems
+
+### Phase 4: Complete Migration
+- Replace all remaining `mail.*` calls
+- Remove deprecated method usage
+- Prepare for v6.0.0 when `mail.*` will be removed
+
+## Testing Your Migration
+
+### Verify Functionality
+
+```typescript
+async function testMigration() {
+  // Test universal email access
+  console.log('Testing universal email access...')
+  const testEmailId = 'some_email_id'
+  
+  try {
+    const email = await inbound.email.get(testEmailId)
+    console.log('✅ Universal get works:', email?.subject)
+  } catch (error) {
+    console.log('❌ Universal get failed:', error.message)
+  }
+  
+  // Test received email methods
+  console.log('Testing received email methods...')
+  try {
+    const emails = await inbound.email.received.list({ limit: 1 })
+    if (emails.emails.length > 0) {
+      const details = await inbound.email.received.get(emails.emails[0].id)
+      console.log('✅ Received email methods work:', details.subject)
+    }
+  } catch (error) {
+    console.log('❌ Received email methods failed:', error.message)
+  }
+  
+  // Test sent email methods
+  console.log('Testing sent email methods...')
+  try {
+    const scheduled = await inbound.email.sent.listScheduled({ limit: 1 })
+    console.log('✅ Sent email methods work:', scheduled.emails.length)
+  } catch (error) {
+    console.log('❌ Sent email methods failed:', error.message)
+  }
+}
+```
+
+### Side-by-Side Comparison
+
+```typescript
+async function compareApproaches(emailId: string) {
+  // Old way (deprecated but still works)
+  console.log('Testing deprecated method...')
+  try {
+    const oldResult = await inbound.mail.get(emailId)
+    console.log('Old method result:', oldResult?.subject)
+  } catch (error) {
+    console.log('Old method failed:', error.message)
+  }
+  
+  // New way (recommended)
+  console.log('Testing new method...')
+  try {
+    const newResult = await inbound.email.received.get(emailId)
+    console.log('New method result:', newResult?.subject)
+  } catch (error) {
+    console.log('New method failed:', error.message)
+  }
+  
+  // Universal way (best for unknown email types)
+  console.log('Testing universal method...')
+  try {
+    const universalResult = await inbound.email.get(emailId)
+    console.log('Universal method result:', universalResult?.subject)
+  } catch (error) {
+    console.log('Universal method failed:', error.message)
+  }
+}
+```
+
+## Common Migration Issues
+
+### Issue 1: Email Not Found Errors
+
+**Problem**: `inbound.email.get()` only worked for sent emails in older versions.
+
+```typescript
+// ❌ Old problem
+const email = await inbound.email.get('received_email_id') // Would fail
+
+// ✅ New solutions
+// Option 1: Use specific method
+const email = await inbound.email.received.get('received_email_id')
+
+// Option 2: Use universal method (recommended)
+const email = await inbound.email.get('any_email_id') // Works for both types
+```
+
+### Issue 2: Confusion About Email Types
+
+**Problem**: Not sure if an email ID belongs to received or sent emails.
+
+```typescript
+// ✅ Solution: Use universal method
+async function handleAnyEmail(emailId: string) {
+  const email = await inbound.email.get(emailId)
+  
+  if (!email) {
+    throw new Error('Email not found')
+  }
+  
+  // The method automatically determined the email type
+  console.log('Found email:', email.subject)
+  return email
+}
+```
+
+### Issue 3: TypeScript Type Issues
+
+**Problem**: Type conflicts when migrating.
+
+```typescript
+// ✅ Solution: Use proper types
+import { GetMailByIdResponse, GetEmailByIdResponse } from '@inboundemail/sdk'
+
+// For received emails
+const receivedEmail: GetMailByIdResponse = await inbound.email.received.get(id)
+
+// For sent emails
+const sentEmail: GetEmailByIdResponse = await inbound.email.sent.get(id)
+
+// For universal (union type)
+const anyEmail: GetMailByIdResponse | GetEmailByIdResponse = await inbound.email.get(id)
+```
+
+## Next Steps
+
+1. **Start with Universal Methods**: Use `inbound.email.get()` for new code
+2. **Migrate High-Impact Code**: Focus on webhook handlers and core logic first
+3. **Test Thoroughly**: Verify all functionality works as expected
+4. **Monitor Warnings**: Watch console output for deprecated method usage
+5. **Plan for v6.0.0**: Prepare for removal of `mail.*` methods
+
+<CardGroup cols={2}>
+<Card title="Unified Email Management" icon="arrow-right" href="/sdk/unified-email-management">
+  Complete guide to the new unified API
+</Card>
+
+<Card title="Examples" icon="code" href="/sdk/examples">
+  See working examples with the new API
+</Card>
+</CardGroup>

@@ -5,6 +5,79 @@ description: "New updates and improvements to Inbound Email"
 
 # Changelog for Inbound Email SDK
 
+<Update label="January 25, 2025" tags={["SDK", "Major Release", "Unified API"]} rss={{ title: "Unified Email API Release", description: "Unified email API with email.received.* and email.sent.* namespaces" }}>
+  ## Unified Email API
+
+  We've introduced a major restructuring of the SDK with a unified email API that consolidates all email operations under `inbound.email.*` with organized namespaces.
+
+  ### 🚀 New Unified Structure
+
+  **Received Email Operations**
+  * All inbound email operations moved to `email.received.*`
+  * `inbound.email.received.list()` - List received emails
+  * `inbound.email.received.get(id)` - Get received email details
+  * `inbound.email.received.markRead(id)` - Mark as read
+  * `inbound.email.received.archive(id)` - Archive email
+  * `inbound.email.received.reply(params)` - Reply to received email
+
+  **Sent Email Operations**
+  * Organized sent email operations under `email.sent.*`
+  * `inbound.email.sent.get(id)` - Get sent email details
+  * `inbound.email.sent.reply(id, params)` - Reply to sent email
+  * `inbound.email.sent.listScheduled()` - List scheduled emails
+  * `inbound.email.sent.getScheduled(id)` - Get scheduled email
+  * `inbound.email.sent.cancel(id)` - Cancel scheduled email
+
+  **Universal Email Access (NEW!)**
+  * `inbound.email.get(id)` - Get ANY email (received or sent)
+  * Automatically tries received emails first, then sent emails
+  * Solves the common "email not found" issue when you don't know the email type
+
+  ### ⚠️ Deprecation Notices
+
+  **mail.* Methods Deprecated**
+  * All `inbound.mail.*` methods are deprecated but still work
+  * Show console warnings directing to `email.received.*` equivalents
+  * Will be removed in a future version
+
+  **Top-level email.* Methods**
+  * Some methods moved to organized namespaces
+  * `email.listScheduled()` → `email.sent.listScheduled()`
+  * `email.getScheduled()` → `email.sent.getScheduled()`
+  * `email.cancel()` → `email.sent.cancel()`
+
+  ### ✨ Key Benefits
+
+  * **Unified Experience**: One API for all email operations
+  * **Type Safety**: Better TypeScript support with specific types
+  * **Universal Access**: Get any email without knowing its type
+  * **Organized Structure**: Clear separation between received and sent emails
+  * **Backward Compatible**: All existing code continues to work
+
+  ### Migration Examples
+
+  ```typescript
+  // ❌ OLD (deprecated but still works)
+  const emails = await inbound.mail.list()
+  const email = await inbound.mail.get('email_id')
+  
+  // ✅ NEW (recommended)
+  const emails = await inbound.email.received.list()
+  const email = await inbound.email.received.get('email_id')
+  
+  // 🔄 UNIVERSAL (works for any email type)
+  const email = await inbound.email.get('any_email_id')
+  ```
+
+  ### Seamless Upgrade
+
+  * Existing code works without changes
+  * Console warnings guide migration
+  * Documentation updated with examples
+  * Migration is optional but recommended
+
+</Update>
+
 <Update label="January 23, 2025" tags={["SDK", "Breaking Changes"]} rss={{ title: "SDK v3.0.0 Release", description: "Major SDK update with Resend compatibility and improved developer experience" }}>
   ## SDK v3.0.0 - Major Release
 

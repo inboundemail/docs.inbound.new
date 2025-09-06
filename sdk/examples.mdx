@@ -3,6 +3,388 @@ title: "Examples"
 description: "Complete implementation examples using the Inbound SDK"
 ---
 
+## Email API Examples
+
+The following examples demonstrate the unified email API structure with organized namespaces for received and sent emails.
+
+### Universal Email Retrieval
+
+The new universal `email.get()` method works for both received and sent emails:
+
+```typescript app/api/email/[id]/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+import { Inbound } from '@inboundemail/sdk'
+
+const inbound = new Inbound(process.env.INBOUND_API_KEY!)
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    // Universal method - works for ANY email ID
+    const email = await inbound.email.get(params.id)
+    
+    if (!email) {
+      return NextResponse.json(
+        { error: 'Email not found' },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json({
+      message: 'Email found',
+      subject: email.subject,
+      // Type checking helps determine email type
+      type: 'from' in email ? 'received' : 'sent'
+    })
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Failed to fetch email' },
+      { status: 500 }
+    )
+  }
+}
+```
+
+### Webhook Handler with Email Processing
+
+```typescript app/api/webhook/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+import { Inbound } from '@inboundemail/sdk'
+import type { InboundWebhookPayload } from '@inboundemail/sdk'
+
+const inbound = new Inbound(process.env.INBOUND_API_KEY!)
+
+export async function POST(request: NextRequest) {
+  try {
+    const payload: InboundWebhookPayload = await request.json()
+    const { email } = payload
+
+    // Get full email details
+    const emailDetails = await inbound.email.received.get(email.id)
+    
+    // Smart auto-reply system
+    if (emailDetails.subject.toLowerCase().includes('support')) {
+      await inbound.email.received.reply({
+        emailId: email.id,
+        to: emailDetails.from,
+        subject: `Re: ${emailDetails.subject}`,
+        textBody: `
+          Thank you for contacting support!
+          
+          We have received your message and will respond within 24 hours.
+          
+          Ticket ID: ${email.id}
+        `,
+        htmlBody: `
+          <h2>Thank you for contacting support!</h2>
+          <p>We have received your message and will respond within 24 hours.</p>
+          <p><strong>Ticket ID:</strong> ${email.id}</p>
+        `
+      })
+      
+      // Mark as read and add to support queue
+      await inbound.email.received.markRead(email.id)
+    }
+    
+    // Handle order confirmations
+    if (emailDetails.subject.toLowerCase().includes('order')) {
+      await processOrderEmail(emailDetails)
+    }
+    
+    // Handle feedback emails
+    if (emailDetails.from.includes('feedback')) {
+      await handleFeedback(emailDetails)
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Webhook error:', error)
+    return NextResponse.json(
+      { error: 'Webhook processing failed' },
+      { status: 500 }
+    )
+  }
+}
+
+async function processOrderEmail(email: any) {
+  // Extract order information
+  const orderMatch = email.textBody?.match(/order\s+#?(\w+)/i)
+  const orderNumber = orderMatch?.[1]
+  
+  if (orderNumber) {
+    // Send order confirmation
+    await inbound.email.send({
+      from: 'orders@yourdomain.com',
+      to: email.from,
+      subject: `Order ${orderNumber} Confirmed`,
+      html: `
+        <h2>Order Confirmation</h2>
+        <p>Hi there!</p>
+        <p>Your order <strong>${orderNumber}</strong> has been confirmed and is being processed.</p>
+        <p>You'll receive a shipping notification once your order is on its way.</p>
+      `
+    })
+    
+    // Archive the original email
+    await inbound.email.received.archive(email.id)
+  }
+}
+
+async function handleFeedback(email: any) {
+  // Auto-reply to feedback
+  await inbound.email.received.reply({
+    emailId: email.id,
+    to: email.from,
+    subject: `Thank you for your feedback!`,
+    textBody: 'We appreciate your feedback and will use it to improve our service.'
+  })
+  
+  // Forward to product team
+  await inbound.email.send({
+    from: 'system@yourdomain.com',
+    to: 'product@yourdomain.com',
+    subject: `Customer Feedback: ${email.subject}`,
+    html: `
+      <h3>New Customer Feedback</h3>
+      <p><strong>From:</strong> ${email.from}</p>
+      <p><strong>Subject:</strong> ${email.subject}</p>
+      <div>
+        <h4>Message:</h4>
+        <div>${email.htmlBody || email.textBody}</div>
+      </div>
+    `
+  })
+}
+```
+
+### Email Processing Pipeline
+
+```typescript lib/email-processor.ts
+import { Inbound } from '@inboundemail/sdk'
+
+const inbound = new Inbound(process.env.INBOUND_API_KEY!)
+
+export class EmailProcessor {
+  /**
+   * Process emails using the unified API
+   */
+  async processReceivedEmails() {
+    // Get recent unread emails
+    const emails = await inbound.email.received.list({
+      timeRange: '24h',
+      includeArchived: false,
+      limit: 100
+    })
+    
+    console.log(`Processing ${emails.emails.length} emails`)
+    
+    for (const email of emails.emails) {
+      if (email.isRead) continue
+      
+      try {
+        await this.processEmail(email.id)
+        console.log(`✅ Processed email: ${email.subject}`)
+      } catch (error) {
+        console.error(`❌ Failed to process email ${email.id}:`, error)
+      }
+    }
+  }
+  
+  /**
+   * Process individual email with smart routing
+   */
+  async processEmail(emailId: string) {
+    // Get full email details
+    const email = await inbound.email.received.get(emailId)
+    
+    // Determine processing based on content
+    const processors = [
+      this.handleCustomerSupport,
+      this.handleOrderInquiries,
+      this.handleNewsletterSignups,
+      this.handleGeneralInquiries
+    ]
+    
+    for (const processor of processors) {
+      const handled = await processor.call(this, email)
+      if (handled) {
+        await inbound.email.received.markRead(emailId)
+        break
+      }
+    }
+  }
+  
+  /**
+   * Handle customer support emails
+   */
+  async handleCustomerSupport(email: any): Promise<boolean> {
+    const supportKeywords = ['support', 'help', 'issue', 'problem', 'bug']
+    const isSupport = supportKeywords.some(keyword => 
+      email.subject.toLowerCase().includes(keyword) ||
+      email.textBody?.toLowerCase().includes(keyword)
+    )
+    
+    if (!isSupport) return false
+    
+    // Create support ticket
+    const ticketId = `TICKET-${Date.now()}`
+    
+    // Auto-reply with ticket information
+    await inbound.email.received.reply({
+      emailId: email.id,
+      to: email.from,
+      subject: `Support Ticket Created: ${ticketId}`,
+      htmlBody: `
+        <h2>Support Ticket Created</h2>
+        <p>Hi ${this.extractName(email.from)},</p>
+        <p>We've created a support ticket for your inquiry.</p>
+        <p><strong>Ticket ID:</strong> ${ticketId}</p>
+        <p><strong>Subject:</strong> ${email.subject}</p>
+        <p>Our support team will respond within 24 hours.</p>
+        <p>Best regards,<br>Support Team</p>
+      `
+    })
+    
+    // Forward to support team
+    await inbound.email.send({
+      from: 'system@yourdomain.com',
+      to: 'support@yourdomain.com',
+      subject: `[${ticketId}] ${email.subject}`,
+      html: `
+        <h3>New Support Ticket</h3>
+        <p><strong>Ticket ID:</strong> ${ticketId}</p>
+        <p><strong>From:</strong> ${email.from}</p>
+        <p><strong>Priority:</strong> ${this.determinePriority(email)}</p>
+        <div>
+          <h4>Original Message:</h4>
+          <div>${email.htmlBody || email.textBody}</div>
+        </div>
+      `
+    })
+    
+    return true
+  }
+  
+  /**
+   * Handle order-related inquiries
+   */
+  async handleOrderInquiries(email: any): Promise<boolean> {
+    const orderKeywords = ['order', 'purchase', 'payment', 'shipping']
+    const isOrder = orderKeywords.some(keyword => 
+      email.subject.toLowerCase().includes(keyword)
+    )
+    
+    if (!isOrder) return false
+    
+    // Extract order number if present
+    const orderMatch = email.textBody?.match(/order\s+#?(\w+)/i)
+    const orderNumber = orderMatch?.[1]
+    
+    await inbound.email.received.reply({
+      emailId: email.id,
+      to: email.from,
+      subject: `Re: ${email.subject}`,
+      htmlBody: `
+        <h2>Order Inquiry Received</h2>
+        <p>Hi ${this.extractName(email.from)},</p>
+        <p>Thank you for your order inquiry.</p>
+        ${orderNumber ? `<p><strong>Order Number:</strong> ${orderNumber}</p>` : ''}
+        <p>Our order fulfillment team will respond within 2-4 hours with an update.</p>
+        <p>For urgent order questions, please call 1-800-SUPPORT.</p>
+        <p>Best regards,<br>Order Support Team</p>
+      `
+    })
+    
+    return true
+  }
+  
+  /**
+   * Handle newsletter signups
+   */
+  async handleNewsletterSignups(email: any): Promise<boolean> {
+    const isNewsletterSignup = email.subject.toLowerCase().includes('newsletter') ||
+                              email.textBody?.toLowerCase().includes('subscribe')
+    
+    if (!isNewsletterSignup) return false
+    
+    // Welcome email for newsletter signup
+    await inbound.email.send({
+      from: 'newsletter@yourdomain.com',
+      to: email.from,
+      subject: 'Welcome to Our Newsletter!',
+      html: `
+        <h2>Welcome to Our Newsletter!</h2>
+        <p>Hi ${this.extractName(email.from)},</p>
+        <p>Thank you for subscribing to our newsletter!</p>
+        <p>You'll receive weekly updates about:</p>
+        <ul>
+          <li>Product announcements</li>
+          <li>Industry insights</li>
+          <li>Exclusive offers</li>
+        </ul>
+        <p>You can unsubscribe at any time using the link in our emails.</p>
+        <p>Welcome aboard!</p>
+      `
+    })
+    
+    // Archive the signup email
+    await inbound.email.received.archive(email.id)
+    
+    return true
+  }
+  
+  /**
+   * Handle general inquiries
+   */
+  async handleGeneralInquiries(email: any): Promise<boolean> {
+    // This catches all other emails
+    await inbound.email.received.reply({
+      emailId: email.id,
+      to: email.from,
+      subject: `Re: ${email.subject}`,
+      textBody: `
+        Hi ${this.extractName(email.from)},
+        
+        Thank you for reaching out to us!
+        
+        We have received your message and will respond within 1-2 business days.
+        
+        For urgent matters, please call us at 1-800-SUPPORT.
+        
+        Best regards,
+        Customer Service Team
+      `
+    })
+    
+    return true
+  }
+  
+  // Utility methods
+  private extractName(fromAddress: string): string {
+    const match = fromAddress.match(/^(.+?)\s*</)
+    return match?.[1]?.trim() || 'there'
+  }
+  
+  private determinePriority(email: any): string {
+    const urgentKeywords = ['urgent', 'critical', 'asap', 'emergency']
+    const isUrgent = urgentKeywords.some(keyword => 
+      email.subject.toLowerCase().includes(keyword) ||
+      email.textBody?.toLowerCase().includes(keyword)
+    )
+    
+    return isUrgent ? 'HIGH' : 'NORMAL'
+  }
+}
+
+// Usage
+export async function runEmailProcessor() {
+  const processor = new EmailProcessor()
+  await processor.processReceivedEmails()
+}
+```
+
 ## Webhook Handler with Type Assignment
 
 Example showing an `InboundWebhookPayload` GET request where the type is assigned to the route request:
