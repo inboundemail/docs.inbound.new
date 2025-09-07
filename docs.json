@@ -71,16 +71,14 @@
         ]
       },
       {
-        "tab": "📦 SDK Documentation",
+        "tab": "Examples",
         "groups": [
           {
             "group": "Getting Started",
             "pages": [
-              "index",
-              "authentication",
+              "sdk/quickstart",
               "sdk/installation",
-              "sdk/configuration",
-              "sdk/changelog"
+              "sdk/configuration"
             ]
           },
           {
@@ -110,7 +108,8 @@
           {
             "group": "Resources",
             "pages": [
-              "sdk/examples"
+              "sdk/examples",
+              "sdk/changelog"
             ]
           }
         ]

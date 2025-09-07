@@ -1,0 +1,706 @@
+---
+title: "SDK Quickstart"
+description: "Get up and running with the Inbound Email SDK in under 5 minutes - send your first email and set up webhook handling"
+---
+
+# SDK Quickstart
+
+Get started with the Inbound Email SDK in under 5 minutes. This guide will walk you through installation, authentication, sending your first email, and setting up basic email receiving.
+
+<Note>
+This quickstart uses the unified email API structure with `inbound.email.*` methods for the best developer experience.
+</Note>
+
+## Prerequisites
+
+Before you begin, make sure you have:
+- Node.js 16.0+ installed
+- An Inbound account ([sign up here](https://inbound.new))
+- Your API key from the [dashboard](https://inbound.new/settings)
+
+## Step 1: Install the SDK
+
+<Steps>
+<Step title="Install the package">
+Install the official Inbound Email SDK:
+
+<CodeGroup>
+```bash npm
+npm install @inboundemail/sdk
+```
+
+```bash yarn
+yarn add @inboundemail/sdk
+```
+
+```bash pnpm
+pnpm add @inboundemail/sdk
+```
+
+```bash bun
+bun add @inboundemail/sdk
+```
+</CodeGroup>
+
+<Check>
+The SDK is now installed and ready to use.
+</Check>
+</Step>
+
+<Step title="Set up environment variables">
+Create a `.env` file in your project root:
+
+```bash .env
+INBOUND_API_KEY=your_api_key_here
+```
+
+<Warning>
+Never commit API keys to version control. Always use environment variables.
+</Warning>
+</Step>
+</Steps>
+
+## Step 2: Send Your First Email
+
+<Steps>
+<Step title="Create the client">
+Import and initialize the Inbound client:
+
+```javascript
+import { InboundEmailClient } from '@inboundemail/sdk'
+
+const inbound = new InboundEmailClient(process.env.INBOUND_API_KEY!)
+```
+
+<Info>
+The client automatically handles authentication and provides a unified interface for all email operations.
+</Info>
+</Step>
+
+<Step title="Send an email">
+Send your first email using the unified API:
+
+```javascript
+const { data, error } = await inbound.email.send({
+  from: 'hello@yourdomain.com',
+  to: 'recipient@example.com',
+  subject: 'Welcome to Inbound!',
+  html: '<h1>Hello from Inbound!</h1><p>Your first email sent successfully.</p>',
+  text: 'Hello from Inbound! Your first email sent successfully.'
+})
+
+if (error) {
+  console.error('Failed to send email:', error)
+} else {
+  console.log('Email sent successfully!')
+  console.log('Email ID:', data.id)
+}
+```
+
+<Check>
+If successful, you'll see the email ID logged to your console.
+</Check>
+
+<Tip>
+You can use `agent@inbnd.dev` as the sender for testing without domain verification.
+</Tip>
+</Step>
+</Steps>
+
+## Step 3: Set Up Email Receiving
+
+<Steps>
+<Step title="Add your domain">
+Add a domain to receive emails:
+
+```javascript
+// Create a domain for receiving emails
+const { data: domain, error: domainError } = await inbound.domain.create({
+  domain: 'yourdomain.com'
+})
+
+if (domainError) {
+  console.error('Failed to add domain:', domainError)
+} else {
+  console.log('Domain added:', domain.domain)
+  console.log('DNS records to add:', domain.dnsRecords)
+}
+```
+
+<Info>
+You'll need to add the returned DNS records to your domain's DNS configuration.
+</Info>
+</Step>
+
+<Step title="Create a webhook endpoint">
+Set up a webhook to receive email notifications:
+
+```javascript
+// Create a webhook endpoint
+const { data: endpoint, error: endpointError } = await inbound.endpoint.create({
+  name: 'My Webhook',
+  type: 'webhook',
+  config: {
+    url: 'https://api.yourapp.com/webhook',
+    timeout: 30,
+    retryAttempts: 3
+  }
+})
+
+if (endpointError) {
+  console.error('Failed to create endpoint:', endpointError)
+} else {
+  console.log('Webhook created:', endpoint.id)
+}
+```
+
+<Check>
+Your webhook endpoint is now ready to receive email notifications.
+</Check>
+</Step>
+
+<Step title="Create an email address">
+Configure an email address to route emails:
+
+```javascript
+// Create an email address that routes to your webhook
+const { data: emailAddr, error: addrError } = await inbound.email.address.create({
+  address: 'hello@yourdomain.com',
+  domainId: domain.id,
+  endpointId: endpoint.id
+})
+
+if (addrError) {
+  console.error('Failed to create email address:', addrError)
+} else {
+  console.log('Email address created:', emailAddr.address)
+}
+```
+
+<Check>
+Emails sent to this address will now be forwarded to your webhook.
+</Check>
+</Step>
+</Steps>
+
+## Step 4: Handle Incoming Emails
+
+Create a webhook handler to process incoming emails:
+
+<Tabs>
+<Tab title="Next.js">
+```javascript app/api/webhook/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+import { InboundEmailClient } from '@inboundemail/sdk'
+import type { InboundWebhookPayload } from '@inboundemail/sdk'
+
+const inbound = new InboundEmailClient(process.env.INBOUND_API_KEY!)
+
+export async function POST(request: NextRequest) {
+  try {
+    const payload: InboundWebhookPayload = await request.json()
+    const { email } = payload
+
+    // Get full email details
+    const { data: fullEmail, error } = await inbound.email.received.get(email.id)
+    
+    if (error) {
+      console.error('Failed to get email:', error)
+      return NextResponse.json({ error: 'Processing failed' }, { status: 500 })
+    }
+
+    // Process the email based on content
+    if (fullEmail.subject.toLowerCase().includes('support')) {
+      // Auto-reply to support requests
+      await inbound.email.received.reply({
+        emailId: email.id,
+        to: fullEmail.from,
+        subject: `Re: ${fullEmail.subject}`,
+        textBody: 'Thank you for contacting support. We will respond within 24 hours.'
+      })
+      
+      // Mark as read
+      await inbound.email.received.markRead(email.id)
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Webhook error:', error)
+    return NextResponse.json(
+      { error: 'Processing failed' }, 
+      { status: 500 }
+    )
+  }
+}
+```
+</Tab>
+
+<Tab title="Express.js">
+```javascript
+import express from 'express'
+import { InboundEmailClient } from '@inboundemail/sdk'
+
+const app = express()
+const inbound = new InboundEmailClient(process.env.INBOUND_API_KEY!)
+
+app.use(express.json())
+
+app.post('/webhook', async (req, res) => {
+  try {
+    const { email } = req.body
+
+    // Get full email details
+    const { data: fullEmail, error } = await inbound.email.received.get(email.id)
+    
+    if (error) {
+      console.error('Failed to get email:', error)
+      return res.status(500).json({ error: 'Processing failed' })
+    }
+
+    // Process the email
+    console.log('Received email:', fullEmail.subject)
+    console.log('From:', fullEmail.from)
+    
+    // Mark as read
+    await inbound.email.received.markRead(email.id)
+
+    res.json({ success: true })
+  } catch (error) {
+    console.error('Webhook error:', error)
+    res.status(500).json({ error: 'Processing failed' })
+  }
+})
+
+app.listen(3000, () => {
+  console.log('Webhook server running on port 3000')
+})
+```
+</Tab>
+
+<Tab title="Vercel Functions">
+```javascript api/webhook.js
+import { InboundEmailClient } from '@inboundemail/sdk'
+
+const inbound = new InboundEmailClient(process.env.INBOUND_API_KEY!)
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  try {
+    const { email } = req.body
+
+    // Get full email details
+    const { data: fullEmail, error } = await inbound.email.received.get(email.id)
+    
+    if (error) {
+      console.error('Failed to get email:', error)
+      return res.status(500).json({ error: 'Processing failed' })
+    }
+
+    // Process the email
+    console.log('Received email:', fullEmail.subject)
+    
+    // Mark as read
+    await inbound.email.received.markRead(email.id)
+
+    res.json({ success: true })
+  } catch (error) {
+    console.error('Webhook error:', error)
+    res.status(500).json({ error: 'Processing failed' })
+  }
+}
+```
+</Tab>
+</Tabs>
+
+## Complete Example
+
+Here's a complete example that demonstrates both sending and receiving emails:
+
+<CodeGroup>
+```javascript Complete Example
+import { InboundEmailClient } from '@inboundemail/sdk'
+import type { InboundWebhookPayload } from '@inboundemail/sdk'
+
+const inbound = new InboundEmailClient(process.env.INBOUND_API_KEY!)
+
+// 1. Send an email
+export async function sendWelcomeEmail(customerEmail: string) {
+  const { data, error } = await inbound.email.send({
+    from: 'welcome@yourdomain.com',
+    to: customerEmail,
+    subject: 'Welcome to our service!',
+    html: `
+      <h1>Welcome!</h1>
+      <p>Thanks for signing up. Reply to this email if you have any questions.</p>
+    `,
+    text: 'Welcome! Thanks for signing up. Reply to this email if you have any questions.'
+  })
+
+  if (error) {
+    throw new Error(`Failed to send welcome email: ${error}`)
+  }
+
+  return data
+}
+
+// 2. Handle incoming emails (webhook handler)
+export async function handleIncomingEmail(payload: InboundWebhookPayload) {
+  const { email } = payload
+
+  // Get full email details
+  const { data: fullEmail, error } = await inbound.email.received.get(email.id)
+  
+  if (error) {
+    throw new Error(`Failed to get email: ${error}`)
+  }
+
+  // Auto-categorize and respond based on content
+  if (fullEmail.subject.toLowerCase().includes('support')) {
+    // Support request - auto-reply and route
+    await inbound.email.received.reply({
+      emailId: email.id,
+      to: fullEmail.from,
+      subject: `Re: ${fullEmail.subject}`,
+      textBody: 'Thank you for contacting support. We will respond within 24 hours.',
+      includeOriginal: false
+    })
+    
+    // Mark as read since we've handled it
+    await inbound.email.received.markRead(email.id)
+    
+    console.log('Support request processed and auto-replied')
+  } else {
+    // General email - just mark as read
+    await inbound.email.received.markRead(email.id)
+    console.log('General email received and marked as read')
+  }
+
+  return { success: true }
+}
+
+// 3. List recent emails
+export async function getRecentEmails() {
+  const { data, error } = await inbound.email.received.list({
+    limit: 10,
+    timeRange: '24h'
+  })
+
+  if (error) {
+    throw new Error(`Failed to get emails: ${error}`)
+  }
+
+  return data.emails
+}
+
+// 4. Universal email retrieval (works for any email)
+export async function getAnyEmail(emailId: string) {
+  const { data, error } = await inbound.email.get(emailId)
+  
+  if (error) {
+    throw new Error(`Email not found: ${error}`)
+  }
+
+  return data
+}
+```
+
+```javascript Next.js App Router
+// app/api/webhook/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+import { handleIncomingEmail } from '@/lib/email-handler'
+
+export async function POST(request: NextRequest) {
+  try {
+    const payload = await request.json()
+    const result = await handleIncomingEmail(payload)
+    return NextResponse.json(result)
+  } catch (error) {
+    console.error('Webhook processing failed:', error)
+    return NextResponse.json(
+      { error: 'Processing failed' },
+      { status: 500 }
+    )
+  }
+}
+
+// app/api/send-welcome/route.ts  
+import { NextRequest, NextResponse } from 'next/server'
+import { sendWelcomeEmail } from '@/lib/email-handler'
+
+export async function POST(request: NextRequest) {
+  try {
+    const { email } = await request.json()
+    const result = await sendWelcomeEmail(email)
+    return NextResponse.json(result)
+  } catch (error) {
+    console.error('Failed to send welcome email:', error)
+    return NextResponse.json(
+      { error: 'Send failed' },
+      { status: 500 }
+    )
+  }
+}
+```
+</CodeGroup>
+
+## Key Concepts
+
+### Universal Email Management
+
+The SDK provides a unified interface for managing all emails:
+
+```javascript
+// Universal method - works for any email ID
+const email = await inbound.email.get(emailId)
+
+// Specific methods for better type safety
+const receivedEmail = await inbound.email.received.get(emailId)  // Inbound emails
+const sentEmail = await inbound.email.sent.get(emailId)          // Outbound emails
+```
+
+<Tip>
+Use `inbound.email.get(id)` when you're not sure if an email ID refers to a received or sent email - it automatically detects the type.
+</Tip>
+
+### Response Pattern
+
+All SDK methods use a consistent `{ data, error }` response pattern:
+
+```javascript
+const { data, error } = await inbound.email.send(params)
+
+if (error) {
+  // Handle error
+  console.error('Operation failed:', error)
+} else {
+  // Use data
+  console.log('Operation successful:', data)
+}
+```
+
+### React Email Support
+
+The SDK supports React components for email content:
+
+```javascript
+import { WelcomeEmail } from './email-templates'
+
+const { data, error } = await inbound.email.send({
+  from: 'app@yourdomain.com',
+  to: 'user@example.com',
+  subject: 'Welcome!',
+  react: <WelcomeEmail name="John" />  // React component
+})
+```
+
+## Common Operations
+
+### Managing Received Emails
+
+```javascript
+// List recent emails
+const { data } = await inbound.email.received.list({
+  limit: 20,
+  timeRange: '7d'
+})
+
+// Get email details  
+const { data: email } = await inbound.email.received.get('email_123')
+
+// Reply to an email
+const { data: reply } = await inbound.email.received.reply({
+  emailId: 'email_123',
+  to: 'customer@example.com',
+  subject: 'Re: Your question',
+  textBody: 'Thanks for your email. Here is my response...'
+})
+
+// Mark as read/archived
+await inbound.email.received.markRead('email_123')
+await inbound.email.received.archive('email_123')
+```
+
+### Scheduling Emails
+
+```javascript
+// Schedule with natural language
+const { data } = await inbound.email.send({
+  from: 'reminders@yourdomain.com',
+  to: 'user@example.com',
+  subject: 'Scheduled Reminder',
+  text: 'This is your scheduled reminder!',
+  scheduled_at: 'tomorrow at 9am',
+  timezone: 'America/New_York'
+})
+
+// Manage scheduled emails
+const { data: scheduled } = await inbound.email.sent.listScheduled()
+await inbound.email.sent.cancel('scheduled_email_id')
+```
+
+### Working with Attachments
+
+```javascript
+import fs from 'fs'
+
+// Send email with attachments
+const fileContent = fs.readFileSync('invoice.pdf')
+const base64Content = fileContent.toString('base64')
+
+const { data } = await inbound.email.send({
+  from: 'billing@yourdomain.com',
+  to: 'customer@example.com',
+  subject: 'Invoice Attached',
+  text: 'Please find your invoice attached.',
+  attachments: [{
+    content: base64Content,
+    filename: 'invoice.pdf',
+    contentType: 'application/pdf'
+  }]
+})
+```
+
+## Error Handling Best Practices
+
+<CodeGroup>
+```javascript Basic Error Handling
+try {
+  const { data, error } = await inbound.email.send(params)
+  
+  if (error) {
+    // SDK-level error (network, validation, etc.)
+    console.error('SDK Error:', error)
+    return
+  }
+  
+  console.log('Email sent:', data.id)
+} catch (exception) {
+  // Unexpected errors
+  console.error('Unexpected error:', exception)
+}
+```
+
+```javascript Detailed Error Handling
+const { data, error } = await inbound.email.send(params)
+
+if (error) {
+  if (error.includes('domain')) {
+    console.error('Domain not verified - add domain to your account')
+  } else if (error.includes('rate limit')) {
+    console.error('Rate limit exceeded - slow down or upgrade plan')
+  } else if (error.includes('authentication')) {
+    console.error('API key invalid - check your credentials')
+  } else {
+    console.error('Unknown error:', error)
+  }
+} else {
+  console.log('Success:', data)
+}
+```
+</CodeGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+<Card title="Unified Email Management" icon="envelope" href="/sdk/unified-email-management">
+  Complete guide to managing received and sent emails with the unified API
+</Card>
+
+<Card title="Email Sending" icon="paper-plane" href="/sdk/email-sending">
+  Advanced email sending features including React templates and scheduling
+</Card>
+
+<Card title="Webhook Handling" icon="webhook" href="/sdk/webhook-handling">
+  Comprehensive webhook setup and email processing patterns
+</Card>
+
+<Card title="Configuration" icon="gear" href="/sdk/configuration">
+  Detailed configuration options and environment setup
+</Card>
+</CardGroup>
+
+## Quick Reference
+
+### Common Methods
+
+<AccordionGroup>
+<Accordion title="Sending & Scheduling">
+```javascript
+// Send immediately
+await inbound.email.send(params)
+
+// Send with React component
+await inbound.email.send({ ...params, react: <Component /> })
+
+// Schedule for later
+await inbound.email.send({ ...params, scheduled_at: 'tomorrow at 9am' })
+```
+</Accordion>
+
+<Accordion title="Managing Received Emails">
+```javascript
+// List emails
+await inbound.email.received.list({ limit: 50 })
+
+// Get email details
+await inbound.email.received.get('email_id')
+
+// Reply to email
+await inbound.email.received.reply({ emailId: 'id', ...params })
+
+// Mark as read/archived
+await inbound.email.received.markRead('email_id')
+await inbound.email.received.archive('email_id')
+```
+</Accordion>
+
+<Accordion title="Universal Email Access">
+```javascript
+// Works for any email (received or sent)
+await inbound.email.get('any_email_id')
+
+// Legacy compatibility (still works, shows deprecation warnings)
+await inbound.mail.get('email_id')  // ⚠️ Use email.received.get() instead
+```
+</Accordion>
+
+<Accordion title="Domain & Configuration">
+```javascript
+// Manage domains
+await inbound.domain.create({ domain: 'example.com' })
+await inbound.domain.list()
+await inbound.domain.get('domain_id')
+
+// Manage endpoints
+await inbound.endpoint.create({ name: 'Webhook', type: 'webhook', config: {...} })
+await inbound.endpoint.list()
+
+// Manage email addresses
+await inbound.email.address.create({ address: 'hello@domain.com', domainId: 'id' })
+await inbound.email.address.list()
+```
+</Accordion>
+</AccordionGroup>
+
+<Info>
+**Migration Note**: If you're using deprecated `mail.*` methods, check the [Migration Guide](/sdk/migration-guide) for updating to the unified email API.
+</Info>
+
+## Need Help?
+
+<CardGroup cols={3}>
+<Card title="Examples" icon="code" href="/sdk/examples">
+  See complete working examples for common use cases
+</Card>
+
+<Card title="API Reference" icon="book" href="/api-reference/emails/send-email">
+  Detailed API documentation for all endpoints
+</Card>
+
+<Card title="Support" icon="envelope" href="mailto:support@inbound.new">
+  Get help from our support team
+</Card>
+</CardGroup>
