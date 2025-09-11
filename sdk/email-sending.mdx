@@ -388,6 +388,257 @@ async function sendTemplatedEmail(
 }
 ```
 
+## Idempotency
+
+Idempotency keys prevent duplicate email sends when requests are retried due to network issues, webhook failures, or application errors. When you include an idempotency key, the API will:
+
+1. **First request**: Process normally and store the key
+2. **Duplicate requests**: Return the original response without sending another email
+
+<Tip>
+**Perfect for Webhooks**: Webhook handlers often retry on failures. Idempotency keys ensure you only send one email per event, even if the webhook is called multiple times.
+</Tip>
+
+### Using Idempotency with Email Sending
+
+```typescript
+import { Inbound } from '@inboundemail/sdk'
+
+const inbound = new Inbound(process.env.INBOUND_API_KEY!)
+
+// Send email with idempotency key
+const { data, error } = await inbound.email.send({
+  from: 'support@yourdomain.com',
+  to: 'customer@example.com',
+  subject: 'Welcome to our service',
+  text: 'Thanks for signing up!'
+}, {
+  idempotencyKey: 'welcome-user-123-v1'
+})
+
+if (error) {
+  console.error('Send failed:', error)
+} else {
+  console.log('Email sent:', data.id)
+}
+```
+
+### Using Idempotency with Replies
+
+```typescript
+// Reply with idempotency key using the organized API
+const { data, error } = await inbound.email.sent.reply(
+  'email_abc123',
+  {
+    from: 'support@yourdomain.com',
+    text: 'Thanks for your message!'
+  },
+  {
+    idempotencyKey: 'reply-abc123-user456-v1'
+  }
+)
+
+// Using the simplified reply method
+const { data, error } = await inbound.reply(
+  'email_abc123',
+  {
+    from: 'support@yourdomain.com', 
+    text: 'Thanks for your message!'
+  },
+  {
+    idempotencyKey: 'quick-reply-' + Date.now()
+  }
+)
+```
+
+### Idempotency Key Best Practices
+
+#### 1. Make Keys Unique and Meaningful
+```typescript
+// ✅ GOOD: Include context and ensure uniqueness
+const idempotencyKey = `reply-${emailId}-${userId}-${actionType}`
+
+// ✅ BETTER: Include semantic information
+const idempotencyKey = `support-reply-${emailId}-auto-v1`
+
+// ✅ BEST: Use UUIDs for guaranteed uniqueness
+import { v4 as uuid } from 'uuid'
+const idempotencyKey = `reply-${emailId}-${uuid()}`
+
+// ❌ BAD: Generic or non-unique
+const idempotencyKey = 'email-123'
+```
+
+#### 2. Webhook Handler with Idempotency
+Perfect for preventing duplicate auto-replies:
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { Inbound } from '@inboundemail/sdk'
+import type { InboundWebhookPayload } from '@inboundemail/sdk'
+
+const inbound = new Inbound(process.env.INBOUND_API_KEY!)
+
+export async function POST(request: NextRequest) {
+  try {
+    const payload: InboundWebhookPayload = await request.json()
+    const { email } = payload
+    
+    // Create idempotency key from email ID and current timestamp
+    // This ensures one auto-reply per email, even with webhook retries
+    const idempotencyKey = `auto-reply-${email.id}-${Math.floor(Date.now() / 60000)}`
+    
+    const { data, error } = await inbound.reply(email.id, {
+      from: 'support@yourdomain.com',
+      text: 'Thank you for your email. We will respond within 24 hours.',
+      includeOriginal: false
+    }, {
+      idempotencyKey
+    })
+    
+    if (error) {
+      console.error('Auto-reply failed:', error)
+      return NextResponse.json({ error: 'Failed to send auto-reply' }, { status: 500 })
+    }
+    
+    console.log('Auto-reply sent:', data.id)
+    return NextResponse.json({ success: true, emailId: data.id })
+    
+  } catch (error) {
+    console.error('Webhook processing failed:', error)
+    return NextResponse.json({ error: 'Processing failed' }, { status: 500 })
+  }
+}
+```
+
+#### 3. Retry Logic with Idempotency
+Safely retry failed email sends:
+
+```typescript
+async function sendEmailWithRetry(emailData: any, maxRetries = 3) {
+  const idempotencyKey = `retry-send-${Date.now()}-${Math.random()}`
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const { data, error } = await inbound.email.send(emailData, {
+        idempotencyKey // Same key for all retry attempts
+      })
+      
+      if (!error) {
+        console.log(`Email sent on attempt ${attempt}:`, data.id)
+        return { success: true, data }
+      }
+      
+      console.error(`Attempt ${attempt} failed:`, error)
+      
+    } catch (networkError) {
+      console.error(`Network error on attempt ${attempt}:`, networkError)
+    }
+    
+    // Don't wait after the last attempt
+    if (attempt < maxRetries) {
+      // Exponential backoff
+      const delay = Math.pow(2, attempt) * 1000
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
+  }
+  
+  return { success: false, error: 'All retry attempts failed' }
+}
+
+// Usage
+const result = await sendEmailWithRetry({
+  from: 'orders@shop.com',
+  to: 'customer@example.com',
+  subject: 'Order Confirmation',
+  text: 'Your order has been confirmed!'
+})
+```
+
+#### 4. Schedule Email with Idempotency
+Prevent duplicate scheduled emails:
+
+```typescript
+// Schedule reminder email with idempotency
+async function scheduleOrderReminder(orderId: string, customerEmail: string) {
+  const idempotencyKey = `order-reminder-${orderId}-v1`
+  
+  const { data, error } = await inbound.email.schedule({
+    from: 'reminders@shop.com',
+    to: customerEmail,
+    subject: 'Don\'t forget your order!',
+    html: '<p>You have items waiting in your cart.</p>',
+    scheduled_at: '2024-12-25T10:00:00Z' // Christmas morning
+  }, {
+    idempotencyKey
+  })
+  
+  if (error) {
+    console.error('Failed to schedule reminder:', error)
+    return null
+  }
+  
+  console.log('Reminder scheduled:', data.id)
+  return data.id
+}
+```
+
+### Idempotency Key Guidelines
+
+<Steps>
+<Step title="Use descriptive prefixes">
+  Include action type: `reply-`, `welcome-`, `reminder-`, `notification-`
+</Step>
+
+<Step title="Include relevant IDs">
+  Add email ID, user ID, or order ID to make keys unique and traceable
+</Step>
+
+<Step title="Consider time windows">
+  For time-sensitive operations, include timestamp or date to allow updates
+</Step>
+
+<Step title="Version your keys">
+  Add version suffix (`-v1`, `-v2`) when you need to update email content
+</Step>
+
+<Step title="Keep keys under 256 characters">
+  The API has a maximum length limit for idempotency keys
+</Step>
+</Steps>
+
+### Idempotency Response Behavior
+
+When using the same idempotency key:
+
+```typescript
+// First request - email is sent
+const result1 = await inbound.email.send({
+  from: 'test@company.com',
+  to: 'user@example.com',
+  subject: 'Test',
+  text: 'Hello!'
+}, {
+  idempotencyKey: 'test-key-123'
+})
+console.log('First request:', result1.data.id) // → "email_abc123"
+
+// Second request with same key - returns original response, no new email sent
+const result2 = await inbound.email.send({
+  from: 'test@company.com',
+  to: 'user@example.com', 
+  subject: 'Test',
+  text: 'Hello!'
+}, {
+  idempotencyKey: 'test-key-123' // Same key
+})
+console.log('Second request:', result2.data.id) // → "email_abc123" (same ID)
+```
+
+<Info>
+Idempotency keys expire after **24 hours**. After expiration, the same key can be used for new operations.
+</Info>
+
 ## Error Handling
 
 ```typescript

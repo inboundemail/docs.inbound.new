@@ -566,12 +566,23 @@ curl_close($ch);
 
 This endpoint supports idempotency to prevent duplicate sends. Include an `Idempotency-Key` header with a unique value:
 
+### Basic Idempotency Usage
+
 <CodeGroup>
 ```javascript Inbound SDK
 import { Inbound } from '@inboundemail/sdk';
 
 const inbound = new Inbound('YOUR_API_KEY');
 
+// Using the organized API with idempotency
+const { data, error } = await inbound.email.sent.reply('email_abc123', {
+  from: 'support@yourdomain.com',
+  text: 'Thanks for your message!'
+}, {
+  idempotencyKey: 'reply-abc123-user456-v1'
+});
+
+// Using the simplified reply method with idempotency
 const { data, error } = await inbound.reply('email_abc123', {
   from: 'support@yourdomain.com',
   text: 'Your reply message'
@@ -584,8 +595,11 @@ const { data, error } = await inbound.reply('email_abc123', {
 curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
-  -H "Idempotency-Key: unique-key-123" \
-  -d '{...}'
+  -H "Idempotency-Key: reply-abc123-user456-v1" \
+  -d '{
+    "from": "support@yourdomain.com",
+    "text": "Thanks for your message!"
+  }'
 ```
 
 ```python Python
@@ -596,10 +610,15 @@ response = requests.post(
     headers={
         'Authorization': 'Bearer YOUR_API_KEY',
         'Content-Type': 'application/json',
-        'Idempotency-Key': 'unique-key-123'
+        'Idempotency-Key': 'reply-abc123-user456-v1'
     },
-    json={...}
+    json={
+        'from': 'support@yourdomain.com',
+        'text': 'Thanks for your message!'
+    }
 )
+
+data = response.json()
 ```
 
 ```php PHP
@@ -611,9 +630,12 @@ curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer YOUR_API_KEY',
     'Content-Type: application/json',
-    'Idempotency-Key: unique-key-123'
+    'Idempotency-Key: reply-abc123-user456-v1'
 ]);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([...]));
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    'from' => 'support@yourdomain.com',
+    'text' => 'Thanks for your message!'
+]));
 
 $response = curl_exec($ch);
 $data = json_decode($response, true);
@@ -622,9 +644,140 @@ curl_close($ch);
 ```
 </CodeGroup>
 
-<Note>
-If you make multiple requests with the same idempotency key, only the first request will send an email. Subsequent requests will return the same response without sending a duplicate.
-</Note>
+### Webhook Handler with Idempotency
+
+Perfect for preventing duplicate auto-replies when webhooks are retried:
+
+<CodeGroup>
+```javascript Inbound SDK
+import { Inbound } from '@inboundemail/sdk';
+
+const inbound = new Inbound(process.env.INBOUND_API_KEY);
+
+// Webhook handler with idempotency protection
+export async function POST(request) {
+  try {
+    const { email } = await request.json();
+    
+    // Create unique key that prevents duplicates even with webhook retries
+    const idempotencyKey = `auto-reply-${email.id}-${Math.floor(Date.now() / 60000)}`;
+    
+    const { data, error } = await inbound.reply(email.id, {
+      from: 'support@yourdomain.com',
+      text: 'Thanks for contacting us! We\'ll respond within 24 hours.',
+      includeOriginal: false
+    }, {
+      idempotencyKey
+    });
+    
+    if (error) {
+      console.error('Auto-reply failed:', error);
+      return Response.json({ error: 'Failed to send auto-reply' }, { status: 500 });
+    }
+    
+    return Response.json({ success: true, emailId: data.id });
+    
+  } catch (error) {
+    return Response.json({ error: 'Processing failed' }, { status: 500 });
+  }
+}
+```
+
+```bash cURL
+# First webhook call - email is sent
+curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Idempotency-Key: webhook-auto-reply-abc123-2024-01-15-10" \
+  -d '{"from": "support@yourdomain.com", "text": "Auto-reply message"}'
+
+# Webhook retry with same key - returns original response, no duplicate email
+curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Idempotency-Key: webhook-auto-reply-abc123-2024-01-15-10" \
+  -d '{"from": "support@yourdomain.com", "text": "Auto-reply message"}'
+```
+
+```python Python
+import requests
+import time
+
+def handle_webhook(email_data):
+    # Create idempotency key with minute-level precision
+    # Allows updates but prevents rapid-fire duplicates
+    timestamp = int(time.time() // 60)  # Minute precision
+    idempotency_key = f"auto-reply-{email_data['id']}-{timestamp}"
+    
+    response = requests.post(
+        f'https://inbound.new/api/v2/emails/{email_data["id"]}/reply',
+        headers={
+            'Authorization': 'Bearer YOUR_API_KEY',
+            'Content-Type': 'application/json',
+            'Idempotency-Key': idempotency_key
+        },
+        json={
+            'from': 'support@yourdomain.com',
+            'text': 'Thanks for contacting us! We will respond within 24 hours.',
+            'includeOriginal': False
+        }
+    )
+    
+    return response.json()
+```
+
+```php PHP
+<?php
+function handleWebhook($emailData) {
+    // Create idempotency key with minute precision
+    $timestamp = floor(time() / 60);
+    $idempotencyKey = "auto-reply-{$emailData['id']}-{$timestamp}";
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, "https://inbound.new/api/v2/emails/{$emailData['id']}/reply");
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Authorization: Bearer ' . $_ENV['INBOUND_API_KEY'],
+        'Content-Type: application/json',
+        "Idempotency-Key: {$idempotencyKey}"
+    ]);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+        'from' => 'support@yourdomain.com',
+        'text' => 'Thanks for contacting us! We will respond within 24 hours.',
+        'includeOriginal' => false
+    ]));
+    
+    $response = curl_exec($ch);
+    curl_close($ch);
+    
+    return json_decode($response, true);
+}
+?>
+```
+</CodeGroup>
+
+### Idempotency Key Best Practices
+
+<Steps>
+<Step title="Make keys unique and descriptive">
+  Include action type, email ID, and context: `reply-{emailId}-{userId}-v1`
+</Step>
+
+<Step title="Use for webhook handlers">
+  Prevent duplicate auto-replies when webhooks are retried due to failures
+</Step>
+
+<Step title="Include version suffixes">
+  Add `-v1`, `-v2` when you need to update email content for the same operation
+</Step>
+
+<Step title="Consider time windows">
+  For time-sensitive operations, include timestamp to allow periodic updates
+</Step>
+</Steps>
+
+<Info>
+**Idempotency Behavior**: If you make multiple requests with the same idempotency key, only the first request will send an email. Subsequent requests return the same response without sending a duplicate. Keys expire after **24 hours**.
+</Info>
 
 ## Best Practices
 
