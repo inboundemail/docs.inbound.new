@@ -1,6 +1,6 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
+  "theme": "maple",
   "name": "inbound",
   "colors": {
     "primary": "#6C47FF",
@@ -11,13 +11,14 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "📚 API Reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "Getting Started + Overview",
+            "group": "Quickstart",
             "pages": [
               "index",
-              "authentication"
+              "rate-limits",
+              "errors"
             ]
           },
           {
@@ -26,6 +27,8 @@
               "api-reference/emails/send-email",
               "api-reference/emails/schedule-email",
               "api-reference/emails/list-scheduled-emails",
+              "api-reference/emails/get-scheduled-email",
+              "api-reference/emails/cancel-scheduled-email",
               "api-reference/emails/get-email",
               "api-reference/emails/reply-to-email"
             ]

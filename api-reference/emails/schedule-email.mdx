@@ -174,7 +174,7 @@ This endpoint requires authentication via:
   const inbound = new Inbound('your_api_key');
 
   // Schedule with natural language
-  const { data, error } = await inbound.email.schedule({
+  const { data, error } = await inbound.email.send({
     from: 'Acme <noreply@yourdomain.com>',
     to: ['customer@example.com'],
     subject: 'Scheduled Reminder',

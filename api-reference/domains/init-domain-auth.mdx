@@ -133,7 +133,7 @@ if (error) {
 ```
 
 ```bash cURL
-curl -X POST "https://api.inbound.email/api/v2/domains/dom_abc123/auth" \
+curl -X POST "https://inbound.new/api/v2/domains/dom_abc123/auth" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -147,7 +147,7 @@ curl -X POST "https://api.inbound.email/api/v2/domains/dom_abc123/auth" \
 import requests
 
 response = requests.post(
-    'https://api.inbound.email/api/v2/domains/dom_abc123/auth',
+    'https://inbound.new/api/v2/domains/dom_abc123/auth',
     headers={
         'Authorization': 'Bearer YOUR_API_KEY',
         'Content-Type': 'application/json'
@@ -182,7 +182,7 @@ $options = [
 ];
 
 $context = stream_context_create($options);
-$response = file_get_contents('https://api.inbound.email/api/v2/domains/dom_abc123/auth', false, $context);
+$response = file_get_contents('https://inbound.new/api/v2/domains/dom_abc123/auth', false, $context);
 $data = json_decode($response, true);
 ?>
 ```

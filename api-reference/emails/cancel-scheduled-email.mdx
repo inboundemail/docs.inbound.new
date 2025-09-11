@@ -1,0 +1,306 @@
+---
+title: "Cancel Scheduled Email"
+api: "DELETE /api/v2/emails/schedule/{id}"
+description: "Cancel a scheduled email before it is sent"
+---
+
+<Note>
+This endpoint allows you to cancel a scheduled email that has not been sent yet. Only emails with status 'scheduled' can be cancelled.
+</Note>
+
+## Authentication
+
+This endpoint requires authentication via:
+- **API key auth**: Bearer token in Authorization header
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  Unique identifier of the scheduled email to cancel.
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication.
+</ParamField>
+
+## Request Example
+
+<RequestExample>
+  ```javascript Inbound SDK
+  import { Inbound } from '@inboundemail/sdk';
+
+  const inbound = new Inbound('your_api_key');
+
+  // Cancel a scheduled email
+  const { data, error } = await inbound.email.sent.cancel('sch_1234567890abcdef');
+
+  if (error) {
+    console.error('Error:', error);
+  } else {
+    console.log('Email cancelled:', data.id);
+    console.log('Status:', data.status);
+    console.log('Cancelled at:', data.cancelled_at);
+  }
+  ```
+
+  ```bash cURL
+  curl -X DELETE 'https://inbound.new/api/v2/emails/schedule/sch_1234567890abcdef' \
+       -H 'Authorization: Bearer your_api_key'
+  ```
+
+  ```python Python
+  import requests
+
+  response = requests.delete(
+    'https://inbound.new/api/v2/emails/schedule/sch_1234567890abcdef',
+    headers={
+      'Authorization': 'Bearer your_api_key'
+    }
+  )
+
+  print(response.json())
+  ```
+
+  ```php PHP
+  $ch = curl_init('https://inbound.new/api/v2/emails/schedule/sch_1234567890abcdef');
+  curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
+  curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key'
+  ]);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+  $response = curl_exec($ch);
+  curl_close($ch);
+
+  echo $response;
+  ```
+</RequestExample>
+
+## Response
+
+<ResponseField name="id" type="string" required>
+  Unique identifier of the cancelled scheduled email.
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  New status of the email (always "cancelled" for successful cancellations).
+</ResponseField>
+
+<ResponseField name="cancelled_at" type="string" required>
+  ISO 8601 timestamp of when the email was cancelled.
+</ResponseField>
+
+<ResponseExample>
+  ```json Success (200)
+  {
+    "id": "sch_1234567890abcdef",
+    "status": "cancelled",
+    "cancelled_at": "2024-12-24T15:30:45.123Z"
+  }
+  ```
+
+  ```json Cannot Cancel - Already Sent (400)
+  {
+    "error": "Cannot cancel email with status: sent. Only scheduled emails can be cancelled."
+  }
+  ```
+
+  ```json Cannot Cancel - Failed (400)
+  {
+    "error": "Cannot cancel email with status: failed. Only scheduled emails can be cancelled."
+  }
+  ```
+
+  ```json Cannot Cancel - Already Cancelled (400)
+  {
+    "error": "Cannot cancel email with status: cancelled. Only scheduled emails can be cancelled."
+  }
+  ```
+
+  ```json Not Found (404)
+  {
+    "error": "Scheduled email not found"
+  }
+  ```
+
+  ```json Unauthorized (401)
+  {
+    "error": "Unauthorized"
+  }
+  ```
+
+  ```json Server Error (500)
+  {
+    "error": "Failed to cancel scheduled email",
+    "details": "Internal server error"
+  }
+  ```
+</ResponseExample>
+
+## Usage Examples
+
+<AccordionGroup>
+  <Accordion title="Cancel with Error Handling">
+    ```javascript
+    import { Inbound } from '@inboundemail/sdk';
+
+    const inbound = new Inbound('your_api_key');
+
+    async function cancelScheduledEmail(emailId) {
+      try {
+        const { data, error } = await inbound.email.sent.cancel(emailId);
+        
+        if (error) {
+          if (error.includes('Cannot cancel email with status')) {
+            console.log('Email cannot be cancelled - it may have already been sent or failed');
+          } else if (error.includes('not found')) {
+            console.log('Scheduled email not found');
+          } else {
+            console.error('Cancellation error:', error);
+          }
+          return false;
+        }
+        
+        console.log(`Email ${data.id} successfully cancelled at ${data.cancelled_at}`);
+        return true;
+        
+      } catch (error) {
+        console.error('Unexpected error:', error);
+        return false;
+      }
+    }
+
+    // Usage
+    const success = await cancelScheduledEmail('sch_1234567890abcdef');
+    ```
+  </Accordion>
+  
+  <Accordion title="Bulk Cancellation">
+    ```javascript
+    import { Inbound } from '@inboundemail/sdk';
+
+    const inbound = new Inbound('your_api_key');
+
+    async function cancelMultipleEmails(emailIds) {
+      const results = [];
+      
+      for (const emailId of emailIds) {
+        try {
+          const { data, error } = await inbound.email.sent.cancel(emailId);
+          
+          if (error) {
+            results.push({ id: emailId, success: false, error });
+          } else {
+            results.push({ 
+              id: emailId, 
+              success: true, 
+              cancelled_at: data.cancelled_at 
+            });
+          }
+        } catch (error) {
+          results.push({ 
+            id: emailId, 
+            success: false, 
+            error: error.message 
+          });
+        }
+      }
+      
+      return results;
+    }
+
+    // Cancel multiple scheduled emails
+    const emailIds = ['sch_123', 'sch_456', 'sch_789'];
+    const results = await cancelMultipleEmails(emailIds);
+    
+    const successful = results.filter(r => r.success).length;
+    console.log(`Successfully cancelled ${successful}/${emailIds.length} emails`);
+    ```
+  </Accordion>
+  
+  <Accordion title="Cancel Before Deadline">
+    ```javascript
+    import { Inbound } from '@inboundemail/sdk';
+
+    const inbound = new Inbound('your_api_key');
+
+    async function cancelIfNotTooLate(emailId, deadlineMinutes = 5) {
+      // Get email details first
+      const { data: email, error: getError } = await inbound.email.sent.getScheduled(emailId);
+      
+      if (getError) {
+        console.error('Could not retrieve email:', getError);
+        return false;
+      }
+      
+      // Check if email is still scheduled
+      if (email.status !== 'scheduled') {
+        console.log(`Email status is ${email.status}, cannot cancel`);
+        return false;
+      }
+      
+      // Check if we're within the deadline
+      const scheduledTime = new Date(email.scheduled_at);
+      const now = new Date();
+      const minutesUntilSend = (scheduledTime.getTime() - now.getTime()) / (1000 * 60);
+      
+      if (minutesUntilSend < deadlineMinutes) {
+        console.log(`Too late to cancel - only ${minutesUntilSend.toFixed(1)} minutes until send`);
+        return false;
+      }
+      
+      // Cancel the email
+      const { data, error } = await inbound.email.sent.cancel(emailId);
+      
+      if (error) {
+        console.error('Cancellation failed:', error);
+        return false;
+      }
+      
+      console.log(`Email cancelled with ${minutesUntilSend.toFixed(1)} minutes to spare`);
+      return true;
+    }
+
+    // Usage: cancel only if more than 5 minutes before send time
+    const cancelled = await cancelIfNotTooLate('sch_1234567890abcdef', 5);
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Important Notes
+
+<Warning>
+**Status Restrictions**: Only emails with status 'scheduled' can be cancelled. Emails that have been sent, failed, or already cancelled cannot be cancelled.
+</Warning>
+
+<Info>
+**Immediate Effect**: Cancellation takes effect immediately. The scheduled email will not be sent at its scheduled time.
+</Info>
+
+<Note>
+**Access Control**: You can only cancel scheduled emails that belong to your account.
+</Note>
+
+<Tip>
+**Check Status First**: If you're unsure about the email's current status, use the [Get Scheduled Email](/api-reference/emails/get-scheduled-email) endpoint first.
+</Tip>
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card title="Get Scheduled Email" href="/api-reference/emails/get-scheduled-email">
+    Check the status of a scheduled email before cancelling
+  </Card>
+  
+  <Card title="List Scheduled Emails" href="/api-reference/emails/list-scheduled-emails">
+    View all your scheduled emails to find ones to cancel
+  </Card>
+  
+  <Card title="Schedule Email" href="/api-reference/emails/schedule-email">
+    Schedule a new email for future delivery
+  </Card>
+</CardGroup>
+
+1.0 - ✅

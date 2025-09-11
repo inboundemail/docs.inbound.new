@@ -1,0 +1,341 @@
+---
+title: "Get Scheduled Email"
+api: "GET /api/v2/emails/schedule/{id}"
+description: "Retrieve details of a specific scheduled email by ID"
+---
+
+<Note>
+This endpoint provides complete details of a scheduled email, including its current status, delivery attempts, and all original content.
+</Note>
+
+## Authentication
+
+This endpoint requires authentication via:
+- **API key auth**: Bearer token in Authorization header
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  Unique identifier of the scheduled email to retrieve.
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication.
+</ParamField>
+
+## Request Example
+
+<RequestExample>
+  ```javascript Inbound SDK
+  import { Inbound } from '@inboundemail/sdk';
+
+  const inbound = new Inbound('your_api_key');
+
+  // Get scheduled email details
+  const { data, error } = await inbound.email.sent.getScheduled('sch_1234567890abcdef');
+
+  if (error) {
+    console.error('Error:', error);
+  } else {
+    console.log('Email status:', data.status);
+    console.log('Scheduled for:', data.scheduled_at);
+    console.log('Subject:', data.subject);
+    
+    if (data.status === 'failed') {
+      console.log('Last error:', data.last_error);
+    }
+  }
+  ```
+
+  ```bash cURL
+  curl -X GET 'https://inbound.new/api/v2/emails/schedule/sch_1234567890abcdef' \
+       -H 'Authorization: Bearer your_api_key'
+  ```
+
+  ```python Python
+  import requests
+
+  response = requests.get(
+    'https://inbound.new/api/v2/emails/schedule/sch_1234567890abcdef',
+    headers={
+      'Authorization': 'Bearer your_api_key'
+    }
+  )
+
+  print(response.json())
+  ```
+
+  ```php PHP
+  $ch = curl_init('https://inbound.new/api/v2/emails/schedule/sch_1234567890abcdef');
+  curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key'
+  ]);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+  $response = curl_exec($ch);
+  curl_close($ch);
+
+  echo $response;
+  ```
+</RequestExample>
+
+## Response
+
+<ResponseField name="id" type="string" required>
+  Unique identifier for the scheduled email.
+</ResponseField>
+
+<ResponseField name="from" type="string" required>
+  Sender email address.
+</ResponseField>
+
+<ResponseField name="to" type="array" required>
+  Array of recipient email addresses.
+</ResponseField>
+
+<ResponseField name="cc" type="array">
+  Array of CC recipient email addresses.
+</ResponseField>
+
+<ResponseField name="bcc" type="array">
+  Array of BCC recipient email addresses.
+</ResponseField>
+
+<ResponseField name="replyTo" type="array">
+  Array of reply-to email addresses.
+</ResponseField>
+
+<ResponseField name="subject" type="string" required>
+  Email subject line.
+</ResponseField>
+
+<ResponseField name="text" type="string">
+  Plain text version of the email body.
+</ResponseField>
+
+<ResponseField name="html" type="string">
+  HTML version of the email body.
+</ResponseField>
+
+<ResponseField name="headers" type="object">
+  Custom headers attached to the email.
+</ResponseField>
+
+<ResponseField name="attachments" type="array">
+  Array of file attachments included with the email.
+</ResponseField>
+
+<ResponseField name="tags" type="array">
+  Array of tag objects for email categorization.
+  
+  <Expandable title="Tag Object">
+    <ResponseField name="name" type="string" required>
+      Tag name/key.
+    </ResponseField>
+    
+    <ResponseField name="value" type="string" required>
+      Tag value.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="scheduled_at" type="string" required>
+  ISO 8601 timestamp of when the email is/was scheduled to be sent.
+</ResponseField>
+
+<ResponseField name="timezone" type="string" required>
+  Timezone used for scheduling the email.
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Current status of the scheduled email: `scheduled`, `sent`, `failed`, or `cancelled`.
+</ResponseField>
+
+<ResponseField name="attempts" type="integer" required>
+  Number of delivery attempts made.
+</ResponseField>
+
+<ResponseField name="max_attempts" type="integer" required>
+  Maximum number of delivery attempts allowed before marking as failed.
+</ResponseField>
+
+<ResponseField name="next_retry_at" type="string">
+  ISO 8601 timestamp of when the next delivery attempt will be made (only present if status is 'failed' and more attempts remain).
+</ResponseField>
+
+<ResponseField name="last_error" type="string">
+  Error message from the last failed delivery attempt (only present if status is 'failed').
+</ResponseField>
+
+<ResponseField name="created_at" type="string" required>
+  ISO 8601 timestamp of when the email was originally scheduled.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string" required>
+  ISO 8601 timestamp of when the email record was last updated.
+</ResponseField>
+
+<ResponseField name="sent_at" type="string">
+  ISO 8601 timestamp of when the email was successfully sent (only present if status is 'sent').
+</ResponseField>
+
+<ResponseField name="sent_email_id" type="string">
+  ID of the sent email record (only present if status is 'sent').
+</ResponseField>
+
+<ResponseExample>
+  ```json Scheduled Email (200)
+  {
+    "id": "sch_1234567890abcdef",
+    "from": "Acme <noreply@yourdomain.com>",
+    "to": ["customer@example.com"],
+    "cc": [],
+    "bcc": [],
+    "replyTo": [],
+    "subject": "Scheduled Reminder",
+    "text": "This is your scheduled reminder!",
+    "html": "<h1>This is your scheduled reminder!</h1>",
+    "headers": {},
+    "attachments": [],
+    "tags": [
+      {
+        "name": "campaign",
+        "value": "reminder"
+      }
+    ],
+    "scheduled_at": "2024-12-25T14:00:00.000Z",
+    "timezone": "America/New_York",
+    "status": "scheduled",
+    "attempts": 0,
+    "max_attempts": 3,
+    "created_at": "2024-12-24T10:30:00.000Z",
+    "updated_at": "2024-12-24T10:30:00.000Z"
+  }
+  ```
+
+  ```json Sent Email (200)
+  {
+    "id": "sch_0987654321fedcba",
+    "from": "Acme <noreply@yourdomain.com>",
+    "to": ["user@example.com"],
+    "subject": "Weekly Newsletter",
+    "text": "Weekly newsletter content...",
+    "html": "<h1>Weekly Newsletter</h1><p>Content...</p>",
+    "headers": {},
+    "attachments": [],
+    "tags": [],
+    "scheduled_at": "2024-12-23T09:00:00.000Z",
+    "timezone": "UTC",
+    "status": "sent",
+    "attempts": 1,
+    "max_attempts": 3,
+    "created_at": "2024-12-22T15:45:00.000Z",
+    "updated_at": "2024-12-23T09:01:00.000Z",
+    "sent_at": "2024-12-23T09:00:15.000Z",
+    "sent_email_id": "email_abc123xyz789"
+  }
+  ```
+
+  ```json Failed Email (200)
+  {
+    "id": "sch_abcdef1234567890",
+    "from": "Acme <noreply@yourdomain.com>",
+    "to": ["invalid@nonexistentdomain.com"],
+    "subject": "Test Email",
+    "text": "Test content",
+    "html": "<p>Test content</p>",
+    "headers": {},
+    "attachments": [],
+    "tags": [],
+    "scheduled_at": "2024-12-20T02:00:00.000Z",
+    "timezone": "UTC",
+    "status": "failed",
+    "attempts": 3,
+    "max_attempts": 3,
+    "last_error": "Recipient email address rejected by server",
+    "created_at": "2024-12-19T18:20:00.000Z",
+    "updated_at": "2024-12-20T02:15:00.000Z"
+  }
+  ```
+
+  ```json Not Found (404)
+  {
+    "error": "Scheduled email not found"
+  }
+  ```
+
+  ```json Unauthorized (401)
+  {
+    "error": "Unauthorized"
+  }
+  ```
+
+  ```json Server Error (500)
+  {
+    "error": "Failed to get scheduled email",
+    "details": "Internal server error"
+  }
+  ```
+</ResponseExample>
+
+## Status Information
+
+<AccordionGroup>
+  <Accordion title="Status Values">
+    - **`scheduled`**: Email is waiting to be sent at the scheduled time
+    - **`sent`**: Email was successfully delivered
+    - **`failed`**: Email failed to send after all retry attempts
+    - **`cancelled`**: Email was cancelled before being sent
+  </Accordion>
+  
+  <Accordion title="Retry Logic">
+    Failed emails are automatically retried up to `max_attempts` times with exponential backoff:
+    - Attempt 1: Immediate
+    - Attempt 2: After 1 minute
+    - Attempt 3: After 5 minutes
+    
+    The `next_retry_at` field shows when the next attempt will occur.
+  </Accordion>
+  
+  <Accordion title="Error Messages">
+    Common error messages in `last_error` field:
+    - "Recipient email address rejected by server"
+    - "Domain not found"
+    - "Rate limit exceeded"
+    - "Attachment processing failed"
+  </Accordion>
+</AccordionGroup>
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card title="List Scheduled Emails" href="/api-reference/emails/list-scheduled-emails">
+    View all your scheduled emails with filtering
+  </Card>
+  
+  <Card title="Cancel Scheduled Email" href="/api-reference/emails/cancel-scheduled-email">
+    Cancel a scheduled email before it's sent
+  </Card>
+  
+  <Card title="Schedule Email" href="/api-reference/emails/schedule-email">
+    Schedule a new email for future delivery
+  </Card>
+</CardGroup>
+
+## Important Notes
+
+<Info>
+**Real-time Status**: The status and attempt information is updated in real-time as the system processes scheduled emails.
+</Info>
+
+<Note>
+**Access Control**: You can only retrieve scheduled emails that belong to your account.
+</Note>
+
+<Tip>
+**Monitoring**: Use this endpoint to build monitoring and alerting systems for critical scheduled emails.
+</Tip>
+
+1.0 - ✅

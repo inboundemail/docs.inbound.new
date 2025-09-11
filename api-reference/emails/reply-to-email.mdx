@@ -10,13 +10,8 @@ This endpoint allows you to reply to emails received through Inbound, maintainin
 
 ## Authentication
 
-This endpoint requires authentication via API key.
-
-```bash
-curl -X POST https://inbound.new/api/v2/emails/{id}/reply \
-  -H "Authorization: Bearer YOUR_API_KEY" \
-  -H "Content-Type: application/json"
-```
+This endpoint requires authentication via:
+- **API key auth**: Bearer token in Authorization header
 
 ## Path Parameters
 
@@ -74,8 +69,12 @@ This endpoint supports both snake_case (legacy) and camelCase (Resend-compatible
   Array of file attachments to include with the email.
   
   <Expandable title="Attachment object properties">
-    <ParamField body="content" type="string" required>
-      Base64 encoded file content
+    <ParamField body="content" type="string">
+      Base64 encoded file content. Required if `path` is not provided.
+    </ParamField>
+    
+    <ParamField body="path" type="string">
+      URL to fetch the attachment from. Required if `content` is not provided. Only HTTP and HTTPS URLs are supported.
     </ParamField>
     
     <ParamField body="filename" type="string" required>
@@ -83,7 +82,11 @@ This endpoint supports both snake_case (legacy) and camelCase (Resend-compatible
     </ParamField>
     
     <ParamField body="content_type" type="string" optional>
-      MIME type of the file (e.g., "application/pdf", "image/png")
+      MIME type of the file (e.g., "application/pdf", "image/png"). Also accepts `contentType` (camelCase) for Resend compatibility.
+    </ParamField>
+    
+    <ParamField body="content_id" type="string" optional>
+      Content ID for embedding images in HTML email using `cid:` references (e.g., `<img src="cid:logo">`). Must be unique across all attachments.
     </ParamField>
   </Expandable>
 </ParamField>
@@ -104,6 +107,28 @@ This endpoint supports both snake_case (legacy) and camelCase (Resend-compatible
       Tag value for the given name
     </ParamField>
   </Expandable>
+</ParamField>
+
+<ParamField body="simple" type="boolean" default="true">
+  Whether to use simplified reply mode for faster processing. When `true` (default), uses a lightweight reply mode that's faster and has less overhead. Set to `false` to force full mode when you need advanced features or custom threading.
+  
+  <Note>
+  Simple mode is automatically disabled when attachments are present.
+  </Note>
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication.
+</ParamField>
+
+<ParamField header="Idempotency-Key" type="string">
+  Add an idempotency key to prevent duplicate replies.
+  
+  * Should be **unique per API request**
+  * Idempotency keys expire after **24 hours**
+  * Have a maximum length of **256 characters**
 </ParamField>
 
 ## Response
@@ -141,11 +166,11 @@ Reply to an email with minimal configuration:
 
 <RequestExample>
 ```javascript Inbound SDK
-import { InboundEmailClient } from '@inboundemail/sdk';
+import { Inbound } from '@inboundemail/sdk';
 
-const inbound = new InboundEmailClient('YOUR_API_KEY');
+const inbound = new Inbound('YOUR_API_KEY');
 
-const { data, error } = await inbound.email.reply('email_abc123', {
+const { data, error } = await inbound.reply('email_abc123', {
   from: 'support@yourdomain.com',
   text: 'Thank you for your email. We have received your request and will respond shortly.'
 });
@@ -223,11 +248,11 @@ Reply with custom recipients, subject, HTML content, and tags:
 
 <RequestExample>
 ```javascript Inbound SDK
-import { InboundEmailClient } from '@inboundemail/sdk';
+import { Inbound } from '@inboundemail/sdk';
 
-const inbound = new InboundEmailClient('YOUR_API_KEY');
+const inbound = new Inbound('YOUR_API_KEY');
 
-const { data, error } = await inbound.email.reply('email_abc123', {
+const { data, error } = await inbound.reply('email_abc123', {
   from: 'john@yourdomain.com',
   to: ['customer@example.com'],
   cc: ['manager@yourdomain.com'],
@@ -340,11 +365,11 @@ Send a reply without including the original message:
 
 <RequestExample>
 ```javascript Inbound SDK
-import { InboundEmailClient } from '@inboundemail/sdk';
+import { Inbound } from '@inboundemail/sdk';
 
-const inbound = new InboundEmailClient('YOUR_API_KEY');
+const inbound = new Inbound('YOUR_API_KEY');
 
-const { data, error } = await inbound.email.reply('email_abc123', {
+const { data, error } = await inbound.reply('email_abc123', {
   from: 'noreply@yourdomain.com',
   text: 'This is an automated response.',
   includeOriginal: false
@@ -410,22 +435,22 @@ Include attachments in your reply:
 
 <RequestExample>
 ```javascript Inbound SDK
-import { InboundEmailClient } from '@inboundemail/sdk';
+import { Inbound } from '@inboundemail/sdk';
 import fs from 'fs';
 
-const inbound = new InboundEmailClient('YOUR_API_KEY');
+const inbound = new Inbound('YOUR_API_KEY');
 
 // Read and encode file
 const fileContent = fs.readFileSync('invoice.pdf');
 const base64Content = fileContent.toString('base64');
 
-const { data, error } = await inbound.email.reply('email_abc123', {
+const { data, error } = await inbound.reply('email_abc123', {
   from: 'billing@yourdomain.com',
   text: 'Please find the invoice attached.',
   attachments: [{
     content: base64Content,
     filename: 'invoice.pdf',
-    contentType: 'application/pdf'
+    content_type: 'application/pdf'
   }]
 });
 ```
@@ -520,10 +545,12 @@ curl_close($ch);
 | 400 | "Either html or text content must be provided" | No email body content was provided |
 | 400 | "Cannot determine recipient email address" | No `to` field provided and cannot extract from original email |
 | 400 | "Invalid email format: {email}" | One of the email addresses is malformed |
+| 400 | "Invalid JSON in request body" | Request body contains malformed JSON |
 | 401 | "Unauthorized" | Invalid or missing API key |
 | 403 | "You don't have permission to send from domain: {domain}" | The sender domain is not verified in your account |
 | 404 | "Email not found" | The email ID does not exist or belongs to another user |
 | 429 | "Email sending limit reached. Please upgrade your plan to send more emails." | You have exceeded your plan's email sending limit |
+| 500 | "Email service not configured. Please contact support." | AWS SES configuration issue |
 | 500 | "Failed to send reply. Please try again later." | AWS SES or other service error occurred |
 | 500 | "Internal server error" | An unexpected error occurred |
 
@@ -541,11 +568,11 @@ This endpoint supports idempotency to prevent duplicate sends. Include an `Idemp
 
 <CodeGroup>
 ```javascript Inbound SDK
-import { InboundEmailClient } from '@inboundemail/sdk';
+import { Inbound } from '@inboundemail/sdk';
 
-const inbound = new InboundEmailClient('YOUR_API_KEY');
+const inbound = new Inbound('YOUR_API_KEY');
 
-const { data, error } = await inbound.email.reply('email_abc123', {
+const { data, error } = await inbound.reply('email_abc123', {
   from: 'support@yourdomain.com',
   text: 'Your reply message'
 }, {
@@ -628,9 +655,7 @@ If you make multiple requests with the same idempotency key, only the first requ
 Reply sending is subject to the same rate limits as the [Send Email](/api-reference/emails/send-email) endpoint. Your plan determines how many emails you can send per month.
 
 <Info>
-Check your current usage and limits in your [account dashboard](https://app.inbound.email/settings).
+Check your current usage and limits in your [account dashboard](https://inbound.new/settings).
 </Info>
 
----
-
-**1.0 - ✅** 
+1.0 - ✅

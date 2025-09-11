@@ -50,7 +50,7 @@ This endpoint requires authentication via:
   const inbound = new Inbound('your_api_key');
 
   // List all scheduled emails
-  const { data, error } = await inbound.email.listScheduled();
+  const { data, error } = await inbound.email.sent.listScheduled();
 
   if (error) {
     console.error('Error:', error);
@@ -60,7 +60,7 @@ This endpoint requires authentication via:
   }
 
   // List only pending scheduled emails
-  const { data: pending } = await inbound.email.listScheduled({ 
+  const { data: pending } = await inbound.email.sent.listScheduled({ 
     status: 'scheduled', 
     limit: 10 
   });
@@ -270,7 +270,7 @@ This endpoint requires authentication via:
     const limit = 20;
     
     do {
-      const { data, error } = await inbound.email.listScheduled({ 
+      const { data, error } = await inbound.email.sent.listScheduled({ 
         limit, 
         offset 
       });
@@ -299,7 +299,7 @@ This endpoint requires authentication via:
     const inbound = new Inbound('your_api_key');
     
     // Get only failed scheduled emails
-    const { data: failed } = await inbound.email.listScheduled({ 
+    const { data: failed } = await inbound.email.sent.listScheduled({ 
       status: 'failed' 
     });
     
@@ -309,7 +309,7 @@ This endpoint requires authentication via:
     });
     
     // Get only pending scheduled emails
-    const { data: pending } = await inbound.email.listScheduled({ 
+    const { data: pending } = await inbound.email.sent.listScheduled({ 
       status: 'scheduled' 
     });
     
@@ -322,7 +322,7 @@ This endpoint requires authentication via:
     const inbound = new Inbound('your_api_key');
     
     async function checkScheduledEmails() {
-      const { data, error } = await inbound.email.listScheduled({ 
+      const { data, error } = await inbound.email.sent.listScheduled({ 
         status: 'scheduled' 
       });
       
