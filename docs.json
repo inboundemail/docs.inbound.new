@@ -18,11 +18,13 @@
             "pages": [
               "index",
               "rate-limits",
+              "webhook",
               "errors"
+              
             ]
           },
           {
-            "group": "Sending Emails",
+            "group": "Sending & Receiving API",
             "pages": [
               "api-reference/emails/send-email",
               "api-reference/emails/schedule-email",
@@ -34,7 +36,7 @@
             ]
           },
           {
-            "group": "Endpoints",
+            "group": "Endpoints API",
             "pages": [
               "api-reference/endpoints/list-endpoints",
               "api-reference/endpoints/create-endpoint",
@@ -44,7 +46,7 @@
             ]
           },
           {
-            "group": "Email Addresses",
+            "group": "Addresses API",
             "pages": [
               "api-reference/email-addresses/list-email-addresses",
               "api-reference/email-addresses/create-email-address",
@@ -54,7 +56,7 @@
             ]
           },
           {
-            "group": "Domains",
+            "group": "Domains API",
             "pages": [
               "api-reference/domains/list-domains",
               "api-reference/domains/create-domain",
@@ -62,13 +64,6 @@
               "api-reference/domains/update-domain",
               "api-reference/domains/delete-domain",
               "api-reference/domains/get-dns-records"
-            ]
-          },
-          {
-            "group": "Inbound Emails",
-            "pages": [
-              "api-reference/mail/list-emails",
-              "api-reference/mail/get-email"
             ]
           }
         ]

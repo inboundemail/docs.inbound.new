@@ -1,0 +1,87 @@
+---
+title: "Webhook Structure"
+description: "Webhook payload structure"
+---
+
+## Overview
+
+When emails arrive at your configured addresses, Inbound sends a webhook to your endpoint with the complete email data.
+
+```typescript
+import type { InboundWebhookPayload } from '@inboundemail/sdk'
+```
+
+## Webhook Payload Structure
+
+We have fully a complete typed webhook payload for you to use in your endpoints.
+
+```typescript
+const payload: InboundWebhookPayload = {
+  event: 'email.received',
+  timestamp: '2024-01-15T10:30:00Z',
+  email: {
+    id: 'email_abc123',
+    messageId: '<unique@example.com>',
+    from: {
+      text: 'John Doe <john@example.com>',
+      addresses: [{
+        name: 'John Doe',
+        address: 'john@example.com'
+      }]
+    },
+    to: {
+      text: 'support@yourdomain.com',
+      addresses: [{
+        name: null,
+        address: 'support@yourdomain.com'
+      }]
+    },
+    recipient: 'support@yourdomain.com',
+    subject: 'Help with my order',
+    receivedAt: '2024-01-15T10:30:00Z',
+    parsedData: {
+      messageId: '<unique@example.com>',
+      date: new Date('2024-01-15T10:30:00Z'),
+      subject: 'Help with my order',
+      from: {
+        text: 'John Doe <john@example.com>',
+        addresses: [{
+          name: 'John Doe',
+          address: 'john@example.com'
+        }]
+      },
+      to: {
+        text: 'support@yourdomain.com',
+        addresses: [{
+          name: null,
+          address: 'support@yourdomain.com'
+        }]
+      },
+      cc: null,
+      bcc: null,
+      replyTo: null,
+      inReplyTo: undefined,
+      references: undefined,
+      textBody: 'Hello, I need help with my recent order...',
+      htmlBody: '<p>Hello, I need help with my recent order...</p>',
+      attachments: [],
+      headers: {},
+      priority: undefined
+    },
+    cleanedContent: {
+      html: '<p>Hello, I need help with my recent order...</p>',
+      text: 'Hello, I need help with my recent order...',
+      hasHtml: true,
+      hasText: true,
+      attachments: [],
+      headers: {}
+    }
+  },
+  endpoint: {
+    id: 'endp_xyz789',
+    name: 'Support Webhook',
+    type: 'webhook'
+  }
+}
+```
+
