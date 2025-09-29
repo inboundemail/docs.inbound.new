@@ -1,0 +1,215 @@
+---
+title: "Thread Statistics"
+api: "GET /api/v2/threads/stats"
+description: "Get comprehensive threading statistics and analytics for the authenticated user's account"
+---
+
+## Overview
+
+This endpoint provides detailed statistics about email threading for your account, including thread distribution, activity metrics, and unread counts. Useful for building analytics dashboards and understanding email patterns.
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication. Format: `Bearer YOUR_API_KEY`
+</ParamField>
+
+## Response
+
+<ResponseField name="totalThreads" type="integer" required>
+  Total number of email threads in the account.
+</ResponseField>
+
+<ResponseField name="totalMessages" type="integer" required>
+  Total number of messages (inbound + outbound) across all threads.
+</ResponseField>
+
+<ResponseField name="averageMessagesPerThread" type="number" required>
+  Average number of messages per thread (rounded to 2 decimal places).
+</ResponseField>
+
+<ResponseField name="mostActiveThread" type="object | null">
+  Information about the thread with the most messages.
+  
+  <Expandable title="Most active thread properties">
+    <ResponseField name="threadId" type="string" required>
+      Unique identifier of the most active thread.
+    </ResponseField>
+    
+    <ResponseField name="messageCount" type="integer" required>
+      Number of messages in the most active thread.
+    </ResponseField>
+    
+    <ResponseField name="subject" type="string | null">
+      Subject line of the most active thread.
+    </ResponseField>
+    
+    <ResponseField name="lastMessageAt" type="string" required>
+      ISO 8601 timestamp of the last activity in this thread.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="recentActivity" type="object" required>
+  Statistics about recent threading activity.
+  
+  <Expandable title="Recent activity properties">
+    <ResponseField name="threadsToday" type="integer" required>
+      Number of threads that were active today (had new messages).
+    </ResponseField>
+    
+    <ResponseField name="messagesToday" type="integer" required>
+      Number of messages received today.
+    </ResponseField>
+    
+    <ResponseField name="threadsThisWeek" type="integer" required>
+      Number of threads that were active in the last 7 days.
+    </ResponseField>
+    
+    <ResponseField name="messagesThisWeek" type="integer" required>
+      Number of messages received in the last 7 days.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="distribution" type="object" required>
+  Distribution of threads by message count.
+  
+  <Expandable title="Distribution properties">
+    <ResponseField name="singleMessageThreads" type="integer" required>
+      Number of threads with exactly 1 message (no replies).
+    </ResponseField>
+    
+    <ResponseField name="shortThreads" type="integer" required>
+      Number of threads with 2-5 messages.
+    </ResponseField>
+    
+    <ResponseField name="mediumThreads" type="integer" required>
+      Number of threads with 6-15 messages.
+    </ResponseField>
+    
+    <ResponseField name="longThreads" type="integer" required>
+      Number of threads with 16 or more messages.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="unreadStats" type="object" required>
+  Statistics about unread messages and threads.
+  
+  <Expandable title="Unread statistics properties">
+    <ResponseField name="unreadThreads" type="integer" required>
+      Number of threads that contain at least one unread message.
+    </ResponseField>
+    
+    <ResponseField name="unreadMessages" type="integer" required>
+      Total number of unread messages across all threads.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+### Request
+
+<RequestExample>
+```javascript Inbound SDK
+import { Inbound } from '@inboundemail/sdk'
+
+const inbound = new Inbound('YOUR_API_KEY')
+
+const { data: stats, error } = await inbound.thread.getStats()
+
+if (error) {
+  console.error('Error:', error)
+} else {
+  console.log(`Total threads: ${stats.totalThreads}`)
+  console.log(`Average messages per thread: ${stats.averageMessagesPerThread}`)
+  console.log(`Unread threads: ${stats.unreadStats.unreadThreads}`)
+}
+```
+
+```bash cURL
+curl -X GET 'https://inbound.new/api/v2/threads/stats' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://inbound.new/api/v2/threads/stats',
+    headers={'Authorization': 'Bearer YOUR_API_KEY'}
+)
+data = response.json()
+```
+
+```php PHP
+<?php
+$curl = curl_init();
+
+curl_setopt_array($curl, [
+  CURLOPT_URL => 'https://inbound.new/api/v2/threads/stats',
+  CURLOPT_RETURNTRANSFER => true,
+  CURLOPT_HTTPHEADER => [
+    'Authorization: Bearer YOUR_API_KEY'
+  ],
+]);
+
+$response = curl_exec($curl);
+$data = json_decode($response, true);
+curl_close($curl);
+?>
+```
+</RequestExample>
+
+### Response
+
+<ResponseExample>
+```json Success
+{
+  "totalThreads": 45,
+  "totalMessages": 178,
+  "averageMessagesPerThread": 3.96,
+  "mostActiveThread": {
+    "threadId": "thread_abc123",
+    "messageCount": 12,
+    "subject": "Ongoing Support Issue",
+    "lastMessageAt": "2024-01-15T14:30:00Z"
+  },
+  "recentActivity": {
+    "threadsToday": 5,
+    "messagesToday": 12,
+    "threadsThisWeek": 18,
+    "messagesThisWeek": 67
+  },
+  "distribution": {
+    "singleMessageThreads": 28,
+    "shortThreads": 12,
+    "mediumThreads": 4,
+    "longThreads": 1
+  },
+  "unreadStats": {
+    "unreadThreads": 8,
+    "unreadMessages": 15
+  }
+}
+```
+</ResponseExample>
+
+## Error Responses
+
+<ResponseExample>
+```json 401 Unauthorized
+{
+  "error": "Unauthorized"
+}
+```
+
+```json 500 Internal Server Error
+{
+  "error": "Failed to calculate thread statistics",
+  "details": "Database connection failed"
+}
+```
+</ResponseExample>

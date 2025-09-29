@@ -1,0 +1,360 @@
+---
+title: "Get Thread"
+api: "GET /api/v2/threads/{id}"
+description: "Retrieve all messages in a specific email thread with complete conversation history"
+---
+
+## Overview
+
+This endpoint retrieves all messages in a specific email thread, providing a complete conversation history. Messages are returned in chronological order with both inbound (received) and outbound (sent) emails included.
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication. Format: `Bearer YOUR_API_KEY`
+</ParamField>
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the thread to retrieve.
+</ParamField>
+
+## Response
+
+<ResponseField name="thread" type="object" required>
+  Thread metadata and summary information.
+  
+  <Expandable title="Thread properties">
+    <ResponseField name="id" type="string" required>
+      Unique identifier for the thread.
+    </ResponseField>
+    
+    <ResponseField name="rootMessageId" type="string" required>
+      Message ID of the first email in the thread.
+    </ResponseField>
+    
+    <ResponseField name="normalizedSubject" type="string | null">
+      Cleaned subject line used for thread grouping.
+    </ResponseField>
+    
+    <ResponseField name="participantEmails" type="string[]" required>
+      Array of all email addresses that have participated in this thread.
+    </ResponseField>
+    
+    <ResponseField name="messageCount" type="integer" required>
+      Total number of messages in this thread.
+    </ResponseField>
+    
+    <ResponseField name="lastMessageAt" type="string" required>
+      ISO 8601 timestamp when the thread was last active.
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="string" required>
+      ISO 8601 timestamp when the thread was created.
+    </ResponseField>
+    
+    <ResponseField name="updatedAt" type="string" required>
+      ISO 8601 timestamp when the thread was last updated.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="messages" type="array" required>
+  Array of all messages in the thread, sorted by thread position (chronological order).
+  
+  <Expandable title="Message object properties">
+    <ResponseField name="id" type="string" required>
+      Unique identifier for the message.
+    </ResponseField>
+    
+    <ResponseField name="messageId" type="string | null">
+      RFC 2822 Message-ID header from the email.
+    </ResponseField>
+    
+    <ResponseField name="type" type="string" required>
+      Message type: `inbound` (received) or `outbound` (sent).
+    </ResponseField>
+    
+    <ResponseField name="threadPosition" type="integer" required>
+      Position of this message in the thread (1 = first, 2 = second, etc.).
+    </ResponseField>
+    
+    <ResponseField name="subject" type="string | null">
+      Subject line of the message.
+    </ResponseField>
+    
+    <ResponseField name="textBody" type="string | null">
+      Plain text content of the message.
+    </ResponseField>
+    
+    <ResponseField name="htmlBody" type="string | null">
+      HTML content of the message.
+    </ResponseField>
+    
+    <ResponseField name="from" type="string" required>
+      Sender information (display name and email or just email).
+    </ResponseField>
+    
+    <ResponseField name="fromName" type="string | null">
+      Sender's display name (if available).
+    </ResponseField>
+    
+    <ResponseField name="fromAddress" type="string | null">
+      Sender's email address.
+    </ResponseField>
+    
+    <ResponseField name="to" type="string[]" required>
+      Array of recipient email addresses.
+    </ResponseField>
+    
+    <ResponseField name="cc" type="string[]" required>
+      Array of CC recipient email addresses.
+    </ResponseField>
+    
+    <ResponseField name="bcc" type="string[]" required>
+      Array of BCC recipient email addresses.
+    </ResponseField>
+    
+    <ResponseField name="date" type="string | null">
+      ISO 8601 timestamp from the email's Date header.
+    </ResponseField>
+    
+    <ResponseField name="receivedAt" type="string | null">
+      ISO 8601 timestamp when the message was received (inbound only).
+    </ResponseField>
+    
+    <ResponseField name="sentAt" type="string | null">
+      ISO 8601 timestamp when the message was sent (outbound only).
+    </ResponseField>
+    
+    <ResponseField name="isRead" type="boolean" required>
+      Whether this message has been read.
+    </ResponseField>
+    
+    <ResponseField name="readAt" type="string | null">
+      ISO 8601 timestamp when the message was marked as read.
+    </ResponseField>
+    
+    <ResponseField name="hasAttachments" type="boolean" required>
+      Whether this message contains attachments.
+    </ResponseField>
+    
+    <ResponseField name="attachments" type="array" required>
+      Array of attachment metadata.
+      
+      <Expandable title="Attachment properties">
+        <ResponseField name="filename" type="string">
+          Original filename of the attachment.
+        </ResponseField>
+        
+        <ResponseField name="contentType" type="string">
+          MIME type of the attachment.
+        </ResponseField>
+        
+        <ResponseField name="size" type="integer">
+          Size of the attachment in bytes.
+        </ResponseField>
+        
+        <ResponseField name="contentId" type="string">
+          Content ID for inline attachments.
+        </ResponseField>
+        
+        <ResponseField name="contentDisposition" type="string">
+          Content disposition (attachment or inline).
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="inReplyTo" type="string | null">
+      Message ID this message is replying to.
+    </ResponseField>
+    
+    <ResponseField name="references" type="string[]" required>
+      Array of referenced message IDs for threading.
+    </ResponseField>
+    
+    <ResponseField name="headers" type="object" required>
+      Email headers as key-value pairs.
+    </ResponseField>
+    
+    <ResponseField name="tags" type="array" required>
+      Array of email tags (for sent emails).
+      
+      <Expandable title="Tag properties">
+        <ResponseField name="name" type="string" required>
+          Tag name/key.
+        </ResponseField>
+        
+        <ResponseField name="value" type="string" required>
+          Tag value.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="status" type="string">
+      Message status for sent emails: `pending`, `sent`, or `failed`.
+    </ResponseField>
+    
+    <ResponseField name="failureReason" type="string | null">
+      Error message if the message failed to send (outbound only).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="totalCount" type="integer" required>
+  Total number of messages in the thread.
+</ResponseField>
+
+## Examples
+
+### Request
+
+<RequestExample>
+```javascript Inbound SDK
+import { Inbound } from '@inboundemail/sdk'
+
+const inbound = new Inbound('YOUR_API_KEY')
+
+const { data: thread, error } = await inbound.thread.get('thread_abc123')
+
+if (error) {
+  console.error('Error:', error)
+} else {
+  console.log(`Thread: ${thread.thread.normalizedSubject}`)
+  console.log(`Messages: ${thread.messages.length}`)
+  console.log(`Participants: ${thread.thread.participantEmails.join(', ')}`)
+}
+```
+
+```bash cURL
+curl -X GET 'https://inbound.new/api/v2/threads/thread_abc123' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://inbound.new/api/v2/threads/thread_abc123',
+    headers={'Authorization': 'Bearer YOUR_API_KEY'}
+)
+data = response.json()
+```
+
+```php PHP
+<?php
+$curl = curl_init();
+
+curl_setopt_array($curl, [
+  CURLOPT_URL => 'https://inbound.new/api/v2/threads/thread_abc123',
+  CURLOPT_RETURNTRANSFER => true,
+  CURLOPT_HTTPHEADER => [
+    'Authorization: Bearer YOUR_API_KEY'
+  ],
+]);
+
+$response = curl_exec($curl);
+$data = json_decode($response, true);
+curl_close($curl);
+?>
+```
+</RequestExample>
+
+### Response
+
+<ResponseExample>
+```json Success
+{
+  "thread": {
+    "id": "thread_abc123",
+    "rootMessageId": "<msg123@example.com>",
+    "normalizedSubject": "Support Request - Login Issues",
+    "participantEmails": ["customer@example.com", "support@yourdomain.com"],
+    "messageCount": 3,
+    "lastMessageAt": "2024-01-15T14:30:00Z",
+    "createdAt": "2024-01-15T10:00:00Z",
+    "updatedAt": "2024-01-15T14:30:00Z"
+  },
+  "messages": [
+    {
+      "id": "email_123",
+      "messageId": "<msg123@example.com>",
+      "type": "inbound",
+      "threadPosition": 1,
+      "subject": "Support Request - Login Issues",
+      "textBody": "I'm having trouble logging into my account...",
+      "htmlBody": "<p>I'm having trouble logging into my account...</p>",
+      "from": "John Doe <customer@example.com>",
+      "fromName": "John Doe",
+      "fromAddress": "customer@example.com",
+      "to": ["support@yourdomain.com"],
+      "cc": [],
+      "bcc": [],
+      "date": "2024-01-15T10:00:00Z",
+      "receivedAt": "2024-01-15T10:00:00Z",
+      "sentAt": null,
+      "isRead": true,
+      "readAt": "2024-01-15T10:05:00Z",
+      "hasAttachments": false,
+      "attachments": [],
+      "inReplyTo": null,
+      "references": [],
+      "headers": {},
+      "tags": []
+    },
+    {
+      "id": "sent_456",
+      "messageId": "<reply456@yourdomain.com>",
+      "type": "outbound",
+      "threadPosition": 2,
+      "subject": "Re: Support Request - Login Issues",
+      "textBody": "Thank you for contacting support. We've reset your password...",
+      "htmlBody": "<p>Thank you for contacting support. We've reset your password...</p>",
+      "from": "Support Team <support@yourdomain.com>",
+      "fromName": "Support Team",
+      "fromAddress": "support@yourdomain.com",
+      "to": ["customer@example.com"],
+      "cc": [],
+      "bcc": [],
+      "date": "2024-01-15T11:30:00Z",
+      "receivedAt": null,
+      "sentAt": "2024-01-15T11:30:00Z",
+      "isRead": true,
+      "readAt": null,
+      "hasAttachments": false,
+      "attachments": [],
+      "inReplyTo": "<msg123@example.com>",
+      "references": ["<msg123@example.com>"],
+      "headers": {},
+      "tags": [{"name": "category", "value": "support"}],
+      "status": "sent"
+    }
+  ],
+  "totalCount": 3
+}
+```
+</ResponseExample>
+
+## Error Responses
+
+<ResponseExample>
+```json 404 Not Found
+{
+  "error": "Thread not found"
+}
+```
+
+```json 401 Unauthorized
+{
+  "error": "Unauthorized"
+}
+```
+
+```json 500 Internal Server Error
+{
+  "error": "Failed to fetch thread details",
+  "details": "Database connection failed"
+}
+```
+</ResponseExample>

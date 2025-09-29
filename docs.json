@@ -65,6 +65,15 @@
               "api-reference/domains/delete-domain",
               "api-reference/domains/get-dns-records"
             ]
+          },
+          {
+            "group": "Threads API",
+            "pages": [
+              "api-reference/threads/list-threads",
+              "api-reference/threads/get-thread",
+              "api-reference/threads/thread-actions",
+              "api-reference/threads/thread-stats"
+            ]
           }
         ]
       },

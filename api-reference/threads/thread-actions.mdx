@@ -1,0 +1,228 @@
+---
+title: "Thread Actions"
+api: "POST /api/v2/threads/{id}/actions"
+description: "Perform actions on a thread such as marking as read, archiving, or unarchiving"
+---
+
+## Overview
+
+This endpoint allows you to perform bulk actions on all messages within a thread. Actions affect all messages in the thread simultaneously, making it easy to manage entire conversations.
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication. Format: `Bearer YOUR_API_KEY`
+</ParamField>
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the thread to perform actions on.
+</ParamField>
+
+## Request Body
+
+<ParamField body="action" type="string" required>
+  The action to perform on the thread. Valid values:
+  - `mark_as_read` - Mark all messages in the thread as read
+  - `mark_as_unread` - Mark all messages in the thread as unread
+  - `archive` - Archive all messages in the thread
+  - `unarchive` - Unarchive all messages in the thread
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean" required>
+  Whether the action was completed successfully.
+</ResponseField>
+
+<ResponseField name="action" type="string" required>
+  The action that was performed.
+</ResponseField>
+
+<ResponseField name="threadId" type="string" required>
+  The ID of the thread that was acted upon.
+</ResponseField>
+
+<ResponseField name="affectedMessages" type="integer">
+  Number of messages that were affected by the action.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable description of what was accomplished.
+</ResponseField>
+
+## Examples
+
+### Mark Thread as Read
+
+<RequestExample>
+```javascript Inbound SDK
+import { Inbound } from '@inboundemail/sdk'
+
+const inbound = new Inbound('YOUR_API_KEY')
+
+const { data, error } = await inbound.thread.markAsRead('thread_abc123')
+
+if (error) {
+  console.error('Error:', error)
+} else {
+  console.log(`Marked ${data.affectedMessages} messages as read`)
+}
+```
+
+```bash cURL
+curl -X POST 'https://inbound.new/api/v2/threads/thread_abc123/actions' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{"action": "mark_as_read"}'
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://inbound.new/api/v2/threads/thread_abc123/actions',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'Content-Type': 'application/json'
+    },
+    json={'action': 'mark_as_read'}
+)
+data = response.json()
+```
+
+```php PHP
+<?php
+$curl = curl_init();
+
+curl_setopt_array($curl, [
+  CURLOPT_URL => 'https://inbound.new/api/v2/threads/thread_abc123/actions',
+  CURLOPT_RETURNTRANSFER => true,
+  CURLOPT_POST => true,
+  CURLOPT_HTTPHEADER => [
+    'Authorization: Bearer YOUR_API_KEY',
+    'Content-Type: application/json'
+  ],
+  CURLOPT_POSTFIELDS => json_encode(['action' => 'mark_as_read'])
+]);
+
+$response = curl_exec($curl);
+$data = json_decode($response, true);
+curl_close($curl);
+?>
+```
+</RequestExample>
+
+### Archive Thread
+
+<RequestExample>
+```javascript Inbound SDK
+import { Inbound } from '@inboundemail/sdk'
+
+const inbound = new Inbound('YOUR_API_KEY')
+
+const { data, error } = await inbound.thread.archive('thread_abc123')
+
+if (error) {
+  console.error('Error:', error)
+} else {
+  console.log(`Archived thread with ${data.affectedMessages} messages`)
+}
+```
+
+```bash cURL
+curl -X POST 'https://inbound.new/api/v2/threads/thread_abc123/actions' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{"action": "archive"}'
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://inbound.new/api/v2/threads/thread_abc123/actions',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'Content-Type': 'application/json'
+    },
+    json={'action': 'archive'}
+)
+data = response.json()
+```
+
+```php PHP
+<?php
+$curl = curl_init();
+
+curl_setopt_array($curl, [
+  CURLOPT_URL => 'https://inbound.new/api/v2/threads/thread_abc123/actions',
+  CURLOPT_RETURNTRANSFER => true,
+  CURLOPT_POST => true,
+  CURLOPT_HTTPHEADER => [
+    'Authorization: Bearer YOUR_API_KEY',
+    'Content-Type: application/json'
+  ],
+  CURLOPT_POSTFIELDS => json_encode(['action' => 'archive'])
+]);
+
+$response = curl_exec($curl);
+$data = json_decode($response, true);
+curl_close($curl);
+?>
+```
+</RequestExample>
+
+### Response
+
+<ResponseExample>
+```json Success - Mark as Read
+{
+  "success": true,
+  "action": "mark_as_read",
+  "threadId": "thread_abc123",
+  "affectedMessages": 3,
+  "message": "Successfully marked 3 messages as read"
+}
+```
+
+```json Success - Archive
+{
+  "success": true,
+  "action": "archive",
+  "threadId": "thread_abc123",
+  "affectedMessages": 3,
+  "message": "Successfully archived 3 messages"
+}
+```
+</ResponseExample>
+
+## Error Responses
+
+<ResponseExample>
+```json 400 Bad Request - Invalid Action
+{
+  "error": "Invalid action. Supported actions: mark_as_read, mark_as_unread, archive, unarchive"
+}
+```
+
+```json 404 Not Found
+{
+  "error": "Thread not found"
+}
+```
+
+```json 401 Unauthorized
+{
+  "error": "Unauthorized"
+}
+```
+
+```json 500 Internal Server Error
+{
+  "error": "Failed to perform thread action",
+  "details": "Database connection failed"
+}
+```
+</ResponseExample>

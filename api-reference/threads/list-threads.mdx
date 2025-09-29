@@ -1,0 +1,339 @@
+---
+title: "List Threads"
+api: "GET /api/v2/threads"
+description: "Retrieve all email threads for the authenticated user with pagination and search"
+---
+
+## Overview
+
+This endpoint retrieves a paginated list of all email conversation threads for the authenticated user. Threads group related emails together based on Message-ID headers and subject lines, providing a conversation-based view of your emails.
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication. Format: `Bearer YOUR_API_KEY`
+</ParamField>
+
+## Query Parameters
+
+<ParamField query="limit" type="integer" default="25">
+  Maximum number of threads to return per page. Range: 1-100.
+</ParamField>
+
+<ParamField query="offset" type="integer" default="0">
+  Number of threads to skip for pagination. Must be non-negative.
+</ParamField>
+
+<ParamField query="search" type="string">
+  Search query to filter threads by subject or participant email addresses.
+</ParamField>
+
+<ParamField query="unread" type="boolean">
+  Filter threads by unread status. Set to `true` to only return threads with unread messages.
+</ParamField>
+
+<ParamField query="archived" type="boolean">
+  Filter threads by archived status. Set to `true` to only return archived threads.
+</ParamField>
+
+## Response
+
+<ResponseField name="threads" type="array" required>
+  Array of thread objects with summary information and latest message preview.
+  
+  <Expandable title="Thread object properties">
+    <ResponseField name="id" type="string" required>
+      Unique identifier for the thread.
+    </ResponseField>
+    
+    <ResponseField name="rootMessageId" type="string" required>
+      Message ID of the first email in the thread.
+    </ResponseField>
+    
+    <ResponseField name="normalizedSubject" type="string | null">
+      Cleaned subject line used for thread grouping (removes Re:, Fwd: prefixes).
+    </ResponseField>
+    
+    <ResponseField name="participantEmails" type="string[]" required>
+      Array of all email addresses that have participated in this thread.
+    </ResponseField>
+    
+    <ResponseField name="messageCount" type="integer" required>
+      Total number of messages (inbound + outbound) in this thread.
+    </ResponseField>
+    
+    <ResponseField name="lastMessageAt" type="string" required>
+      ISO 8601 timestamp when the thread was last active (last message received/sent).
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="string" required>
+      ISO 8601 timestamp when the thread was created.
+    </ResponseField>
+    
+    <ResponseField name="hasUnread" type="boolean" required>
+      Whether the thread contains any unread messages.
+    </ResponseField>
+    
+    <ResponseField name="isArchived" type="boolean" required>
+      Whether the thread has been archived.
+    </ResponseField>
+    
+    <ResponseField name="latestMessage" type="object | null">
+      Preview of the most recent message in the thread.
+      
+      <Expandable title="Latest message properties">
+        <ResponseField name="id" type="string" required>
+          Unique identifier for the message.
+        </ResponseField>
+        
+        <ResponseField name="type" type="string" required>
+          Message type: `inbound` (received) or `outbound` (sent).
+        </ResponseField>
+        
+        <ResponseField name="subject" type="string | null">
+          Subject line of the message.
+        </ResponseField>
+        
+        <ResponseField name="fromText" type="string" required>
+          Sender information (name and email or just email).
+        </ResponseField>
+        
+        <ResponseField name="textPreview" type="string | null">
+          First 200 characters of the message content.
+        </ResponseField>
+        
+        <ResponseField name="isRead" type="boolean" required>
+          Whether this message has been read.
+        </ResponseField>
+        
+        <ResponseField name="hasAttachments" type="boolean" required>
+          Whether this message contains attachments.
+        </ResponseField>
+        
+        <ResponseField name="date" type="string | null">
+          ISO 8601 timestamp when the message was received or sent.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="pagination" type="object" required>
+  Pagination information for the current request.
+  
+  <Expandable title="Pagination properties">
+    <ResponseField name="limit" type="integer" required>
+      Maximum number of results per page.
+    </ResponseField>
+    
+    <ResponseField name="offset" type="integer" required>
+      Number of results skipped.
+    </ResponseField>
+    
+    <ResponseField name="total" type="integer" required>
+      Total number of threads matching the query.
+    </ResponseField>
+    
+    <ResponseField name="hasMore" type="boolean" required>
+      Whether there are more results available.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="filters" type="object" required>
+  Applied filter information.
+  
+  <Expandable title="Filter properties">
+    <ResponseField name="search" type="string | undefined">
+      Search query that was applied (if any).
+    </ResponseField>
+    
+    <ResponseField name="unreadOnly" type="boolean | undefined">
+      Whether unread filter was applied.
+    </ResponseField>
+    
+    <ResponseField name="archivedOnly" type="boolean | undefined">
+      Whether archived filter was applied.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+### Basic Request
+
+<RequestExample>
+```javascript Inbound SDK
+import { Inbound } from '@inboundemail/sdk'
+
+const inbound = new Inbound('YOUR_API_KEY')
+
+const { data: threads, error } = await inbound.thread.list()
+
+if (error) {
+  console.error('Error:', error)
+} else {
+  console.log(`Found ${threads.threads.length} threads`)
+  console.log(`Total: ${threads.pagination.total}`)
+}
+```
+
+```bash cURL
+curl -X GET 'https://inbound.new/api/v2/threads' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://inbound.new/api/v2/threads',
+    headers={'Authorization': 'Bearer YOUR_API_KEY'}
+)
+data = response.json()
+```
+
+```php PHP
+<?php
+$curl = curl_init();
+
+curl_setopt_array($curl, [
+  CURLOPT_URL => 'https://inbound.new/api/v2/threads',
+  CURLOPT_RETURNTRANSFER => true,
+  CURLOPT_HTTPHEADER => [
+    'Authorization: Bearer YOUR_API_KEY'
+  ],
+]);
+
+$response = curl_exec($curl);
+$data = json_decode($response, true);
+curl_close($curl);
+?>
+```
+</RequestExample>
+
+### Filtered Request
+
+<RequestExample>
+```javascript Inbound SDK
+import { Inbound } from '@inboundemail/sdk'
+
+const inbound = new Inbound('YOUR_API_KEY')
+
+const { data: threads, error } = await inbound.thread.list({
+  search: 'support',
+  unread: true,
+  limit: 10
+})
+
+if (error) {
+  console.error('Error:', error)
+} else {
+  console.log(`Found ${threads.threads.length} unread support threads`)
+}
+```
+
+```bash cURL
+curl -X GET 'https://inbound.new/api/v2/threads?search=support&unread=true&limit=10' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://inbound.new/api/v2/threads',
+    params={'search': 'support', 'unread': 'true', 'limit': 10},
+    headers={'Authorization': 'Bearer YOUR_API_KEY'}
+)
+data = response.json()
+```
+
+```php PHP
+<?php
+$params = http_build_query([
+    'search' => 'support',
+    'unread' => 'true',
+    'limit' => 10
+]);
+
+$curl = curl_init();
+curl_setopt_array($curl, [
+  CURLOPT_URL => 'https://inbound.new/api/v2/threads?' . $params,
+  CURLOPT_RETURNTRANSFER => true,
+  CURLOPT_HTTPHEADER => [
+    'Authorization: Bearer YOUR_API_KEY'
+  ],
+]);
+
+$response = curl_exec($curl);
+$data = json_decode($response, true);
+curl_close($curl);
+?>
+```
+</RequestExample>
+
+### Response
+
+<ResponseExample>
+```json Success
+{
+  "threads": [
+    {
+      "id": "thread_abc123",
+      "rootMessageId": "<msg123@example.com>",
+      "normalizedSubject": "Support Request - Login Issues",
+      "participantEmails": ["customer@example.com", "support@yourdomain.com"],
+      "messageCount": 3,
+      "lastMessageAt": "2024-01-15T14:30:00Z",
+      "createdAt": "2024-01-15T10:00:00Z",
+      "hasUnread": true,
+      "isArchived": false,
+      "latestMessage": {
+        "id": "email_789",
+        "type": "inbound",
+        "subject": "Re: Support Request - Login Issues",
+        "fromText": "John Doe <customer@example.com>",
+        "textPreview": "Thanks for the password reset. I'm still having issues...",
+        "isRead": false,
+        "hasAttachments": false,
+        "date": "2024-01-15T14:30:00Z"
+      }
+    }
+  ],
+  "pagination": {
+    "limit": 10,
+    "offset": 0,
+    "total": 1,
+    "hasMore": false
+  },
+  "filters": {
+    "search": "support",
+    "unreadOnly": true
+  }
+}
+```
+</ResponseExample>
+
+## Error Responses
+
+<ResponseExample>
+```json 400 Bad Request
+{
+  "error": "Limit must be between 1 and 100"
+}
+```
+
+```json 401 Unauthorized
+{
+  "error": "Unauthorized"
+}
+```
+
+```json 500 Internal Server Error
+{
+  "error": "Failed to fetch threads",
+  "details": "Database connection failed"
+}
+```
+</ResponseExample>

@@ -5,64 +5,103 @@ description: "Send a reply to a received email with proper threading"
 ---
 
 <Note>
-This endpoint allows you to reply to emails received through Inbound, maintaining proper email threading with In-Reply-To and References headers.
+  This endpoint allows you to reply to emails received through Inbound,
+  maintaining proper email threading with In-Reply-To and References headers.
 </Note>
 
 ## Authentication
 
 This endpoint requires authentication via:
+
 - **API key auth**: Bearer token in Authorization header
 
 ## Path Parameters
 
 <ParamField path="id" type="string" required>
-  The unique identifier of the email you want to reply to. This must be an email that was received through your Inbound account.
+  The unique identifier of the email you want to reply to. This must be an email
+  that was received through your Inbound account.
 </ParamField>
 
 ## Request Body
 
-<Note>
-This endpoint supports both snake_case (legacy) and camelCase (Resend-compatible) formats for certain fields like `reply_to`/`replyTo` and `include_original`/`includeOriginal`.
-</Note>
-
 <ParamField body="from" type="string" required>
-  The sender email address. Must be in the format `"Name <email@domain.com>"` or just `"email@domain.com"`. The domain must be verified in your account.
+  The sender email address. 
+  
+  Must be in the format `"Name <email@domain.com>"` or  `"email@domain.com"`. 
+  
+  The domain must be verified in your account.
+  
+  <Warning>
+  You cannot use `agent@inbnd.dev` for replies. This email is only available for sending new emails, not for replying to received emails.
+  </Warning>
 </ParamField>
 
 <ParamField body="from_name" type="string" optional>
-  Optional sender name for display. If provided, this will be used as the display name for the sender address.
+  Optional sender name for display. If provided, this will be used as the
+  display name for the sender address.
 </ParamField>
 
 <ParamField body="to" type="string | string[]" optional>
-  The recipient email address(es). If not provided, the reply will be sent to the original sender. Can be a single email string or an array of email strings.
+  The recipient email address(es). If not provided, the reply will be sent to
+  the original sender. Can be a single email string or an array of email
+  strings.
 </ParamField>
 
 <ParamField body="subject" type="string" optional>
-  The email subject. If not provided, "Re: " will be prepended to the original email's subject.
+  The email subject. If not provided, "Re: " will be prepended to the original
+  email's subject.
 </ParamField>
 
 <ParamField body="cc" type="string | string[]" optional>
-  Carbon copy recipient(s). Can be a single email string or an array of email strings.
+  Carbon copy recipient(s). Can be a single email string or an array of email
+  strings.
 </ParamField>
 
 <ParamField body="bcc" type="string | string[]" optional>
-  Blind carbon copy recipient(s). Can be a single email string or an array of email strings.
+  Blind carbon copy recipient(s). Can be a single email string or an array of
+  email strings.
 </ParamField>
 
 <ParamField body="reply_to" type="string | string[]" optional>
-  Reply-to address(es). Can be a single email string or an array of email strings. Also accepts `replyTo` (camelCase) for Resend compatibility.
+  Reply-to address(es). Can be a single email string or an array of email strings.
+
+  <Danger>
+  The `reply_to` method will be deprecated in a future version.
+  </Danger>
+</ParamField>
+
+<ParamField body="replyTo" type="string | string[]" optional>
+  Reply-to address(es). Can be a single email string or an array of email
+  strings.
 </ParamField>
 
 <ParamField body="text" type="string" optional>
   The plain text version of the email body. Either `text` or `html` must be provided.
+
+If you only provide `html` the `text` will be generated automatically from the HTML.
+
 </ParamField>
 
 <ParamField body="html" type="string" optional>
-  The HTML version of the email body. Either `text` or `html` must be provided.
+  The HTML version of the email body.
 </ParamField>
 
 <ParamField body="headers" type="object" optional>
   Custom email headers as key-value pairs. These will be added to the email in addition to the standard headers.
+  
+  ```typescript
+  {
+    "X-Priority": "1",                    // High priority
+    "X-Support-Ticket": "TICKET-12345",  // Ticket tracking
+    "X-Department": "Customer-Support",   // Department routing
+    "Reply-To": "noreply@yourdomain.com", // Override reply-to
+    "X-Auto-Reply": "true"                // Mark as automated
+  }
+  ```
+  
+  <Note>
+  Headers are merged with threading headers (In-Reply-To, References) and standard email headers (Message-ID, Date, etc.). Custom headers take precedence over defaults but cannot override required threading headers.
+  </Note>
 </ParamField>
 
 <ParamField body="attachments" type="array" optional>
@@ -92,17 +131,18 @@ This endpoint supports both snake_case (legacy) and camelCase (Resend-compatible
 </ParamField>
 
 <ParamField body="include_original" type="boolean" optional default="true">
-  Whether to include the original message as a quoted reply. When true, the original message will be appended to your reply with appropriate formatting. Also accepts `includeOriginal` (camelCase) for Resend compatibility.
+  Whether to include the original message as a quoted reply. When true, the
+  original message will be appended to your reply with appropriate formatting.
+  Also accepts `includeOriginal` (camelCase) for Resend compatibility.
 </ParamField>
 
 <ParamField body="tags" type="array" optional>
   Array of tags for email categorization and tracking (Resend-compatible).
-  
   <Expandable title="Tag object properties">
     <ParamField body="name" type="string" required>
       Tag name for categorization
     </ParamField>
-    
+
     <ParamField body="value" type="string" required>
       Tag value for the given name
     </ParamField>
@@ -110,10 +150,12 @@ This endpoint supports both snake_case (legacy) and camelCase (Resend-compatible
 </ParamField>
 
 <ParamField body="simple" type="boolean" default="true">
-  Whether to use simplified reply mode for faster processing. When `true` (default), uses a lightweight reply mode that's faster and has less overhead. Set to `false` to force full mode when you need advanced features or custom threading.
-  
+  Whether to use simplified reply mode for faster processing. When `true`
+  (default), uses a lightweight reply mode that's faster and has less overhead.
+  Set to `false` to force full mode when you need advanced features or custom
+  threading.
   <Note>
-  Simple mode is automatically disabled when attachments are present.
+    Simple mode is automatically disabled when attachments are present.
   </Note>
 </ParamField>
 
@@ -124,11 +166,9 @@ This endpoint supports both snake_case (legacy) and camelCase (Resend-compatible
 </ParamField>
 
 <ParamField header="Idempotency-Key" type="string">
-  Add an idempotency key to prevent duplicate replies.
-  
-  * Should be **unique per API request**
-  * Idempotency keys expire after **24 hours**
-  * Have a maximum length of **256 characters**
+  Add an idempotency key to prevent duplicate replies. * Should be **unique per
+  API request** * Idempotency keys expire after **24 hours** * Have a maximum
+  length of **256 characters**
 </ParamField>
 
 ## Response
@@ -142,7 +182,8 @@ This endpoint supports both snake_case (legacy) and camelCase (Resend-compatible
 </ResponseField>
 
 <ResponseField name="awsMessageId" type="string" optional>
-  AWS SES Message ID for tracking the email through AWS infrastructure. Only present when the email is successfully sent through AWS SES.
+  AWS SES Message ID for tracking the email through AWS infrastructure. Only
+  present when the email is successfully sent through AWS SES.
 </ResponseField>
 
 ## Email Threading
@@ -155,7 +196,8 @@ This endpoint automatically handles email threading by:
 4. **Quoting the original message** (when `include_original` is true) with proper attribution
 
 <Info>
-Email clients like Gmail, Outlook, and Apple Mail will recognize these threading headers and group the emails into a conversation.
+  Email clients like Gmail, Outlook, and Apple Mail will recognize these
+  threading headers and group the emails into a conversation.
 </Info>
 
 ## Examples
@@ -171,16 +213,17 @@ import { Inbound } from '@inboundemail/sdk';
 const inbound = new Inbound('YOUR_API_KEY');
 
 const { data, error } = await inbound.reply('email_abc123', {
-  from: 'support@yourdomain.com',
-  text: 'Thank you for your email. We have received your request and will respond shortly.'
+from: 'support@yourdomain.com',
+text: 'Thank you for your email. We have received your request and will respond shortly.'
 });
 
 if (error) {
-  console.error('Error:', error);
+console.error('Error:', error);
 } else {
-  console.log('Reply sent:', data.id);
+console.log('Reply sent:', data.id);
 }
-```
+
+````
 
 ```bash cURL
 curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
@@ -190,7 +233,7 @@ curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
     "from": "support@yourdomain.com",
     "text": "Thank you for your email. We have received your request and will respond shortly."
   }'
-```
+````
 
 ```python Python
 import requests
@@ -230,6 +273,7 @@ $data = json_decode($response, true);
 curl_close($ch);
 ?>
 ```
+
 </RequestExample>
 
 <ResponseExample>
@@ -253,22 +297,23 @@ import { Inbound } from '@inboundemail/sdk';
 const inbound = new Inbound('YOUR_API_KEY');
 
 const { data, error } = await inbound.reply('email_abc123', {
-  from: 'john@yourdomain.com',
-  to: ['customer@example.com'],
-  cc: ['manager@yourdomain.com'],
-  subject: 'Re: Support Request #12345',
-  text: 'Dear Customer,\n\nWe have resolved your issue...',
-  html: '<p>Dear Customer,</p><p>We have resolved your issue...</p>',
-  headers: {
-    'X-Support-Ticket': '12345'
-  },
-  includeOriginal: true,
-  tags: [
-    { name: 'category', value: 'support' },
-    { name: 'priority', value: 'high' }
-  ]
+from: 'john@yourdomain.com',
+to: ['customer@example.com'],
+cc: ['manager@yourdomain.com'],
+subject: 'Re: Support Request #12345',
+text: 'Dear Customer,\n\nWe have resolved your issue...',
+html: '<p>Dear Customer,</p><p>We have resolved your issue...</p>',
+headers: {
+'X-Support-Ticket': '12345'
+},
+includeOriginal: true,
+tags: [
+{ name: 'category', value: 'support' },
+{ name: 'priority', value: 'high' }
+]
 });
-```
+
+````
 
 ```bash cURL
 curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
@@ -291,7 +336,7 @@ curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
       {"name": "priority", "value": "high"}
     ]
   }'
-```
+````
 
 ```python Python
 import requests
@@ -357,6 +402,7 @@ $data = json_decode($response, true);
 curl_close($ch);
 ?>
 ```
+
 </RequestExample>
 
 ### Reply Without Quoting Original
@@ -370,11 +416,12 @@ import { Inbound } from '@inboundemail/sdk';
 const inbound = new Inbound('YOUR_API_KEY');
 
 const { data, error } = await inbound.reply('email_abc123', {
-  from: 'noreply@yourdomain.com',
-  text: 'This is an automated response.',
-  includeOriginal: false
+from: 'noreply@yourdomain.com',
+text: 'This is an automated response.',
+includeOriginal: false
 });
-```
+
+````
 
 ```bash cURL
 curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
@@ -385,7 +432,7 @@ curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
     "text": "This is an automated response.",
     "include_original": false
   }'
-```
+````
 
 ```python Python
 import requests
@@ -427,6 +474,7 @@ $data = json_decode($response, true);
 curl_close($ch);
 ?>
 ```
+
 </RequestExample>
 
 ### Reply with Attachments
@@ -445,15 +493,16 @@ const fileContent = fs.readFileSync('invoice.pdf');
 const base64Content = fileContent.toString('base64');
 
 const { data, error } = await inbound.reply('email_abc123', {
-  from: 'billing@yourdomain.com',
-  text: 'Please find the invoice attached.',
-  attachments: [{
-    content: base64Content,
-    filename: 'invoice.pdf',
-    content_type: 'application/pdf'
-  }]
+from: 'billing@yourdomain.com',
+text: 'Please find the invoice attached.',
+attachments: [{
+content: base64Content,
+filename: 'invoice.pdf',
+content_type: 'application/pdf'
+}]
 });
-```
+
+````
 
 ```bash cURL
 curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
@@ -468,7 +517,7 @@ curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
       "content_type": "application/pdf"
     }]
   }'
-```
+````
 
 ```python Python
 import requests
@@ -528,6 +577,7 @@ $data = json_decode($response, true);
 curl_close($ch);
 ?>
 ```
+
 </RequestExample>
 
 ## Error Responses
@@ -538,28 +588,36 @@ curl_close($ch);
 
 ### Common Errors
 
-| Status Code | Error Message | Description |
-|-------------|---------------|-------------|
-| 400 | "Valid email ID is required" | The email ID parameter is missing or invalid |
-| 400 | "From address is required" | The `from` field is missing from the request |
-| 400 | "Either html or text content must be provided" | No email body content was provided |
-| 400 | "Cannot determine recipient email address" | No `to` field provided and cannot extract from original email |
-| 400 | "Invalid email format: {email}" | One of the email addresses is malformed |
-| 400 | "Invalid JSON in request body" | Request body contains malformed JSON |
-| 401 | "Unauthorized" | Invalid or missing API key |
-| 403 | "You don't have permission to send from domain: {domain}" | The sender domain is not verified in your account |
-| 404 | "Email not found" | The email ID does not exist or belongs to another user |
-| 429 | "Email sending limit reached. Please upgrade your plan to send more emails." | You have exceeded your plan's email sending limit |
-| 500 | "Email service not configured. Please contact support." | AWS SES configuration issue |
-| 500 | "Failed to send reply. Please try again later." | AWS SES or other service error occurred |
-| 500 | "Internal server error" | An unexpected error occurred |
+| Status Code | Error Message                                                                             | Description                                                   |
+| ----------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| 400         | "Valid email ID is required"                                                              | The email ID parameter is missing or invalid                  |
+| 400         | "From address is required"                                                                | The `from` field is missing from the request                  |
+| 400         | "Either html or text content must be provided"                                            | No email body content was provided                            |
+| 400         | "Cannot determine recipient email address"                                                | No `to` field provided and cannot extract from original email |
+| 400         | "agent@inbnd.dev cannot be used for replies. Please use a verified domain email address." | Attempted to use agent email for replies                      |
+| 400         | "Invalid email format: {email}"                                                           | One of the email addresses is malformed                       |
+| 400         | "Invalid JSON in request body"                                                            | Request body contains malformed JSON                          |
+| 401         | "Unauthorized"                                                                            | Invalid or missing API key                                    |
+| 403         | "You don't have permission to send from domain: {domain}"                                 | The sender domain is not verified in your account             |
+| 404         | "Email not found"                                                                         | The email ID does not exist or belongs to another user        |
+| 429         | "Email sending limit reached. Please upgrade your plan to send more emails."              | You have exceeded your plan's email sending limit             |
+| 500         | "Email service not configured. Please contact support."                                   | AWS SES configuration issue                                   |
+| 500         | "Failed to send reply. Please try again later."                                           | AWS SES or other service error occurred                       |
+| 500         | "Internal server error"                                                                   | An unexpected error occurred                                  |
 
 <ResponseExample>
-```json Error
+```json Domain Not Verified
 {
   "error": "You don't have permission to send from domain: unverified.com"
 }
 ```
+
+```json Agent Email Not Allowed
+{
+  "error": "agent@inbnd.dev cannot be used for replies. Please use a verified domain email address."
+}
+```
+
 </ResponseExample>
 
 ## Idempotency
@@ -576,20 +634,21 @@ const inbound = new Inbound('YOUR_API_KEY');
 
 // Using the organized API with idempotency
 const { data, error } = await inbound.email.sent.reply('email_abc123', {
-  from: 'support@yourdomain.com',
-  text: 'Thanks for your message!'
+from: 'support@yourdomain.com',
+text: 'Thanks for your message!'
 }, {
-  idempotencyKey: 'reply-abc123-user456-v1'
+idempotencyKey: 'reply-abc123-user456-v1'
 });
 
 // Using the simplified reply method with idempotency
 const { data, error } = await inbound.reply('email_abc123', {
-  from: 'support@yourdomain.com',
-  text: 'Your reply message'
+from: 'support@yourdomain.com',
+text: 'Your reply message'
 }, {
-  idempotencyKey: 'unique-key-123'
+idempotencyKey: 'unique-key-123'
 });
-```
+
+````
 
 ```bash cURL
 curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
@@ -600,7 +659,7 @@ curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
     "from": "support@yourdomain.com",
     "text": "Thanks for your message!"
   }'
-```
+````
 
 ```python Python
 import requests
@@ -642,6 +701,7 @@ $data = json_decode($response, true);
 curl_close($ch);
 ?>
 ```
+
 </CodeGroup>
 
 ### Webhook Handler with Idempotency
@@ -656,12 +716,12 @@ const inbound = new Inbound(process.env.INBOUND_API_KEY);
 
 // Webhook handler with idempotency protection
 export async function POST(request) {
-  try {
-    const { email } = await request.json();
-    
+try {
+const { email } = await request.json();
+
     // Create unique key that prevents duplicates even with webhook retries
     const idempotencyKey = `auto-reply-${email.id}-${Math.floor(Date.now() / 60000)}`;
-    
+
     const { data, error } = await inbound.reply(email.id, {
       from: 'support@yourdomain.com',
       text: 'Thanks for contacting us! We\'ll respond within 24 hours.',
@@ -669,19 +729,20 @@ export async function POST(request) {
     }, {
       idempotencyKey
     });
-    
+
     if (error) {
       console.error('Auto-reply failed:', error);
       return Response.json({ error: 'Failed to send auto-reply' }, { status: 500 });
     }
-    
+
     return Response.json({ success: true, emailId: data.id });
-    
-  } catch (error) {
-    return Response.json({ error: 'Processing failed' }, { status: 500 });
-  }
+
+} catch (error) {
+return Response.json({ error: 'Processing failed' }, { status: 500 });
 }
-```
+}
+
+````
 
 ```bash cURL
 # First webhook call - email is sent
@@ -695,7 +756,7 @@ curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Idempotency-Key: webhook-auto-reply-abc123-2024-01-15-10" \
   -d '{"from": "support@yourdomain.com", "text": "Auto-reply message"}'
-```
+````
 
 ```python Python
 import requests
@@ -706,7 +767,7 @@ def handle_webhook(email_data):
     # Allows updates but prevents rapid-fire duplicates
     timestamp = int(time.time() // 60)  # Minute precision
     idempotency_key = f"auto-reply-{email_data['id']}-{timestamp}"
-    
+
     response = requests.post(
         f'https://inbound.new/api/v2/emails/{email_data["id"]}/reply',
         headers={
@@ -720,7 +781,7 @@ def handle_webhook(email_data):
             'includeOriginal': False
         }
     )
-    
+
     return response.json()
 ```
 
@@ -730,7 +791,7 @@ function handleWebhook($emailData) {
     // Create idempotency key with minute precision
     $timestamp = floor(time() / 60);
     $idempotencyKey = "auto-reply-{$emailData['id']}-{$timestamp}";
-    
+
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, "https://inbound.new/api/v2/emails/{$emailData['id']}/reply");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -745,14 +806,15 @@ function handleWebhook($emailData) {
         'text' => 'Thanks for contacting us! We will respond within 24 hours.',
         'includeOriginal' => false
     ]));
-    
+
     $response = curl_exec($ch);
     curl_close($ch);
-    
+
     return json_decode($response, true);
 }
 ?>
 ```
+
 </CodeGroup>
 
 ### Idempotency Key Best Practices
@@ -776,7 +838,10 @@ function handleWebhook($emailData) {
 </Steps>
 
 <Info>
-**Idempotency Behavior**: If you make multiple requests with the same idempotency key, only the first request will send an email. Subsequent requests return the same response without sending a duplicate. Keys expire after **24 hours**.
+  **Idempotency Behavior**: If you make multiple requests with the same
+  idempotency key, only the first request will send an email. Subsequent
+  requests return the same response without sending a duplicate. Keys expire
+  after **24 hours**.
 </Info>
 
 ## Best Practices
@@ -787,15 +852,18 @@ function handleWebhook($emailData) {
 </Step>
 
 <Step title="Include both text and HTML">
-  For best compatibility, include both `text` and `html` versions of your email content.
+  For best compatibility, include both `text` and `html` versions of your email
+  content.
 </Step>
 
 <Step title="Use idempotency keys">
-  When sending replies programmatically, use idempotency keys to prevent accidental duplicate sends.
+  When sending replies programmatically, use idempotency keys to prevent
+  accidental duplicate sends.
 </Step>
 
 <Step title="Handle quoted content carefully">
-  Consider whether including the original message is appropriate for your use case. Automated responses might not need it.
+  Consider whether including the original message is appropriate for your use
+  case. Automated responses might not need it.
 </Step>
 
 <Step title="Test threading">
@@ -808,7 +876,8 @@ function handleWebhook($emailData) {
 Reply sending is subject to the same rate limits as the [Send Email](/api-reference/emails/send-email) endpoint. Your plan determines how many emails you can send per month.
 
 <Info>
-Check your current usage and limits in your [account dashboard](https://inbound.new/settings).
+  Check your current usage and limits in your [account
+  dashboard](https://inbound.new/settings).
 </Info>
 
 1.0 - ✅
