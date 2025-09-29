@@ -64,7 +64,16 @@ const payload: InboundWebhookPayload = {
       references: undefined,
       textBody: 'Hello, I need help with my recent order...',
       htmlBody: '<p>Hello, I need help with my recent order...</p>',
-      attachments: [],
+      attachments: [
+        {
+          filename: 'order-receipt.pdf',
+          contentType: 'application/pdf',
+          size: 45678,
+          contentId: '<att_abc123>',
+          contentDisposition: 'attachment',
+          downloadUrl: 'https://inbound.new/api/v2/attachments/email_abc123/order-receipt.pdf'
+        }
+      ],
       headers: {},
       priority: undefined
     },
@@ -73,7 +82,16 @@ const payload: InboundWebhookPayload = {
       text: 'Hello, I need help with my recent order...',
       hasHtml: true,
       hasText: true,
-      attachments: [],
+      attachments: [
+        {
+          filename: 'order-receipt.pdf',
+          contentType: 'application/pdf',
+          size: 45678,
+          contentId: '<att_abc123>',
+          contentDisposition: 'attachment',
+          downloadUrl: 'https://inbound.new/api/v2/attachments/email_abc123/order-receipt.pdf'
+        }
+      ],
       headers: {}
     }
   },
@@ -84,4 +102,50 @@ const payload: InboundWebhookPayload = {
   }
 }
 ```
+
+## Attachment Downloads
+
+<Info>
+Attachments include a `downloadUrl` field that provides direct access to download the file using your API key for authentication.
+</Info>
+
+### Downloading Attachments
+
+Each attachment in the webhook payload includes a `downloadUrl` that you can use to download the file:
+
+```typescript
+// Process attachments from webhook
+export async function POST(request: NextRequest) {
+  const payload: InboundWebhookPayload = await request.json()
+  const { email } = payload
+  
+  // Check for attachments
+  if (email.parsedData.attachments.length > 0) {
+    for (const attachment of email.parsedData.attachments) {
+      console.log(`Attachment: ${attachment.filename}`)
+      console.log(`Download URL: ${attachment.downloadUrl}`)
+      
+      // Download the attachment
+      const response = await fetch(attachment.downloadUrl, {
+        headers: {
+          'Authorization': `Bearer ${process.env.INBOUND_API_KEY}`
+        }
+      })
+      
+      if (response.ok) {
+        const fileBuffer = await response.arrayBuffer()
+        // Process the file...
+      }
+    }
+  }
+  
+  return NextResponse.json({ success: true })
+}
+```
+
+<Note>
+The download URL follows the format: `https://inbound.new/api/v2/attachments/{emailId}/{filename}`
+
+Authentication via API key in the Authorization header is required to download attachments.
+</Note>
 

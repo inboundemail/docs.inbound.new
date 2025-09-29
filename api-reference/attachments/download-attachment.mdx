@@ -1,0 +1,335 @@
+---
+title: "Download Attachment"
+api: "GET /api/v2/attachments/{id}/{filename}"
+description: "Download an email attachment by email ID and filename with API key authentication"
+---
+
+## Overview
+
+This endpoint allows you to download email attachments using the email ID and filename. The attachment URL is automatically provided in webhook payloads for easy access.
+
+<Info>
+This endpoint is typically used with the `downloadUrl` field provided in webhook payloads, but you can also construct the URL manually if needed.
+</Info>
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for API authentication. Format: `Bearer YOUR_API_KEY`
+</ParamField>
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The structured email ID (the email's unique identifier in Inbound).
+</ParamField>
+
+<ParamField path="filename" type="string" required>
+  The filename of the attachment to download. Must be URL-encoded if it contains special characters.
+</ParamField>
+
+## Response
+
+The endpoint returns the raw file content with appropriate headers:
+
+- **Content-Type**: The attachment's MIME type (e.g., `application/pdf`, `image/png`)
+- **Content-Disposition**: Set to `attachment; filename="..."` for proper download behavior
+- **Content-Length**: Size of the file in bytes
+- **Cache-Control**: Set to `private, max-age=3600` for secure caching
+
+## Examples
+
+### Download from Webhook Payload
+
+<RequestExample>
+```javascript Node.js (from webhook)
+import { NextRequest, NextResponse } from 'next/server'
+import type { InboundWebhookPayload } from '@inboundemail/sdk'
+
+export async function POST(request: NextRequest) {
+  const payload: InboundWebhookPayload = await request.json()
+  const { email } = payload
+  
+  // Download first attachment
+  if (email.parsedData.attachments.length > 0) {
+    const attachment = email.parsedData.attachments[0]
+    
+    const response = await fetch(attachment.downloadUrl, {
+      headers: {
+        'Authorization': `Bearer ${process.env.INBOUND_API_KEY}`
+      }
+    })
+    
+    if (response.ok) {
+      const fileBuffer = await response.arrayBuffer()
+      console.log(`Downloaded ${attachment.filename}: ${fileBuffer.byteLength} bytes`)
+      
+      // Save to disk, cloud storage, etc.
+      await saveFile(attachment.filename, fileBuffer)
+    }
+  }
+  
+  return NextResponse.json({ success: true })
+}
+```
+
+```bash cURL
+curl -X GET 'https://inbound.new/api/v2/attachments/email_abc123/document.pdf' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  --output document.pdf
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://inbound.new/api/v2/attachments/email_abc123/document.pdf',
+    headers={'Authorization': 'Bearer YOUR_API_KEY'}
+)
+
+if response.status_code == 200:
+    with open('document.pdf', 'wb') as f:
+        f.write(response.content)
+    print(f'Downloaded: {len(response.content)} bytes')
+```
+
+```php PHP
+<?php
+$apiKey = 'YOUR_API_KEY';
+$emailId = 'email_abc123';
+$filename = 'document.pdf';
+
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, "https://inbound.new/api/v2/attachments/{$emailId}/{$filename}");
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Authorization: Bearer {$apiKey}"
+]);
+
+$fileContent = curl_exec($ch);
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+curl_close($ch);
+
+if ($httpCode === 200) {
+    file_put_contents($filename, $fileContent);
+    echo "Downloaded: " . strlen($fileContent) . " bytes\n";
+}
+?>
+```
+</RequestExample>
+
+### Save to Cloud Storage
+
+<RequestExample>
+```javascript AWS S3
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import type { InboundWebhookPayload } from '@inboundemail/sdk'
+
+const s3Client = new S3Client({ region: 'us-east-1' })
+
+export async function POST(request: NextRequest) {
+  const payload: InboundWebhookPayload = await request.json()
+  const { email } = payload
+  
+  // Download and upload attachments to S3
+  for (const attachment of email.parsedData.attachments) {
+    // Download from Inbound
+    const response = await fetch(attachment.downloadUrl, {
+      headers: {
+        'Authorization': `Bearer ${process.env.INBOUND_API_KEY}`
+      }
+    })
+    
+    if (response.ok) {
+      const fileBuffer = await response.arrayBuffer()
+      
+      // Upload to S3
+      await s3Client.send(new PutObjectCommand({
+        Bucket: 'my-email-attachments',
+        Key: `emails/${email.id}/${attachment.filename}`,
+        Body: Buffer.from(fileBuffer),
+        ContentType: attachment.contentType
+      }))
+      
+      console.log(`Uploaded ${attachment.filename} to S3`)
+    }
+  }
+  
+  return NextResponse.json({ success: true })
+}
+```
+
+```javascript Cloudflare R2
+import type { InboundWebhookPayload } from '@inboundemail/sdk'
+
+export async function POST(request: Request, env: any) {
+  const payload: InboundWebhookPayload = await request.json()
+  const { email } = payload
+  
+  // Download and upload attachments to R2
+  for (const attachment of email.parsedData.attachments) {
+    const response = await fetch(attachment.downloadUrl, {
+      headers: {
+        'Authorization': `Bearer ${env.INBOUND_API_KEY}`
+      }
+    })
+    
+    if (response.ok) {
+      const fileBuffer = await response.arrayBuffer()
+      
+      // Upload to R2
+      await env.MY_BUCKET.put(
+        `emails/${email.id}/${attachment.filename}`,
+        fileBuffer,
+        {
+          httpMetadata: {
+            contentType: attachment.contentType
+          }
+        }
+      )
+      
+      console.log(`Uploaded ${attachment.filename} to R2`)
+    }
+  }
+  
+  return new Response('OK')
+}
+```
+</RequestExample>
+
+## Error Responses
+
+<ResponseExample>
+```json 404 Not Found - Email
+{
+  "error": "Email not found or access denied"
+}
+```
+
+```json 404 Not Found - Attachment
+{
+  "error": "Attachment not found"
+}
+```
+
+```json 404 Not Found - No Content
+{
+  "error": "Email content not available"
+}
+```
+
+```json 404 Not Found - No Attachments
+{
+  "error": "No attachments found in this email"
+}
+```
+
+```json 401 Unauthorized
+{
+  "error": "Unauthorized"
+}
+```
+
+```json 400 Bad Request
+{
+  "error": "Email ID and attachment filename are required"
+}
+```
+
+```json 500 Internal Server Error
+{
+  "error": "Failed to download attachment",
+  "details": "S3 fetch failed"
+}
+```
+</ResponseExample>
+
+## Important Notes
+
+<Warning>
+**Authentication Required**: You must include a valid API key in the `Authorization` header to download attachments. Only the email owner can download attachments.
+</Warning>
+
+<Info>
+**Smart Content Retrieval**: The endpoint automatically tries S3 storage first, then falls back to direct email content if S3 is unavailable.
+</Info>
+
+<Tip>
+**URL Encoding**: If the filename contains special characters, it should be URL-encoded in the download URL. The `downloadUrl` in webhook payloads is already properly encoded.
+</Tip>
+
+## Usage in Webhook Handlers
+
+The most common use case is downloading attachments from webhook payloads:
+
+```typescript
+import { InboundWebhookPayload } from '@inboundemail/sdk'
+
+export async function POST(request: Request) {
+  const payload: InboundWebhookPayload = await request.json()
+  const { email } = payload
+  
+  console.log(`Email has ${email.parsedData.attachments.length} attachments`)
+  
+  for (const attachment of email.parsedData.attachments) {
+    // The downloadUrl is ready to use
+    console.log(`Download: ${attachment.downloadUrl}`)
+    
+    // Fetch the file
+    const file = await fetch(attachment.downloadUrl, {
+      headers: {
+        'Authorization': `Bearer ${process.env.INBOUND_API_KEY}`
+      }
+    })
+    
+    if (file.ok) {
+      // Process the file
+      const data = await file.arrayBuffer()
+      await processAttachment(attachment.filename, data)
+    }
+  }
+  
+  return new Response('OK')
+}
+```
+
+## Security Considerations
+
+<Steps>
+<Step title="API Key Protection">
+  Never expose your API key in client-side code. Always download attachments from server-side code.
+</Step>
+
+<Step title="User Verification">
+  The endpoint automatically verifies that the requesting user owns the email before allowing downloads.
+</Step>
+
+<Step title="Content Type Validation">
+  Always validate the content type before processing downloaded files to prevent security issues.
+</Step>
+</Steps>
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+<Card title="Get Email" icon="envelope" href="/api-reference/mail/get-email">
+  Retrieve complete email details including attachment metadata
+</Card>
+
+<Card title="Webhook Structure" icon="webhook" href="/webhook">
+  View the complete webhook payload structure
+</Card>
+</CardGroup>
+
+## Notes
+
+- Attachments are downloaded as raw binary data
+- The endpoint respects S3 storage location and falls back to direct content
+- Only the email owner (authenticated user) can download attachments
+- The filename in the URL is used for proper Content-Disposition headers
+- Large attachments may take longer to download depending on size
+- Download URLs in webhook payloads are automatically URL-encoded
+
+---
+
+**1.0 - ✅**

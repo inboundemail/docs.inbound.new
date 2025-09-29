@@ -82,7 +82,7 @@ interface InboundEmailAddress {
 
 ### InboundEmailAttachment
 
-Attachment metadata:
+Attachment metadata with download URL:
 
 ```typescript
 interface InboundEmailAttachment {
@@ -91,6 +91,30 @@ interface InboundEmailAttachment {
   size: number | undefined
   contentId: string | undefined
   contentDisposition: string | undefined
+  downloadUrl: string  // URL to download the attachment with API key authentication
+}
+```
+
+<Info>
+The `downloadUrl` field provides a direct link to download the attachment file. Authentication is required using your API key in the `Authorization` header.
+</Info>
+
+**Example:**
+
+```typescript
+// Download an attachment from webhook payload
+const attachment = email.parsedData.attachments[0]
+
+const response = await fetch(attachment.downloadUrl, {
+  headers: {
+    'Authorization': `Bearer ${process.env.INBOUND_API_KEY}`
+  }
+})
+
+if (response.ok) {
+  const fileBuffer = await response.arrayBuffer()
+  const blob = new Blob([fileBuffer], { type: attachment.contentType })
+  // Process the file...
 }
 ```
 

@@ -74,6 +74,12 @@
               "api-reference/threads/thread-actions",
               "api-reference/threads/thread-stats"
             ]
+          },
+          {
+            "group": "Attachments API",
+            "pages": [
+              "api-reference/attachments/download-attachment"
+            ]
           }
         ]
       },

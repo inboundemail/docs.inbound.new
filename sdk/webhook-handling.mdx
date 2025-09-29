@@ -328,7 +328,16 @@ const testPayload: InboundWebhookPayload = {
       references: undefined,
       textBody: 'This is a test email.',
       htmlBody: '<p>This is a test email.</p>',
-      attachments: [],
+      attachments: [
+        {
+          filename: 'document.pdf',
+          contentType: 'application/pdf',
+          size: 102400,
+          contentId: '<doc_123>',
+          contentDisposition: 'attachment',
+          downloadUrl: 'https://inbound.new/api/v2/attachments/test_email_123/document.pdf'
+        }
+      ],
       headers: {},
       priority: undefined
     },
@@ -337,7 +346,16 @@ const testPayload: InboundWebhookPayload = {
       text: 'This is a test email.',
       hasHtml: true,
       hasText: true,
-      attachments: [],
+      attachments: [
+        {
+          filename: 'document.pdf',
+          contentType: 'application/pdf',
+          size: 102400,
+          contentId: '<doc_123>',
+          contentDisposition: 'attachment',
+          downloadUrl: 'https://inbound.new/api/v2/attachments/test_email_123/document.pdf'
+        }
+      ],
       headers: {}
     }
   },
@@ -358,6 +376,44 @@ fetch('http://localhost:3000/api/webhook', {
   body: JSON.stringify(testPayload)
 })
 ```
+
+## Working with Attachments
+
+Attachments in webhook payloads include a `downloadUrl` field for easy file access:
+
+```typescript
+export async function POST(request: NextRequest) {
+  const payload: InboundWebhookPayload = await request.json()
+  const { email } = payload
+  
+  // Process attachments
+  for (const attachment of email.parsedData.attachments) {
+    console.log(`📎 Attachment: ${attachment.filename}`)
+    console.log(`   Size: ${attachment.size} bytes`)
+    console.log(`   Type: ${attachment.contentType}`)
+    console.log(`   Download: ${attachment.downloadUrl}`)
+    
+    // Download the attachment if needed
+    const fileResponse = await fetch(attachment.downloadUrl, {
+      headers: {
+        'Authorization': `Bearer ${process.env.INBOUND_API_KEY}`
+      }
+    })
+    
+    if (fileResponse.ok) {
+      const fileData = await fileResponse.arrayBuffer()
+      // Save to cloud storage, process, etc.
+      await saveToS3(attachment.filename, fileData)
+    }
+  }
+  
+  return NextResponse.json({ success: true })
+}
+```
+
+<Tip>
+The `downloadUrl` is authenticated via your API key, ensuring only you can access attachments from your emails. The URL includes the filename to enable proper content-type handling.
+</Tip>
 
 ## Next Steps
 
