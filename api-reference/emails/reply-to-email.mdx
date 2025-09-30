@@ -18,8 +18,15 @@ This endpoint requires authentication via:
 ## Path Parameters
 
 <ParamField path="id" type="string" required>
-  The unique identifier of the email you want to reply to. This must be an email
-  that was received through your Inbound account.
+  The unique identifier of the email or thread you want to reply to. 
+  
+  Can be either:
+  - An **email ID** (e.g., `email_abc123`) - Replies to that specific email
+  - A **thread ID** (e.g., `thread_xyz789`) - Replies to the latest message in the thread
+  
+  <Info>
+  When providing a thread ID, the system automatically replies to the most recent email in that thread, ensuring proper conversation continuity.
+  </Info>
 </ParamField>
 
 ## Request Body
@@ -136,6 +143,22 @@ If you only provide `html` the `text` will be generated automatically from the H
   Also accepts `includeOriginal` (camelCase) for Resend compatibility.
 </ParamField>
 
+<ParamField body="replyAll" type="boolean" optional default="false">
+  Whether to reply to all recipients (Reply All behavior). 
+  
+  When `true`:
+  - Includes the original sender in the `to` field
+  - Includes all original CC recipients (excluding yourself)
+  - Does NOT include BCC recipients (as per email standards)
+  
+  When `false` (default):
+  - Only replies to the original sender
+  
+  <Note>
+  The current user's email address is automatically excluded from the recipient list to prevent self-replies.
+  </Note>
+</ParamField>
+
 <ParamField body="tags" type="array" optional>
   Array of tags for email categorization and tracking (Resend-compatible).
   <Expandable title="Tag object properties">
@@ -171,6 +194,17 @@ If you only provide `html` the `text` will be generated automatically from the H
   length of **256 characters**
 </ParamField>
 
+<ParamField header="API-Version" type="string">
+  Specify a historical API version to maintain backward compatibility.
+  
+  Available versions:
+  - `reply-10-01-25` - Legacy reply endpoint from January 1, 2025
+  
+  <Info>
+  Omit this header to use the current API version with the latest features (recommended).
+  </Info>
+</ParamField>
+
 ## Response
 
 <ResponseField name="id" type="string" required>
@@ -186,6 +220,22 @@ If you only provide `html` the `text` will be generated automatically from the H
   present when the email is successfully sent through AWS SES.
 </ResponseField>
 
+<ResponseField name="repliedToEmailId" type="string" required>
+  The actual email ID that was replied to. This is always an email ID, even if you provided a thread ID in the request.
+</ResponseField>
+
+<ResponseField name="repliedToThreadId" type="string" optional>
+  The thread ID associated with the email, if the reply is part of a conversation thread.
+</ResponseField>
+
+<ResponseField name="isThreadReply" type="boolean" required>
+  Indicates whether the reply was made to a thread ID (`true`) or directly to an email ID (`false`).
+  
+  <Info>
+  When `true`, the system automatically resolved the thread ID to the latest email in that thread.
+  </Info>
+</ResponseField>
+
 ## Email Threading
 
 This endpoint automatically handles email threading by:
@@ -199,6 +249,68 @@ This endpoint automatically handles email threading by:
   Email clients like Gmail, Outlook, and Apple Mail will recognize these
   threading headers and group the emails into a conversation.
 </Info>
+
+## API Versioning
+
+The reply endpoint supports API versioning to maintain backward compatibility while introducing new features.
+
+### Current Version (Recommended)
+
+The current version includes:
+- **Thread ID support** - Reply to threads or specific emails
+- **Reply All functionality** - Include all original recipients
+- **Enhanced response data** - Detailed information about what was replied to
+- **Automatic thread resolution** - Seamlessly works with both email and thread IDs
+
+To use the current version, simply omit the `API-Version` header.
+
+### Historical Versions
+
+Access previous API implementations by including the `API-Version` header:
+
+<CodeGroup>
+```bash Legacy Version (reply-10-01-25)
+curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "API-Version: reply-10-01-25" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "support@yourdomain.com",
+    "text": "Your reply message"
+  }'
+```
+
+```javascript Current Version (No header)
+// Recommended - uses latest features
+const response = await fetch('https://inbound.new/api/v2/emails/email_abc123/reply', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    from: 'support@yourdomain.com',
+    text: 'Your reply message',
+    replyAll: true  // New feature in current version
+  })
+});
+```
+</CodeGroup>
+
+<Warning>
+Historical versions are maintained for backward compatibility only. New integrations should use the current version to access the latest features and improvements.
+</Warning>
+
+### Version Differences
+
+| Feature | reply-10-01-25 | Current |
+|---------|----------------|---------|
+| Thread ID support | ❌ Email IDs only | ✅ Email or Thread IDs |
+| Reply All | ❌ Not available | ✅ Available |
+| Response includes thread info | ❌ Basic response | ✅ Full thread details |
+| Simplified mode | ✅ Available | ✅ Available |
+| Attachments | ✅ Supported | ✅ Supported |
+| Custom headers | ✅ Supported | ✅ Supported |
 
 ## Examples
 
@@ -281,7 +393,10 @@ curl_close($ch);
 {
   "id": "sent_xyz789",
   "messageId": "xyz789@yourdomain.com",
-  "awsMessageId": "0100018e1234abcd-12345678-1234-1234-1234-123456789012-000000"
+  "awsMessageId": "0100018e1234abcd-12345678-1234-1234-1234-123456789012-000000",
+  "repliedToEmailId": "email_abc123",
+  "repliedToThreadId": "thread_def456",
+  "isThreadReply": false
 }
 ```
 </ResponseExample>
@@ -404,6 +519,143 @@ curl_close($ch);
 ```
 
 </RequestExample>
+
+### Reply All to Include CC Recipients
+
+Use Reply All to include all original recipients in your response:
+
+<RequestExample>
+```javascript Inbound SDK
+import { Inbound } from '@inboundemail/sdk';
+
+const inbound = new Inbound('YOUR_API_KEY');
+
+const { data, error } = await inbound.reply('email_abc123', {
+  from: 'support@yourdomain.com',
+  text: 'This response is going to everyone on the original email.',
+  replyAll: true  // Include original sender + CC recipients
+});
+
+if (error) {
+  console.error('Error:', error);
+} else {
+  console.log('Reply All sent:', data.id);
+  console.log('Replied to email:', data.repliedToEmailId);
+}
+```
+
+```bash cURL
+curl -X POST https://inbound.new/api/v2/emails/email_abc123/reply \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "support@yourdomain.com",
+    "text": "This response is going to everyone on the original email.",
+    "replyAll": true
+  }'
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://inbound.new/api/v2/emails/email_abc123/reply',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'Content-Type': 'application/json'
+    },
+    json={
+        'from': 'support@yourdomain.com',
+        'text': 'This response is going to everyone on the original email.',
+        'replyAll': True
+    }
+)
+
+data = response.json()
+```
+</RequestExample>
+
+<Info>
+Reply All automatically:
+- Includes the original sender
+- Includes all CC recipients from the original email
+- Excludes your own email address to prevent self-replies
+- Does NOT include BCC recipients (per email standards)
+</Info>
+
+### Reply to a Thread
+
+Reply to an entire conversation thread by using the thread ID:
+
+<RequestExample>
+```javascript Inbound SDK
+import { Inbound } from '@inboundemail/sdk';
+
+const inbound = new Inbound('YOUR_API_KEY');
+
+// Using a thread ID instead of an email ID
+const { data, error } = await inbound.reply('thread_xyz789', {
+  from: 'support@yourdomain.com',
+  text: 'This reply continues the conversation thread.'
+});
+
+if (error) {
+  console.error('Error:', error);
+} else {
+  console.log('Reply sent to thread:', data.repliedToThreadId);
+  console.log('Actual email replied to:', data.repliedToEmailId);
+  console.log('Was thread reply:', data.isThreadReply);  // true
+}
+```
+
+```bash cURL
+curl -X POST https://inbound.new/api/v2/emails/thread_xyz789/reply \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "support@yourdomain.com",
+    "text": "This reply continues the conversation thread."
+  }'
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://inbound.new/api/v2/emails/thread_xyz789/reply',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'Content-Type': 'application/json'
+    },
+    json={
+        'from': 'support@yourdomain.com',
+        'text': 'This reply continues the conversation thread.'
+    }
+)
+
+data = response.json()
+print(f"Replied to thread: {data['repliedToThreadId']}")
+print(f"Actual email: {data['repliedToEmailId']}")
+print(f"Was thread reply: {data['isThreadReply']}")
+```
+</RequestExample>
+
+<ResponseExample>
+```json Thread Reply Success
+{
+  "id": "sent_xyz789",
+  "messageId": "xyz789@yourdomain.com",
+  "awsMessageId": "0100018e1234abcd-12345678-1234-1234-1234-123456789012-000000",
+  "repliedToEmailId": "email_latest123",
+  "repliedToThreadId": "thread_xyz789",
+  "isThreadReply": true
+}
+```
+</ResponseExample>
+
+<Tip>
+When you provide a thread ID, the system automatically finds the most recent email in that thread and replies to it, ensuring your response appears at the correct position in the conversation.
+</Tip>
 
 ### Reply Without Quoting Original
 
@@ -590,16 +842,18 @@ curl_close($ch);
 
 | Status Code | Error Message                                                                             | Description                                                   |
 | ----------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| 400         | "Valid email ID is required"                                                              | The email ID parameter is missing or invalid                  |
+| 400         | "Valid email ID or thread ID is required"                                                 | The ID parameter is missing or invalid                        |
 | 400         | "From address is required"                                                                | The `from` field is missing from the request                  |
 | 400         | "Either html or text content must be provided"                                            | No email body content was provided                            |
 | 400         | "Cannot determine recipient email address"                                                | No `to` field provided and cannot extract from original email |
 | 400         | "agent@inbnd.dev cannot be used for replies. Please use a verified domain email address." | Attempted to use agent email for replies                      |
 | 400         | "Invalid email format: {email}"                                                           | One of the email addresses is malformed                       |
 | 400         | "Invalid JSON in request body"                                                            | Request body contains malformed JSON                          |
+| 400         | "Unknown API version: {version}"                                                          | Invalid API version specified in header                       |
 | 401         | "Unauthorized"                                                                            | Invalid or missing API key                                    |
 | 403         | "You don't have permission to send from domain: {domain}"                                 | The sender domain is not verified in your account             |
-| 404         | "Email not found"                                                                         | The email ID does not exist or belongs to another user        |
+| 404         | "Email or thread not found"                                                               | The email/thread ID does not exist or belongs to another user |
+| 404         | "API version '{version}' not found or unavailable"                                        | The requested API version doesn't exist                       |
 | 429         | "Email sending limit reached. Please upgrade your plan to send more emails."              | You have exceeded your plan's email sending limit             |
 | 500         | "Email service not configured. Please contact support."                                   | AWS SES configuration issue                                   |
 | 500         | "Failed to send reply. Please try again later."                                           | AWS SES or other service error occurred                       |
@@ -615,6 +869,19 @@ curl_close($ch);
 ```json Agent Email Not Allowed
 {
   "error": "agent@inbnd.dev cannot be used for replies. Please use a verified domain email address."
+}
+```
+
+```json Thread Not Found
+{
+  "error": "Email or thread not found"
+}
+```
+
+```json Invalid API Version
+{
+  "error": "Unknown API version: invalid-version",
+  "availableVersions": ["reply-10-01-25"]
 }
 ```
 
