@@ -36,6 +36,14 @@ This endpoint retrieves a paginated list of all email conversation threads for t
   Filter threads by archived status. Set to `true` to only return archived threads.
 </ParamField>
 
+<ParamField query="domain" type="string">
+  Filter threads by domain. Returns only threads where at least one participant email is from the specified domain (e.g., `example.com`).
+</ParamField>
+
+<ParamField query="address" type="string">
+  Filter threads by specific email address. Returns only threads where the specified email address is a participant.
+</ParamField>
+
 ## Response
 
 <ResponseField name="threads" type="array" required>
@@ -155,6 +163,14 @@ This endpoint retrieves a paginated list of all email conversation threads for t
     <ResponseField name="archivedOnly" type="boolean | undefined">
       Whether archived filter was applied.
     </ResponseField>
+    
+    <ResponseField name="domain" type="string | undefined">
+      Domain filter that was applied (if any).
+    </ResponseField>
+    
+    <ResponseField name="address" type="string | undefined">
+      Email address filter that was applied (if any).
+    </ResponseField>
   </Expandable>
 </ResponseField>
 
@@ -212,7 +228,7 @@ curl_close($curl);
 ```
 </RequestExample>
 
-### Filtered Request
+### Filter by Search and Unread
 
 <RequestExample>
 ```javascript Inbound SDK
@@ -270,6 +286,90 @@ $response = curl_exec($curl);
 $data = json_decode($response, true);
 curl_close($curl);
 ?>
+```
+</RequestExample>
+
+### Filter by Domain
+
+<Tip>
+Use the `domain` parameter to easily retrieve all threads for a specific domain. This is useful for filtering conversations by customer domain or organization.
+</Tip>
+
+<RequestExample>
+```javascript Inbound SDK
+import { Inbound } from '@inboundemail/sdk'
+
+const inbound = new Inbound('YOUR_API_KEY')
+
+// Get all threads with participants from example.com
+const { data: threads, error } = await inbound.thread.list({
+  domain: 'example.com',
+  limit: 50
+})
+
+if (error) {
+  console.error('Error:', error)
+} else {
+  console.log(`Found ${threads.threads.length} threads with example.com participants`)
+}
+```
+
+```bash cURL
+curl -X GET 'https://inbound.new/api/v2/threads?domain=example.com&limit=50' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://inbound.new/api/v2/threads',
+    params={'domain': 'example.com', 'limit': 50},
+    headers={'Authorization': 'Bearer YOUR_API_KEY'}
+)
+data = response.json()
+```
+</RequestExample>
+
+### Filter by Email Address
+
+<Tip>
+Use the `address` parameter to retrieve all threads involving a specific email address. This is perfect for customer support workflows or account-based filtering.
+</Tip>
+
+<RequestExample>
+```javascript Inbound SDK
+import { Inbound } from '@inboundemail/sdk'
+
+const inbound = new Inbound('YOUR_API_KEY')
+
+// Get all threads with a specific participant
+const { data: threads, error } = await inbound.thread.list({
+  address: 'customer@example.com',
+  limit: 25
+})
+
+if (error) {
+  console.error('Error:', error)
+} else {
+  console.log(`Found ${threads.threads.length} threads with customer@example.com`)
+}
+```
+
+```bash cURL
+curl -X GET 'https://inbound.new/api/v2/threads?address=customer@example.com&limit=25' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://inbound.new/api/v2/threads',
+    params={'address': 'customer@example.com', 'limit': 25},
+    headers={'Authorization': 'Bearer YOUR_API_KEY'}
+)
+data = response.json()
 ```
 </RequestExample>
 
