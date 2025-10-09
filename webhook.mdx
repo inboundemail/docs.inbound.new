@@ -64,6 +64,7 @@ const payload: InboundWebhookPayload = {
       references: undefined,
       textBody: 'Hello, I need help with my recent order...',
       htmlBody: '<p>Hello, I need help with my recent order...</p>',
+      raw: 'From: john@example.com\r\nTo: support@yourdomain.com\r\n...',
       attachments: [
         {
           filename: 'order-receipt.pdf',
